@@ -12,7 +12,7 @@ static std::vector<char> readFile(const std::string& filename)
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
     if (!file.is_open()) {
-        throw std::runtime_error(std::string("Renderer::Vulkan] Error creating shader module: Could not open file \"") + filename + "\"");
+        throw std::runtime_error(std::string("Renderer::OpenGL] Error reading shader file \"") + filename + "\"");
     }
 
     constexpr size_t codeVectorIncrSize = 4096;
@@ -67,9 +67,7 @@ void OpenGL::initialize()
 
     glEnable(GL_DEBUG_OUTPUT);
     glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-    glDebugMessageCallback([](auto, auto, auto, auto, auto, const GLchar *msg, auto) {
-                               std::cout << "OpenGL debug: \033[36m" << msg << "\033[0m" << std::endl;
-                           }, nullptr);
+    glDebugMessageCallback(OpenGL::debugCallback, nullptr);
 
     glEnable(GL_BLEND);
     glBlendEquation(GL_FUNC_ADD); 
@@ -93,45 +91,24 @@ void OpenGL::initialize()
     // Create VBO.
     glGenBuffers(1, &mVBO);
 
-    // Load shaders.
-    GLuint shaderVertex = loadShader(GL_VERTEX_SHADER, readFile("shaders/opengl/shader.vert.spv"));
-    GLuint shaderFragment = loadShader(GL_FRAGMENT_SHADER, readFile("shaders/opengl/shader.frag.spv"));
+    // Create graph program.
+    mGraphProgram = createProgram("shaders/opengl/graph.vert.spv", "shaders/opengl/graph.frag.spv");
+    mLocPosition = glGetAttribLocation(mGraphProgram, "coord2d");
+    mLocOffsetX = glGetUniformLocation(mGraphProgram, "offset_x");
+    mLocScaleX = glGetUniformLocation(mGraphProgram, "scale_x");
 
-    // Create program and link it with the shaders.
-    mProgram = glCreateProgram();
-    
-    glAttachShader(mProgram, shaderVertex);
-    glAttachShader(mProgram, shaderFragment);
+    // Create spectrogram program.
+    mSpectrogramProgram = createProgram("shaders/opengl/spectrogram.vert.spv", "shaders/opengl/spectrogram.frag.spv");
+    mLocPoint = glGetAttribLocation(mSpectrogramProgram, "point");
+    mLocMinFreq = glGetUniformLocation(mSpectrogramProgram, "minFreq");
+    mLocMaxFreq = glGetUniformLocation(mSpectrogramProgram, "maxFreq");
+    mLocMinGain = glGetUniformLocation(mSpectrogramProgram, "minGain");
+    mLocMaxGain = glGetUniformLocation(mSpectrogramProgram, "maxGain");
+    mLocScaleType = glGetUniformLocation(mSpectrogramProgram, "scaleType");
 
-    glLinkProgram(mProgram);
-
-    GLint isLinked = GL_FALSE;
-    glGetProgramiv(mProgram, GL_LINK_STATUS, &isLinked);
-    if (isLinked == GL_FALSE) {
-        GLint maxLength;
-        glGetProgramiv(mProgram, GL_INFO_LOG_LENGTH, &maxLength);
-
-        std::vector<GLchar> infoLog(maxLength);
-        glGetProgramInfoLog(mProgram, maxLength, &maxLength, infoLog.data());
-
-        glDeleteProgram(mProgram);
-        glDeleteShader(shaderVertex);
-        glDeleteShader(shaderFragment);
-
-        throw std::runtime_error(std::string("Renderer::OpenGL] Error loading shader: ") + (const char *) infoLog.data());
-    }
-
-    glDetachShader(mProgram, shaderVertex);
-    glDetachShader(mProgram, shaderFragment);
-
-    // Find locations.
-    mLocPosition = glGetAttribLocation(mProgram, "coord2d");
-    mLocOffsetX = glGetUniformLocation(mProgram, "offset_x");
-    mLocScaleX = glGetUniformLocation(mProgram, "scale_x");
-
-    // Fill VBO data.
+    // Init and map VBO buffer.
     glBindBuffer(GL_ARRAY_BUFFER, mVBO);
-    glBufferData(GL_ARRAY_BUFFER, 16000 * sizeof(Vertex), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 32768, nullptr, GL_DYNAMIC_DRAW);
 
     mUniforms = {
         .offset_x = 0.0f,
@@ -145,7 +122,8 @@ void OpenGL::terminate()
     glDeleteBuffers(1, &mVBO);
     glDeleteFramebuffers(1, &mFBO);
     glDeleteRenderbuffers(1, &mRBO);
-    glDeleteProgram(mProgram);
+    glDeleteProgram(mGraphProgram);
+    glDeleteProgram(mSpectrogramProgram);
     
     mProvider->deleteContext();
 }
@@ -162,8 +140,6 @@ void OpenGL::begin()
         glDeleteTextures(1, &mMsTexture);
         initMultisampling();
     }
-    
-    glLoadIdentity();
 
     int width, height;
     getDrawableSize(&width, &height);
@@ -192,12 +168,10 @@ void OpenGL::clear()
 
 void OpenGL::test()
 {
-    glUseProgram(mProgram);
+    glUseProgram(mGraphProgram);
 
     glUniform1f(mLocOffsetX, mUniforms.offset_x);
     glUniform1f(mLocScaleX, mUniforms.scale_x);
-    
-    glBindBuffer(GL_ARRAY_BUFFER, mVBO);
 
     glEnableVertexAttribArray(mLocPosition);
     glVertexAttribPointer(
@@ -212,25 +186,23 @@ void OpenGL::test()
     glDrawArrays(GL_LINE_STRIP, 0, 2000);
 
     glDisableVertexAttribArray(mLocPosition);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void OpenGL::renderGraph(float *x, float *y, size_t count)
 {
-    glUseProgram(mProgram);
+    glUseProgram(mGraphProgram);
 
     glUniform1f(mLocOffsetX, mUniforms.offset_x);
     glUniform1f(mLocScaleX, mUniforms.scale_x);
-    
-    glBindBuffer(GL_ARRAY_BUFFER, mVBO);
 
-    auto graph = std::make_unique<Vertex[]>(count);
+    glBindBuffer(GL_ARRAY_BUFFER, mVBO);
+    
+    auto graph = (Vertex *) glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
     for (int i = 0; i < count; ++i) {
         graph[i].x = 0.9f * (2.0f * (x[i] - x[0]) / (x[count - 1] - x[0]) - 1.0f);
         graph[i].y = y[i] / 10.0f;
     }
-    glBufferSubData(GL_ARRAY_BUFFER, 0, count * sizeof(Vertex), graph.get());
+    glUnmapBuffer(GL_ARRAY_BUFFER);
 
     glEnableVertexAttribArray(mLocPosition);
     glVertexAttribPointer(
@@ -245,36 +217,63 @@ void OpenGL::renderGraph(float *x, float *y, size_t count)
     glDrawArrays(GL_LINE_STRIP, 0, count);
 
     glDisableVertexAttribArray(mLocPosition);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void OpenGL::renderSpectrogram(float ***spectrogram, size_t *lengths, size_t count)
 {
-    float minFrequency = 0.0f;
-    float maxFrequency = 4000.0f;
+    glUseProgram(mSpectrogramProgram);
 
-    float xfuzz = 0.008f;
-    float yfuzz = 0.002f;
+    glUniform1f(mLocMinFreq, 50.0f);
+    glUniform1f(mLocMaxFreq, 8000.0f);
+    glUniform1f(mLocMinGain, -40.0f);
+    glUniform1f(mLocMaxGain, 20.0f);
+    glUniform1ui(mLocScaleType, 2);
 
     float width = 2.0f / (float) count;
+
+    int tWidth, tHeight;
+    getDrawableSize(&tWidth, &tHeight);
+
+    glLineWidth(tWidth / (float) count);
+
+    std::vector<glm::vec3> vertices;
 
     for (int xi = 0; xi < count; ++xi) {
         float **slice = spectrogram[xi];
         size_t length = lengths[xi];
 
-        float maxSliceFrequency = length > 0 ? slice[length - 1][0] : 0.0f;
-        float height = (maxSliceFrequency - minFrequency) / (length * (maxFrequency - minFrequency));
-
         float x = (2.0f * xi) / (float) count - 1.0f;
 
-        for (int yi = 0; yi < length; ++yi) {
-            float y = (2.0f * (slice[yi][0] - minFrequency)) / (maxFrequency - minFrequency) - 1.0f;
+        vertices.resize(length);
+       
+        glBindBuffer(GL_ARRAY_BUFFER, mVBO);
 
-            glColor4f(1.0f, 1.0f, 1.0f, slice[yi][1]);
-            glRectf(x - 0.5f * xfuzz, y - 0.5f * yfuzz, x + 0.5f * xfuzz + width, y + 0.5f * yfuzz + height);
+        for (int yi = 0; yi < length; ++yi) {
+            float frequency = slice[yi][0];
+            float intensity = slice[yi][1];
+
+            float gain = intensity > 1e-10f ? 20.0f * log10(intensity) : -1e6f;
+
+            vertices[yi] = { x, frequency, gain };
         }
+       
+        glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size() * sizeof(glm::vec3), vertices.data()); 
+
+        glEnableVertexAttribArray(mLocPoint);
+        glVertexAttribPointer(
+            mLocPoint,
+            3,
+            GL_FLOAT,
+            GL_FALSE,
+            0,
+            (void *) 0
+        );
+
+        glDrawArrays(GL_LINE_STRIP, 0, length);
+
+        glDisableVertexAttribArray(mLocPoint);
     }
+
 }
 
 void OpenGL::initMultisampling()
@@ -303,6 +302,44 @@ void OpenGL::initMultisampling()
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
 }
 
+GLuint OpenGL::createProgram(const std::string& vertexShaderFilename,
+                           const std::string& fragmentShaderFilename)
+{
+    GLuint program = glCreateProgram();
+    
+    GLuint vertexShader = loadShader(GL_VERTEX_SHADER, readFile(vertexShaderFilename));
+    GLuint fragmentShader = loadShader(GL_FRAGMENT_SHADER, readFile(fragmentShaderFilename));
+
+    glAttachShader(program, vertexShader);
+    glAttachShader(program, fragmentShader);
+
+    glLinkProgram(program);
+
+    GLint isLinked = GL_FALSE;
+    glGetProgramiv(program, GL_LINK_STATUS, &isLinked);
+    if (isLinked == GL_FALSE) {
+        GLint maxLength;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &maxLength);
+
+        std::vector<GLchar> infoLog(maxLength);
+        glGetProgramInfoLog(program, maxLength, &maxLength, infoLog.data());
+
+        glDeleteProgram(program);
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+
+        throw std::runtime_error(std::string("Renderer::OpenGL] Error creating program: ") + (const char *) infoLog.data());
+    }
+
+    glDetachShader(program, vertexShader);
+    glDetachShader(program, fragmentShader);
+
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    return program;
+}
+
 GLuint OpenGL::loadShader(GLenum shaderType, const std::vector<char>& code)
 {
     GLuint shaderId = glCreateShader(shaderType);
@@ -326,4 +363,9 @@ GLuint OpenGL::loadShader(GLenum shaderType, const std::vector<char>& code)
     }
 
     return shaderId;
+}
+
+GLEWAPIENTRY void OpenGL::debugCallback(GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar *msg, const void *)
+{
+    std::cout << "OpenGL debug: \033[36m" << msg << "\033[0m" << std::endl;
 }

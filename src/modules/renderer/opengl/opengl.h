@@ -29,21 +29,35 @@ namespace Module::Renderer {
     private:
         void initMultisampling();
 
+        GLuint createProgram(const std::string& vertexShaderFilename,
+                             const std::string& fragmentShaderFilename);
+
         GLuint loadShader(GLenum shaderType, const std::vector<char>& code);
+
+        static GLEWAPIENTRY void debugCallback(GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar *, const void *);
 
         OpenGLProvider *mProvider;
 
         std::vector<Vertex> mVertices;
         UniformBuffer mUniforms;
 
-        GLuint mProgram;
+        GLuint mGraphProgram;
         GLint mLocPosition;
         GLint mLocOffsetX;
         GLint mLocScaleX;
 
+        GLuint mSpectrogramProgram;
+        GLint mLocPoint;
+        GLint mLocMinFreq;
+        GLint mLocMaxFreq;
+        GLint mLocMinGain;
+        GLint mLocMaxGain;
+        GLint mLocScaleType;
+
         GLuint mVBO;
         GLuint mVAO;
-        GLuint mUBO;
+
+        void *mBufferData;
 
         GLuint mRBO;
         GLuint mFBO;
