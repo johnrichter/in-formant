@@ -77,10 +77,15 @@ InvglotResult IAIF::solve(const float *xData, int length, float sampleRate)
         }
     }
 
+    std::vector<float> x(xData, xData + length);
+   
+    static std::vector<std::array<float, 6>> hpfilt;
+    if (hpfilt.empty()) {
+        hpfilt = Analysis::butterworthHighpass(10, 70.0f, sampleRate);
+    }
+
     int preflt = p_vt + 1;
 
-    std::vector<float> x(xData, xData + length);
-    
     std::vector<float> xWithPreRamp(preflt + length);
     for (int i = 0; i < preflt; ++i) {
         xWithPreRamp[i] = 2.0f * ((float) i / (float) (preflt - 1) - 0.5f) * x[0];
@@ -88,6 +93,9 @@ InvglotResult IAIF::solve(const float *xData, int length, float sampleRate)
     for (int i = 0; i < length; ++i) {
         xWithPreRamp[preflt + i] = x[i];
     }
+
+    xWithPreRamp = sosfilter(hpfilt, xWithPreRamp);
+    x = removePreRamp(xWithPreRamp, preflt);
 
     auto Hg1 = calculateLPC(x, window, lpW, 1, lpc);
     auto y1 = removePreRamp(filter(Hg1, one, xWithPreRamp), preflt);
@@ -99,27 +107,17 @@ InvglotResult IAIF::solve(const float *xData, int length, float sampleRate)
     auto y = removePreRamp(filter(one, oneMinusD, filter(Hg2, one, xWithPreRamp)), preflt);
 
     auto Hvt2 = calculateLPC(y, window, lpW, p_vt, lpc);
-    auto gWithPreRamp = removePreRamp(filter(one, oneMinusD, filter(Hvt2, one, xWithPreRamp)), preflt);
+    auto gWithPreRamp = filter(one, oneMinusD, filter(Hvt2, one, xWithPreRamp));
 
-    float hpAng = (2.0f * M_PI * 40.0f) / sampleRate;
-    float lpAng = (2.0f * M_PI * 600.0f) / sampleRate;
-
-    float hpFactor = expf(-hpAng);
-    float lpFactor = lpAng / (lpAng + 1);
-    
-    std::vector<float> hpFilt {1.0f, -hpFactor};
-    std::vector<float> lpFilt1 {lpFactor};
-    std::vector<float> lpFilt2 {1.0f, (lpFactor - 1.0f)};
-
-    auto g = removePreRamp(filter(lpFilt1, lpFilt2, filter(hpFilt, gWithPreRamp)), preflt);
+    auto g = removePreRamp(gWithPreRamp, preflt);
 
     float gMax = 1e-10;
-    for (int i = 0; i < g.size(); ++i) {
+    for (int i = 0; i < length; ++i) {
         float absG = fabsf(g[i]);
         if (absG > gMax)
             gMax = absG;
     }
-    for (int i = 0; i < g.size(); ++i) {
+    for (int i = 0; i < length; ++i) {
         g[i] /= gMax;
     }
 
