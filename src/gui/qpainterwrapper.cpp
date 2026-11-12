@@ -13,8 +13,9 @@ QPainterWrapper::QPainterWrapper(Gui::CanvasRenderer *p)
       mMaxGain(0),
       mSpectrogramQuality(1),
       mSpectrogramBlur(0.33),
-      mSpectrogramOffset(0),
-      mSpectrogramLastTime(-HUGE_VAL)
+      mSpectrogramOffset(p->spectrogramStored().offset),
+      mSpectrogramLastTime(p->spectrogramStored().lastTime),
+      mSpectrogramImageId(p->spectrogramStored().imageId)
 {
 }
 

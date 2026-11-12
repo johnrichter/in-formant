@@ -100,10 +100,11 @@ private:
     int mSpectrogramQuality;
     double mSpectrogramBlur;
 
-    // The place of the next slice in the texture, and the time of the newest stored slice.
-    int mSpectrogramOffset;
-    double mSpectrogramLastTime;
-    unsigned long long mSpectrogramImageId = 0;
+    // The place of the next slice in the texture, the time of the newest stored slice, and the number
+    // of the stored picture. The renderer owns them, because a painter lives for one frame only.
+    int &mSpectrogramOffset;
+    double &mSpectrogramLastTime;
+    unsigned long long &mSpectrogramImageId;
 
     static double transformFrequency(double frequency, FrequencyScale scale);
     static double inverseFrequency(double value, FrequencyScale scale);

@@ -5,6 +5,7 @@
 #include <QOpenGLShaderProgram>
 #include <QQuickFramebufferObject>
 #include <QColor>
+#include <cmath>
 #include <string>
 
 #include "font.h"
@@ -103,7 +104,18 @@ namespace Gui {
 
         QRect viewport() const;
 
+        // Which slices the spectrogram texture holds. The texture lives as long as the renderer, so
+        // this state lives as long as the renderer too. The painter of one frame reads and writes it.
+        struct SpectrogramStored {
+            int offset = 0;
+            double lastTime = -HUGE_VAL;
+            unsigned long long imageId = 0;
+        };
+        SpectrogramStored &spectrogramStored() { return mSpectrogramStored; }
+
     private:
+        SpectrogramStored mSpectrogramStored;
+
         void initFonts();
         void initShaders();
         void deleteFonts();

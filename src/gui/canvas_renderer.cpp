@@ -29,6 +29,7 @@ using namespace Gui;
 void CanvasRenderer::initialize(Main::RenderContext *renderContext)
 {
     mRenderContext = renderContext;
+    mSpectrogramStored = SpectrogramStored();
     initializeOpenGLFunctions();
 
 #ifdef GL_DEBUG_OUTPUT
