@@ -103,6 +103,10 @@ namespace Main {
         // The view follows the live sound when this is true. Otherwise the view ends at viewEnd
         // seconds of the session. These values are not stored in the configuration file.
         bool getViewLive() const { return mViewLive; }
+
+        // True while a recording runs. The display hides the frame timing box then.
+        bool isRecording() const { return mRecording; }
+        void setRecording(bool recording) { mRecording = recording; }
         void setViewLive(bool live);
         double getViewEnd() const { return mViewEnd; }
         void setViewEnd(double seconds);
@@ -239,6 +243,7 @@ namespace Main {
         // WILL NOT BE SERIALIZED
         bool mPaused;
         std::atomic<bool> mViewLive;
+        std::atomic<bool> mRecording { false };
         std::atomic<double> mViewEnd;
         std::atomic<double> mCursorTime;
         std::atomic<double> mCursorClickX;

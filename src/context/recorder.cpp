@@ -166,6 +166,7 @@ bool Recorder::begin(const QString &base)
     mSavedLive = mConfig->getViewLive();
     mConfig->setViewTimeSpan(std::clamp(mConfig->optionDouble("recordWindow"), 2.0, 60.0));
     mConfig->setViewLive(true);
+    mConfig->setRecording(true);
 
     mStart = mDataStore->session().duration();
     mStarted = QDateTime::currentDateTime();
@@ -255,6 +256,7 @@ void Recorder::restoreView()
 {
     mConfig->setViewTimeSpan(mSavedSpan);
     mConfig->setViewLive(mSavedLive);
+    mConfig->setRecording(false);
 }
 
 void Recorder::stop()

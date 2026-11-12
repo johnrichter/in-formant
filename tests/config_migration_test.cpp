@@ -62,5 +62,26 @@ int main()
         CHECK(tbl["meta"]["version"].value<int64_t>() == kConfigVersion);
     }
 
+    // The old style of all tracks becomes a style for each track.
+    {
+        toml::table tbl = makeTable("[meta]\nversion = 4\n[options]\ntrackStyle = 1\ntrackStyleF2 = 3\n");
+        migrateConfig(tbl);
+        CHECK(!tbl["options"]["trackStyle"]);
+        CHECK(tbl["options"]["trackStylePitch"].value<int64_t>() == 2);
+        CHECK(tbl["options"]["trackStyleF1"].value<int64_t>() == 2);
+        CHECK(tbl["options"]["trackStyleF2"].value<int64_t>() == 3);
+        CHECK(tbl["options"]["trackStyleF4"].value<int64_t>() == 2);
+    }
+    {
+        toml::table tbl = makeTable("[meta]\nversion = 4\n[options]\ntrackStyle = 0\n");
+        migrateConfig(tbl);
+        CHECK(tbl["options"]["trackStylePitch"].value<int64_t>() == 1);
+    }
+    {
+        toml::table tbl = makeTable("[meta]\nversion = 4\n[options]\ntrackStyle = 2\n");
+        migrateConfig(tbl);
+        CHECK(tbl["options"]["trackStylePitch"].value<int64_t>() == 3);
+    }
+
     return TEST_RESULT();
 }

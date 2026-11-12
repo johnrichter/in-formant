@@ -157,6 +157,15 @@ QVariantMap Config::defaultOptions()
     m["showStats"] = false;
     m["showMiniMap"] = true;
 
+    // The readout boxes. The order lists the keys. The side is "bottom" or "left". One switch for each track box.
+    m["readoutOrder"] = QString("legend,pitch,f1,f2,f3,f4");
+    m["readoutSide"] = QString("bottom");
+    m["showBoxPitch"] = true;
+    m["showBoxF1"] = true;
+    m["showBoxF2"] = true;
+    m["showBoxF3"] = true;
+    m["showBoxF4"] = true;
+
     // Axes.
     m["showAxisLabels"] = true;
     m["showAxisTitles"] = true;
@@ -166,7 +175,12 @@ QVariantMap Config::defaultOptions()
     m["timeTickStep"] = 1.0;     // seconds, for the custom step
 
     // Tracks.
-    m["trackStyle"] = 2;         // 0 dots, 1 lines, 2 lines and dots
+    // The style of each track, as bits: 1 dots, 2 line.
+    m["trackStylePitch"] = 3;
+    m["trackStyleF1"] = 3;
+    m["trackStyleF2"] = 3;
+    m["trackStyleF3"] = 3;
+    m["trackStyleF4"] = 3;
     m["lineSmoothness"] = 35;    // percent
     m["lineWidth"] = 2.0;        // pixels at 100 percent zoom
     m["dotRadius"] = 2.0;        // pixels at 100 percent zoom

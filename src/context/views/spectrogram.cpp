@@ -153,9 +153,12 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
     auto& pitchTrack = dataStore->getPitchTrack();
 
     painter->setTimeRange(timeStart, timeEnd);
-    const int trackCount = (config->getViewShowPitch() ? 1 : 0)
-                           + (config->getViewShowFormants() ? config->getViewFormantCount() : 0);
-    painter->updateLayout(trackCount);
+    std::vector<std::string> trackNames;
+    if (config->getViewShowPitch()) trackNames.push_back("Pitch");
+    if (config->getViewShowFormants()) {
+        for (int i = 0; i < config->getViewFormantCount(); ++i) trackNames.push_back("F" + std::to_string(i + 1));
+    }
+    painter->updateLayout(trackNames);
 
     // A click on the graph picks a moment. The click is a fraction of the item, and the layout gives its time.
     double clickX, clickY;
@@ -263,7 +266,7 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
     if (config->getViewShowPitch()) {
         EntryVector storage;
         const Picked range = pick(pitchTrack, timeStart, timeEnd, storage, drawLimit, false);
-        painter->drawFrequencyTrack(range.begin, range.end, options.theme.pitch);
+        painter->drawFrequencyTrack(range.begin, range.end, options.theme.pitch, options.trackStyle[0]);
         collect("Pitch", options.theme.pitch, true, pitchTrack);
     }
 
@@ -276,7 +279,7 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
 
             EntryVector storage;
             const Picked range = pick(fi, timeStart, timeEnd, storage, drawLimit, false);
-            painter->drawFrequencyTrack(range.begin, range.end, color);
+            painter->drawFrequencyTrack(range.begin, range.end, color, options.trackStyle[std::min(i + 1, 4)]);
             collect(("F" + std::to_string(i + 1)).c_str(), color, false, fi);
         }
     }

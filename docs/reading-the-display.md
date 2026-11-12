@@ -29,11 +29,19 @@ Click on the graph, or drag across it. A bar shows the moment from the top to th
 
 ## Read the statistics
 
-The row below the graph can show a table for the last seconds of the capture. Each row is one track. Each column is one statistic. The Readouts tab of the settings chooses the columns.
+The statistics show in boxes. Each track has its own box with the name of the track, the live value, and one line for each statistic. The legend is a box too. A box keeps its size when the numbers change.
 
-| Column | Meaning |
+The Readouts tab of the settings has these choices:
+
+- The place of the boxes: below the graph, or at the left of the graph. A column at the left wraps into a second column when it is too high.
+- The order of the boxes, and a switch for each box.
+- The statistics that have a line in the boxes.
+
+The frame times show in a separate box at the top of the graph. The app hides this box during a recording.
+
+| Line | Meaning |
 | --- | --- |
-| Now | The newest value. |
+| Now | The newest value. It is in the header of the box. |
 | Min, Max | The smallest and the largest value. |
 | P5, P95 | The value that 5% or 95% of the values do not exceed. |
 | Mean, Median | The average value, and the middle value. |

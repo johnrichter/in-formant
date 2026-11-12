@@ -34,7 +34,15 @@ void RenderContext::render(QPainterWrapper *painter)
     options.freqTickStep = mConfig->optionDouble("freqTickStep");
     options.timeTickMode = mConfig->optionInt("timeTickMode");
     options.timeTickStep = mConfig->optionDouble("timeTickStep");
-    options.trackStyle = mConfig->optionInt("trackStyle");
+    options.hideDebug = mConfig->isRecording();
+    options.readoutOrder = mConfig->optionString("readoutOrder").toStdString();
+    options.readoutLeft = mConfig->optionString("readoutSide") == "left";
+    const char *boxKeys[5] = { "showBoxPitch", "showBoxF1", "showBoxF2", "showBoxF3", "showBoxF4" };
+    const char *styleKeys[5] = { "trackStylePitch", "trackStyleF1", "trackStyleF2", "trackStyleF3", "trackStyleF4" };
+    for (int i = 0; i < 5; ++i) {
+        options.trackBoxShown[i] = mConfig->optionBool(boxKeys[i]);
+        options.trackStyle[i] = mConfig->optionInt(styleKeys[i]);
+    }
     options.lineSmoothness = mConfig->optionInt("lineSmoothness") / 100.0;
     options.lineWidth = mConfig->optionDouble("lineWidth");
     options.dotRadius = mConfig->optionDouble("dotRadius");

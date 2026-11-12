@@ -392,6 +392,8 @@ if(INFORMANT_BUILD_TESTS)
     add_executable(config_migration_test tests/config_migration_test.cpp)
     target_link_libraries(config_migration_test PRIVATE tomlpp_for_tests)
     add_test(NAME config_migration COMMAND config_migration_test)
+    add_executable(readout_layout_test tests/readout_layout_test.cpp)
+    add_test(NAME readout_layout COMMAND readout_layout_test)
 endif()
 
 target_include_directories(in-formant SYSTEM PRIVATE ${ARMADILLO_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS} ${TOMLPP_INCLUDE_DIR})

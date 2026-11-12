@@ -71,6 +71,40 @@ ApplicationWindow {
         }
     }
 
+    // One check box for one bit of the style of a track: 1 for the dots, 2 for the line.
+    component StyleBox: CheckBox {
+        property string key
+        property int bit
+        checked: (config.options[key] & bit) !== 0
+        onToggled: config.setOption(key, checked ? (config.options[key] | bit) : (config.options[key] & ~bit))
+    }
+
+    // The order of the readout boxes. A key that the stored order omits goes to the end.
+    readonly property var readoutNames: ({ legend: "Legend", pitch: "Pitch", f1: "F1", f2: "F2", f3: "F3", f4: "F4" })
+    readonly property var readoutSwitch: ({ legend: "showLegend", pitch: "showBoxPitch", f1: "showBoxF1",
+                                            f2: "showBoxF2", f3: "showBoxF3", f4: "showBoxF4" })
+
+    function readoutOrder() {
+        const all = ["legend", "pitch", "f1", "f2", "f3", "f4"]
+        const have = String(config.options.readoutOrder).split(",")
+            .map(k => k.trim().toLowerCase())
+            .filter((k, i, a) => all.indexOf(k) >= 0 && a.indexOf(k) === i)
+        for (const k of all) {
+            if (have.indexOf(k) < 0) have.push(k)
+        }
+        return have
+    }
+
+    function moveReadout(index, step) {
+        const order = readoutOrder()
+        const target = index + step
+        if (target < 0 || target >= order.length) return
+        const moved = order[index]
+        order[index] = order[target]
+        order[target] = moved
+        config.setOption("readoutOrder", order.join(","))
+    }
+
     // One check box for one bit of the mask of the statistics.
     component StatBox: CheckBox {
         property int bit
@@ -339,12 +373,35 @@ ApplicationWindow {
                 x: 20
                 spacing: 8
 
-                Label { text: "How to draw the pitch track and the formant tracks"; font.bold: true; Layout.topMargin: 14 }
-                ComboBox {
+                Label { text: "How to draw each track"; font.bold: true; Layout.topMargin: 14 }
+                GridLayout {
+                    columns: 3
+                    columnSpacing: 24
                     Layout.fillWidth: true
-                    model: [ "Dots", "Lines", "Lines and dots" ]
-                    currentIndex: config.options.trackStyle
-                    onActivated: config.setOption("trackStyle", currentIndex)
+
+                    Label { text: "" }
+                    Label { text: "Dots"; color: "lightgrey" }
+                    Label { text: "Line"; color: "lightgrey" }
+
+                    Label { text: "Pitch" }
+                    StyleBox { key: "trackStylePitch"; bit: 1 }
+                    StyleBox { key: "trackStylePitch"; bit: 2 }
+
+                    Label { text: "F1" }
+                    StyleBox { key: "trackStyleF1"; bit: 1 }
+                    StyleBox { key: "trackStyleF1"; bit: 2 }
+
+                    Label { text: "F2" }
+                    StyleBox { key: "trackStyleF2"; bit: 1 }
+                    StyleBox { key: "trackStyleF2"; bit: 2 }
+
+                    Label { text: "F3" }
+                    StyleBox { key: "trackStyleF3"; bit: 1 }
+                    StyleBox { key: "trackStyleF3"; bit: 2 }
+
+                    Label { text: "F4" }
+                    StyleBox { key: "trackStyleF4"; bit: 1 }
+                    StyleBox { key: "trackStyleF4"; bit: 2 }
                 }
 
                 OptionSlider {
@@ -373,9 +430,44 @@ ApplicationWindow {
                 x: 20
                 spacing: 4
 
-                Label { text: "On the graph"; font.bold: true; Layout.topMargin: 14 }
-                OptionSwitch { key: "showLegend"; text: "Legend" }
-                OptionSwitch { key: "showDebug"; text: "Frame times (render, update, frames per second)" }
+                Label { text: "Boxes"; font.bold: true; Layout.topMargin: 14 }
+                ConfigCombo {
+                    title: "Place of the boxes"
+                    model: [ "Below the graph", "At the left of the graph" ]
+                    index: config.options.readoutSide === "left" ? 1 : 0
+                    onPicked: (i) => config.setOption("readoutSide", i === 1 ? "left" : "bottom")
+                }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: "lightgrey"
+                    text: "The boxes follow the order of this list. A box for a track shows the statistics of that track. A track that the graph does not show has no box."
+                }
+                Repeater {
+                    model: settingsWindow.readoutOrder()
+                    RowLayout {
+                        Layout.fillWidth: true
+                        required property string modelData
+                        required property int index
+                        ToolButton {
+                            text: "\u25B2"
+                            enabled: index > 0
+                            onClicked: settingsWindow.moveReadout(index, -1)
+                        }
+                        ToolButton {
+                            text: "\u25BC"
+                            enabled: index < 5
+                            onClicked: settingsWindow.moveReadout(index, 1)
+                        }
+                        Label { text: settingsWindow.readoutNames[modelData]; Layout.fillWidth: true }
+                        OptionSwitch { key: settingsWindow.readoutSwitch[modelData]; text: "" }
+                    }
+                }
+
+                MenuSeparator { Layout.fillWidth: true }
+
+                Label { text: "On the graph"; font.bold: true }
+                OptionSwitch { key: "showDebug"; text: "Frame times, in a box at the top of the graph" }
                 OptionSwitch { key: "showStats"; text: "Statistics of the tracks" }
                 OptionSwitch { key: "showMiniMap"; text: "Map of the whole session, below the graph" }
 

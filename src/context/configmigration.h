@@ -7,7 +7,7 @@
 namespace Main {
 
 // The version of the configuration file that this program writes.
-constexpr int64_t kConfigVersion = 4;
+constexpr int64_t kConfigVersion = 5;
 
 // The default values of the statistics before version 4, and the median bit that version 4 adds.
 constexpr int64_t kOldStatsMask = 0x1 | 0x2 | 0x8 | 0x40 | 0x80;
@@ -59,6 +59,19 @@ inline void migrateConfig(toml::table &tbl)
             if (*top == 6000) {
                 tbl["view"].as_table()->insert_or_assign("maxFrequency", 5500);
             }
+        }
+    }
+
+    if (fileVersion < 5) {
+        // One style for all tracks becomes one style for each track. The old values were
+        // 0 dots, 1 lines, 2 lines and dots. The new values are bits: 1 dots, 2 line.
+        toml::table &options = *tbl["options"].as_table();
+        if (const auto old = options["trackStyle"].value<int64_t>()) {
+            const int64_t mask = *old == 0 ? 1 : (*old == 1 ? 2 : 3);
+            for (const char *key : { "trackStylePitch", "trackStyleF1", "trackStyleF2", "trackStyleF3", "trackStyleF4" }) {
+                if (!options[key]) options.insert(key, mask);
+            }
+            options.erase("trackStyle");
         }
     }
 

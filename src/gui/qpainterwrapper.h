@@ -4,6 +4,10 @@
 #include "rpcxx.h"
 #include "canvas_renderer.h"
 #include "renderoptions.h"
+#include "readoutlayout.h"
+#include <map>
+#include <string>
+#include <vector>
 #include "../timetrack.h"
 #include "../context/datastore.h"
 #include <Eigen/Dense>
@@ -36,10 +40,10 @@ public:
     // quality 0 is the fast bilinear filter, and 1 is the cubic filter. blur is in the range 0 to 1.
     void setSpectrogramFilter(int quality, double blur);
 
-    // Compute the margins for the axes and the row of readout boxes from the options and the fonts.
-    // The call comes before any drawing of a frame. trackCount is the number of tracks in the
-    // readouts. The graph is the canvas without the margins at the left and at the bottom.
-    void updateLayout(int trackCount);
+    // Compute the margins for the axes and the place of the readout boxes from the options and the
+    // fonts. The call comes before any drawing of a frame. trackNames has the names of the tracks in
+    // the readouts. The graph is the canvas without the margins at the left and at the bottom.
+    void updateLayout(const std::vector<std::string> &trackNames);
 
     // Limit the drawing to the graph, so that tracks do not cross into the margins of the axes.
     void beginPlot();
@@ -58,13 +62,14 @@ public:
     static const QVector<QRgb>& defaultColorMap();
 
     // Draw a track as dots, as a line, or as both, as the options say.
+    // The style is a mask of bits: 1 draws the dots, and 2 draws the line.
     void drawFrequencyTrack(const TimeTrack<double>::const_iterator& begin,
                             const TimeTrack<double>::const_iterator& end,
-                            const QColor &color);
+                            const QColor &color, int style);
 
     void drawFrequencyTrack(const OptionalTimeTrack<double>::const_iterator& begin,
                             const OptionalTimeTrack<double>::const_iterator& end,
-                            const QColor &color);
+                            const QColor &color, int style);
 
     // True when the pixel is inside the graph, not in a margin.
     bool plotContains(double x, double y) const;
@@ -76,7 +81,7 @@ public:
     // dot on the bar at the value. The labels go to the side of the bar that has the room.
     void drawCursor(double time, const std::vector<Gui::CursorValue> &values);
 
-    // The panels of the debug readout, the legend, and the statistics.
+    // The boxes of the legend and of the statistics, and the box of the frame timing.
     void drawHud(const std::vector<Gui::HudTrack> &tracks);
 
     double mapTimeToX(double time);
@@ -116,6 +121,28 @@ private:
     int mPlotBottom = 0;
     // The height of the row of readout boxes below the time axis. The row is part of the bottom margin.
     int mStripHeight = 0;
+
+    // What a box of one track shows, and the sizes of its parts. The sizes come from the settings and
+    // the fonts only, so they stay the same when the values change.
+    struct BoxContent {
+        std::vector<int> bits;          // the statistics that have a line, in the order of the lines
+        bool showCurrent = false;       // the header shows the live value
+        double labelWidth = 0.0;
+        double valueWidth = 0.0;
+        double nameWidth = 0.0;
+        double headerValueWidth = 0.0;
+    };
+
+    // The layout of the readout boxes of the frame. updateLayout computes it and drawHud reads it.
+    struct ReadoutLayout {
+        std::vector<Gui::BoxPlacement> boxes;
+        std::map<std::string, BoxContent> content;
+        double pad = 0.0;
+        double rowHeight = 0.0;
+        double swatchWidth = 0.0;
+        double debugWidth = 0.0;
+        double debugHeight = 0.0;
+    } mReadout;
     int plotWidth() const { return viewport().width() - mPlotLeft; }
     int plotHeight() const { return viewport().height() - mPlotBottom; }
 

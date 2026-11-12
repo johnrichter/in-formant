@@ -1,10 +1,12 @@
 #include "qpainterwrapper.h"
 #include "ticks.h"
+#include "readoutlayout.h"
 #include "../context/timings.h"
 #include <QElapsedTimer>
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <numeric>
 
 using namespace Gui;
@@ -44,18 +46,36 @@ struct TrackPoint {
     bool valid;
 };
 
-// A column of the table of statistics. The column has one statistic for each track.
+// One statistic. The pattern is the widest text of its value, with digits as place holders.
 struct StatColumn {
     int bit;
     const char *title;
+    const char *pattern;
 };
 
 const StatColumn statColumns[] = {
-    { StatCurrent, "Now" }, { StatMin, "Min" }, { StatP5, "P5" }, { StatMean, "Mean" },
-    { StatMedian, "Median" }, { StatStdDev, "SD" }, { StatP95, "P95" }, { StatMax, "Max" },
-    { StatRange, "Range" }, { StatCV, "CV" }, { StatVoiced, "Voiced" }, { StatCount, "N" },
-    { StatNote, "Note" },
+    { StatCurrent, "Now", "0000.0" }, { StatMin, "Min", "0000.0" }, { StatP5, "P5", "0000.0" },
+    { StatMean, "Mean", "0000.0" }, { StatMedian, "Median", "0000.0" }, { StatStdDev, "SD", "0000.0" },
+    { StatP95, "P95", "0000.0" }, { StatMax, "Max", "0000.0" }, { StatRange, "Range", "0000.0" },
+    { StatCV, "CV", "000.0%" }, { StatVoiced, "Voiced", "000%" }, { StatCount, "N", "000000" },
+    { StatNote, "Note", "G#4 -00c" },
 };
+
+// The index of a track in the options: 0 is the pitch, and 1 to 4 are the formants F1 to F4.
+// The formants after F4 use the index of F4.
+int trackIndex(const std::string &name)
+{
+    if (name == "Pitch") return 0;
+    const int n = name.size() > 1 ? std::atoi(name.c_str() + 1) : 1;
+    return std::clamp(n, 1, 4);
+}
+
+std::string trackKey(const std::string &name)
+{
+    std::string key = name;
+    for (char &c : key) c = (char) std::tolower((unsigned char) c);
+    return key;
+}
 
 const double readoutPad = 7.0;
 // The space at the left and the right of the strip, and between the boxes of the strip.
@@ -64,7 +84,7 @@ const double stripGap = 8.0;
 
 }
 
-void QPainterWrapper::updateLayout(int trackCount)
+void QPainterWrapper::updateLayout(const std::vector<std::string> &trackNames)
 {
     const double dpr = p->devicePixelRatio();
     const double majorLength = 9.0 * dpr;
@@ -83,25 +103,118 @@ void QPainterWrapper::updateLayout(int trackCount)
     }
     if (mOptions.showAxisTitles) left += labelHeight + 10.0 * dpr;
 
-    // The readout boxes stand in a row below the time axis. The row is as high as the highest box.
-    // The legend and the debug box have one line. The table of statistics has a line for each track.
-    const double pad = readoutPad * dpr;
-    const double digit = p->textBoundsOfSize(0, "0").height();
-    const double lineHeight = std::max<double>(digit + 6.0 * dpr, 14.0 * dpr) + 2.0 * pad - 2.0 * dpr;
-    double strip = 0.0;
-    if (mOptions.showDebug) strip = std::max(strip, lineHeight);
-    if (mOptions.showLegend && trackCount > 0) strip = std::max(strip, lineHeight);
-    if (mOptions.showStats && mOptions.statsMask != 0 && trackCount > 0) {
-        const double rowHeight = digit + 7.0 * dpr;
-        const double headerHeight = p->textBoundsOfSize(1, "0").height() + 7.0 * dpr;
-        strip = std::max(strip, headerHeight + trackCount * rowHeight + 2.0 * pad - 3.0 * dpr);
+    // The width of a text, and the width of the widest text that has the same pattern. The width of
+    // a digit is not the same for all digits in a proportional font, so the widest digit sets the width.
+    auto textWidth = [&](const std::string &text) {
+        const QRect b = p->textBoundsOfSize(0, text);
+        return (double) (b.x() + b.width());
+    };
+    char widestDigit = '0';
+    double widestWidth = 0.0;
+    for (char c = '0'; c <= '9'; ++c) {
+        const double w = textWidth(std::string(1, c));
+        if (w > widestWidth) {
+            widestWidth = w;
+            widestDigit = c;
+        }
     }
-    // The strip has a gap above it and a margin below it.
-    if (strip > 0.0) strip += 2.0 * stripGap * dpr;
-    mStripHeight = (int) std::ceil(strip);
+    auto fixedWidth = [&](const char *pattern) { return textWidth(fixedWidthSample(pattern, widestDigit)); };
 
-    mPlotLeft = (int) std::ceil(left);
-    mPlotBottom = (int) std::ceil(bottom) + mStripHeight;
+    const double pad = readoutPad * dpr;
+    const double gap = stripGap * dpr;
+    const double margin = stripMargin * dpr;
+    const double digit = p->textBoundsOfSize(0, "0").height();
+
+    ReadoutLayout &r = mReadout;
+    r = ReadoutLayout();
+    r.pad = pad;
+    r.rowHeight = digit + 7.0 * dpr;
+    r.swatchWidth = 22.0 * dpr;
+
+    // The size of each box depends on the settings and on the fonts. It never depends on the values,
+    // so a box keeps its size when the values change.
+    std::vector<BoxSize> sizes;
+    for (const std::string &key : normalizeReadoutOrder(mOptions.readoutOrder)) {
+        BoxSize size;
+        size.key = key;
+
+        if (key == "legend") {
+            if (!mOptions.showLegend || trackNames.empty()) continue;
+            if (mOptions.readoutLeft) {
+                double widest = 0.0;
+                for (const auto &name : trackNames) widest = std::max(widest, textWidth(name));
+                size.width = 2.0 * pad + r.swatchWidth + widest;
+                size.height = 2.0 * pad + trackNames.size() * r.rowHeight - 3.0 * dpr;
+            }
+            else {
+                const double entryGap = 14.0 * dpr;
+                double width = 0.0;
+                for (const auto &name : trackNames) width += r.swatchWidth + textWidth(name) + entryGap;
+                width -= entryGap;
+                size.width = 2.0 * pad + width;
+                size.height = 2.0 * pad + std::max(digit + 6.0 * dpr, 14.0 * dpr) - 2.0 * dpr;
+            }
+        }
+        else {
+            if (!mOptions.showStats || mOptions.statsMask == 0) continue;
+            const std::string *track = nullptr;
+            for (const auto &name : trackNames) {
+                if (trackKey(name) == key) track = &name;
+            }
+            if (track == nullptr || !mOptions.trackBoxShown[trackIndex(*track)]) continue;
+
+            BoxContent content;
+            const bool isPitch = key == "pitch";
+            for (const auto &c : statColumns) {
+                if (!(mOptions.statsMask & c.bit)) continue;
+                if (c.bit == StatCurrent) {
+                    content.showCurrent = true;
+                    content.headerValueWidth = fixedWidth(c.pattern);
+                }
+                else if (c.bit != StatNote || isPitch) {
+                    content.bits.push_back(c.bit);
+                    content.labelWidth = std::max(content.labelWidth, textWidth(c.title));
+                    content.valueWidth = std::max(content.valueWidth, fixedWidth(c.pattern));
+                }
+            }
+            if (!content.showCurrent && content.bits.empty()) continue;
+
+            content.nameWidth = textWidth(*track);
+            const double header = r.swatchWidth + content.nameWidth + (content.showCurrent ? 10.0 * dpr + content.headerValueWidth : 0.0);
+            const double body = content.bits.empty() ? 0.0 : content.labelWidth + 14.0 * dpr + content.valueWidth;
+            size.width = 2.0 * pad + std::max(header, body);
+            size.height = 2.0 * pad + (1 + content.bits.size()) * r.rowHeight - 3.0 * dpr;
+            r.content[key] = content;
+        }
+        sizes.push_back(size);
+    }
+
+    // The box with the frame timing has one fixed size. It floats over the graph.
+    r.debugWidth = 2.0 * pad + fixedWidth("Render 00.00 ms    Update 00.00 ms    Frame 000.0 ms (000 fps)");
+    r.debugHeight = 2.0 * pad + std::max(digit + 6.0 * dpr, 14.0 * dpr) - 2.0 * dpr;
+
+    const double viewWidth = viewport().width();
+    const double viewHeight = viewport().height();
+
+    if (!mOptions.readoutLeft) {
+        // The boxes stand in a row below the time axis. The row is as high as the highest box.
+        double strip = 0.0;
+        for (const BoxSize &b : sizes) strip = std::max(strip, b.height);
+        // The strip has a gap above it and a margin below it.
+        if (strip > 0.0) strip += 2.0 * gap;
+        mStripHeight = (int) std::ceil(strip);
+        mPlotLeft = (int) std::ceil(left);
+        mPlotBottom = (int) std::ceil(bottom) + mStripHeight;
+        r.boxes = placeInRow(sizes, margin, viewHeight - mStripHeight + gap, viewWidth - margin, gap);
+    }
+    else {
+        // The boxes stand in a column at the left of the axis. A column that is too high wraps.
+        mStripHeight = 0;
+        mPlotBottom = (int) std::ceil(bottom);
+        double total = 0.0;
+        r.boxes = placeInColumns(sizes, margin, gap, viewHeight - mPlotBottom - 2.0 * gap, gap, total);
+        mPlotLeft = (int) std::ceil(left + (sizes.empty() ? 0.0 : total + 2.0 * margin));
+    }
     p->setPlotMargins(mPlotLeft, mPlotBottom);
 }
 
@@ -329,7 +442,8 @@ void drawTrackPoints(Gui::CanvasRenderer *p, const Gui::RenderOptions &o,
                      const std::function<double(double)> &toX,
                      const std::function<double(double)> &toY,
                      double maxJump,
-                     const QColor &color)
+                     const QColor &color,
+                     int style)
 {
     // Split the track into runs. A run has no frame without a value.
     std::vector<std::vector<size_t>> runs;
@@ -366,8 +480,8 @@ void drawTrackPoints(Gui::CanvasRenderer *p, const Gui::RenderOptions &o,
     }
     if (!current.empty()) runs.push_back(std::move(current));
 
-    const bool drawLines = o.trackStyle == 1 || o.trackStyle == 2;
-    const bool drawDots = o.trackStyle == 0 || o.trackStyle == 2;
+    const bool drawLines = (style & 2) != 0;
+    const bool drawDots = (style & 1) != 0;
 
     rpm::vector<QPointF> dots;
 
@@ -429,7 +543,8 @@ void drawTrackPoints(Gui::CanvasRenderer *p, const Gui::RenderOptions &o,
 void QPainterWrapper::drawFrequencyTrack(
             const TimeTrack<double>::const_iterator& begin,
             const TimeTrack<double>::const_iterator& end,
-            const QColor &color)
+            const QColor &color,
+            int style)
 {
     std::vector<TrackPoint> points;
     collectPoints(begin, end, [](const auto &item, double &v) { v = item.second; return true; }, points,
@@ -439,13 +554,15 @@ void QPainterWrapper::drawFrequencyTrack(
                     [this](double t) { return mapTimeToX(t); },
                     [this](double f) { return mapFrequencyToY(f); },
                     0.1 * plotHeight(),
-                    color);
+                    color,
+                    style);
 }
 
 void QPainterWrapper::drawFrequencyTrack(
             const OptionalTimeTrack<double>::const_iterator& begin,
             const OptionalTimeTrack<double>::const_iterator& end,
-            const QColor &color)
+            const QColor &color,
+            int style)
 {
     std::vector<TrackPoint> points;
     collectPoints(begin, end, [](const auto &item, double &v) {
@@ -468,7 +585,8 @@ void QPainterWrapper::drawFrequencyTrack(
                         return plotHeight() * (1.0 - (v - vmin) / (vmax - vmin));
                     },
                     0.1 * plotHeight(),
-                    color);
+                    color,
+                    style);
 }
 
 bool QPainterWrapper::plotContains(double x, double y) const
@@ -573,166 +691,160 @@ void QPainterWrapper::drawCursor(double time, const std::vector<CursorValue> &va
     }
 }
 
+namespace {
+
+// The statistics of the values of one track.
+struct TrackStats {
+    std::vector<double> sorted;
+    double mean = 0.0;
+    double sd = 0.0;
+    double p5 = 0.0;
+    double p95 = 0.0;
+};
+
+TrackStats computeStats(const HudTrack &t)
+{
+    TrackStats s;
+    s.sorted = t.values;
+    std::sort(s.sorted.begin(), s.sorted.end());
+    if (s.sorted.empty()) return s;
+
+    s.mean = std::accumulate(s.sorted.begin(), s.sorted.end(), 0.0) / s.sorted.size();
+    double variance = 0;
+    for (double v : s.sorted) variance += (v - s.mean) * (v - s.mean);
+    s.sd = s.sorted.size() > 1 ? std::sqrt(variance / (s.sorted.size() - 1)) : 0.0;
+    s.p5 = percentile(s.sorted, 0.05);
+    s.p95 = percentile(s.sorted, 0.95);
+    return s;
+}
+
+// The text of one statistic of one track. A track with no value has a dash.
+std::string statText(const HudTrack &t, const TrackStats &s, int bit)
+{
+    if (bit == StatVoiced) {
+        return t.frames > 0 ? format("%.0f%%", 100.0 * (t.count > 0 ? t.count : t.values.size()) / t.frames) : "-";
+    }
+    if (s.sorted.empty()) return "-";
+
+    switch (bit) {
+    case StatCurrent: return number(t.values.back());
+    case StatMin: return number(s.sorted.front());
+    case StatP5: return number(s.p5);
+    case StatMean: return number(s.mean);
+    case StatMedian: return number(percentile(s.sorted, 0.5));
+    case StatStdDev: return number(s.sd);
+    case StatP95: return number(s.p95);
+    case StatMax: return number(s.sorted.back());
+    case StatRange: return number(s.p95 - s.p5);
+    case StatCV: return s.mean > 0 ? format("%.1f%%", 100.0 * s.sd / s.mean) : "-";
+    case StatCount: return std::to_string(t.count > 0 ? t.count : s.sorted.size());
+    case StatNote:
+        if (t.isPitch) {
+            double cents = 0;
+            const std::string note = noteName(s.mean, &cents);
+            char buffer[32];
+            std::snprintf(buffer, sizeof(buffer), "%s %+.0fc", note.c_str(), cents);
+            return buffer;
+        }
+        break;
+    }
+    return "-";
+}
+
+}
+
 void QPainterWrapper::drawHud(const std::vector<HudTrack> &tracks)
 {
     const double dpr = p->devicePixelRatio();
-    const double pad = readoutPad * dpr;
-    const double gap = stripGap * dpr;
-    const double right = viewport().width() - stripMargin * dpr;
-
-    // The boxes stand in a row below the time axis. They start at the top of the strip.
-    const double top = viewport().height() - mStripHeight + stripGap * dpr;
-    double x = stripMargin * dpr;
+    const ReadoutLayout &r = mReadout;
+    const double pad = r.pad;
 
     const QColor fill(8, 8, 12, 200);
     const QColor border(255, 255, 255, 48);
+    const QColor greyText(170, 170, 185);
 
-    // The statistics.
-    if (mOptions.showStats && !tracks.empty() && mOptions.statsMask != 0) {
-        std::vector<const StatColumn *> active;
-        for (const auto &c : statColumns) {
-            if (mOptions.statsMask & c.bit) active.push_back(&c);
+    const double digit = p->textBoundsOfSize(0, "0").height();
+    auto textRight = [&](const std::string &text) {
+        const QRect b = p->textBoundsOfSize(0, text);
+        return (double) (b.x() + b.width());
+    };
+
+    // The swatch of a track in the style of the track: a line, a dot, or both.
+    auto drawSwatch = [&](double x, double cy, const HudTrack &t) {
+        const int style = mOptions.trackStyle[trackIndex(t.name)];
+        const float seg[4] = { (float) x, (float) cy, (float) (x + r.swatchWidth - 6.0 * dpr), (float) cy };
+        if (style & 2) {
+            p->drawSegments(seg, 1, (float) mOptions.lineWidth, t.color);
         }
+        if (style & 1) {
+            rpm::vector<QPointF> dot(1, QPointF(x + 0.5 * (r.swatchWidth - 6.0 * dpr), cy));
+            p->drawScatterWithOutline(dot, (float) mOptions.dotRadius, t.color, outlineColor);
+        }
+    };
 
-        const size_t rows = tracks.size();
-        std::vector<std::vector<std::string>> cells(rows, std::vector<std::string>(active.size()));
+    for (const BoxPlacement &box : r.boxes) {
+        if (!box.visible) continue;
 
-        for (size_t r = 0; r < rows; ++r) {
-            const HudTrack &t = tracks[r];
+        p->drawRoundedRect(box.x, box.y, box.width, box.height, 6.0 * dpr, fill, border, 1.0f);
 
-            std::vector<double> sorted = t.values;
-            std::sort(sorted.begin(), sorted.end());
-
-            const bool has = !sorted.empty();
-            const double mean = has ? std::accumulate(sorted.begin(), sorted.end(), 0.0) / sorted.size() : 0.0;
-            double variance = 0;
-            for (double v : sorted) variance += (v - mean) * (v - mean);
-            const double sd = sorted.size() > 1 ? std::sqrt(variance / (sorted.size() - 1)) : 0.0;
-            const double p5 = percentile(sorted, 0.05);
-            const double p95 = percentile(sorted, 0.95);
-
-            for (size_t c = 0; c < active.size(); ++c) {
-                std::string text = "-";
-                if (has) {
-                    switch (active[c]->bit) {
-                    case StatCurrent: text = number(t.values.back()); break;
-                    case StatMin: text = number(sorted.front()); break;
-                    case StatP5: text = number(p5); break;
-                    case StatMean: text = number(mean); break;
-                    case StatMedian: text = number(percentile(sorted, 0.5)); break;
-                    case StatStdDev: text = number(sd); break;
-                    case StatP95: text = number(p95); break;
-                    case StatMax: text = number(sorted.back()); break;
-                    case StatRange: text = number(p95 - p5); break;
-                    case StatCV: text = mean > 0 ? format("%.1f%%", 100.0 * sd / mean) : "-"; break;
-                    case StatCount: text = std::to_string(t.count > 0 ? t.count : sorted.size()); break;
-                    case StatNote:
-                        if (t.isPitch) {
-                            double cents = 0;
-                            const std::string note = noteName(mean, &cents);
-                            char buffer[32];
-                            std::snprintf(buffer, sizeof(buffer), "%s %+.0fc", note.c_str(), cents);
-                            text = buffer;
-                        }
-                        break;
-                    }
+        if (box.key == "legend") {
+            if (mOptions.readoutLeft) {
+                double cy = box.y + pad + 0.5 * (r.rowHeight - 3.0 * dpr);
+                for (const auto &t : tracks) {
+                    drawSwatch(box.x + pad, cy, t);
+                    p->drawTextRotated(0, box.x + pad + r.swatchWidth, cy + 0.5 * digit, 0.0f, Qt::white, t.name, outlineColor);
+                    cy += r.rowHeight;
                 }
-                if (active[c]->bit == StatVoiced) {
-                    text = t.frames > 0 ? format("%.0f%%", 100.0 * (t.count > 0 ? t.count : t.values.size()) / t.frames) : "-";
-                }
-                cells[r][c] = text;
             }
+            else {
+                const double entryGap = 14.0 * dpr;
+                const double cy = box.y + 0.5 * box.height;
+                double ex = box.x + pad;
+                for (const auto &t : tracks) {
+                    drawSwatch(ex, cy, t);
+                    p->drawTextRotated(0, ex + r.swatchWidth, cy + 0.5 * digit, 0.0f, Qt::white, t.name, outlineColor);
+                    ex += r.swatchWidth + textRight(t.name) + entryGap;
+                }
+            }
+            continue;
         }
 
-        // The width of each column.
-        const double columnGap = 12.0 * dpr;
-        std::vector<double> colWidth(active.size(), 0.0);
-        double nameWidth = 0;
-        for (size_t c = 0; c < active.size(); ++c) {
-            const QRect title = p->textBoundsOfSize(1, active[c]->title);
-            colWidth[c] = title.width() + title.x();
-            for (size_t r = 0; r < rows; ++r) {
-                const QRect b = p->textBoundsOfSize(0, cells[r][c]);
-                colWidth[c] = std::max<double>(colWidth[c], b.width() + b.x());
-            }
-        }
+        // A box of one track: a header with the name and the live value, and a line for each statistic.
+        const auto content = r.content.find(box.key);
+        if (content == r.content.end()) continue;
+        const BoxContent &c = content->second;
+
+        const HudTrack *track = nullptr;
         for (const auto &t : tracks) {
-            const QRect b = p->textBoundsOfSize(0, t.name);
-            nameWidth = std::max<double>(nameWidth, b.width() + b.x());
+            if (trackKey(t.name) == box.key) track = &t;
+        }
+        if (track == nullptr) continue;
+
+        const TrackStats stats = computeStats(*track);
+        const double valueRight = box.x + box.width - pad;
+
+        double base = box.y + pad + r.rowHeight - 4.0 * dpr;
+        drawSwatch(box.x + pad, base - 0.5 * digit, *track);
+        p->drawTextRotated(0, box.x + pad + r.swatchWidth, base, 0.0f, track->color, track->name, outlineColor);
+        if (c.showCurrent) {
+            const std::string text = statText(*track, stats, StatCurrent);
+            p->drawTextRotated(0, valueRight - textRight(text), base, 0.0f, Qt::white, text, outlineColor);
         }
 
-        // A column that does not fit in the row is not shown.
-        double width = nameWidth + 16.0 * dpr;
-        size_t shown = 0;
-        for (; shown < active.size(); ++shown) {
-            if (shown > 0 && x + width + colWidth[shown] + 2.0 * pad > right) break;
-            width += colWidth[shown] + columnGap;
-        }
-        width -= columnGap;
-
-        const double rowHeight = p->textBoundsOfSize(0, "0").height() + 7.0 * dpr;
-        const double headerHeight = p->textBoundsOfSize(1, "0").height() + 7.0 * dpr;
-        const double height = headerHeight + rows * rowHeight;
-        p->drawRoundedRect(x, top, width + 2.0 * pad, height + 2.0 * pad - 3.0 * dpr, 6.0 * dpr, fill, border, 1.0f);
-
-        const double textTop = top + pad;
-        double cx = x + pad + nameWidth + 16.0 * dpr;
-        const double headerBase = textTop + headerHeight - 3.5 * dpr;
-        for (size_t c = 0; c < shown; ++c) {
-            p->drawTextRotated(1, cx, headerBase, 0.0f, QColor(170, 170, 185), active[c]->title, outlineColor);
-            cx += colWidth[c] + columnGap;
-        }
-
-        for (size_t r = 0; r < rows; ++r) {
-            const double base = textTop + headerHeight + (r + 1) * rowHeight - 4.0 * dpr;
-            p->drawTextRotated(0, x + pad, base, 0.0f, tracks[r].color, tracks[r].name, outlineColor);
-            cx = x + pad + nameWidth + 16.0 * dpr;
-            for (size_t c = 0; c < shown; ++c) {
-                p->drawTextRotated(0, cx, base, 0.0f, Qt::white, cells[r][c], outlineColor);
-                cx += colWidth[c] + columnGap;
+        for (const int bit : c.bits) {
+            base += r.rowHeight;
+            for (const auto &col : statColumns) {
+                if (col.bit != bit) continue;
+                p->drawTextRotated(0, box.x + pad, base, 0.0f, greyText, col.title, outlineColor);
+                const std::string text = statText(*track, stats, bit);
+                p->drawTextRotated(0, valueRight - textRight(text), base, 0.0f, Qt::white, text, outlineColor);
             }
-        }
-
-        x += width + 2.0 * pad + gap;
-    }
-
-    // The legend is one row. Each entry has a swatch and a name.
-    if (mOptions.showLegend && !tracks.empty()) {
-        const double swatchWidth = 22.0 * dpr;
-        const double entryGap = 14.0 * dpr;
-        double width = 0;
-        for (const auto &t : tracks) {
-            const QRect b = p->textBoundsOfSize(0, t.name);
-            width += swatchWidth + b.x() + b.width() + entryGap;
-        }
-        width -= entryGap;
-
-        if (x + width + 2.0 * pad <= right) {
-            const double digit = p->textBoundsOfSize(0, "0").height();
-            const double rowHeight = std::max<double>(digit + 6.0 * dpr, 14.0 * dpr);
-            p->drawRoundedRect(x, top, width + 2.0 * pad, rowHeight + 2.0 * pad - 2.0 * dpr, 6.0 * dpr, fill, border, 1.0f);
-
-            const double cy = top + pad + 0.5 * rowHeight;
-            double ex = x + pad;
-            for (const auto &t : tracks) {
-                const float seg[4] = { (float) ex, (float) cy, (float) (ex + swatchWidth - 6.0 * dpr), (float) cy };
-                if (mOptions.trackStyle != 0) {
-                    p->drawSegments(seg, 1, (float) mOptions.lineWidth, t.color);
-                }
-                if (mOptions.trackStyle != 1) {
-                    rpm::vector<QPointF> dot(1, QPointF(ex + 0.5 * (swatchWidth - 6.0 * dpr), cy));
-                    p->drawScatterWithOutline(dot, (float) mOptions.dotRadius, t.color, outlineColor);
-                }
-                p->drawTextRotated(0, ex + swatchWidth, cy + 0.5 * digit, 0.0f, Qt::white, t.name, outlineColor);
-                const QRect b = p->textBoundsOfSize(0, t.name);
-                ex += swatchWidth + b.x() + b.width() + entryGap;
-            }
-            x += width + 2.0 * pad + gap;
         }
     }
 
-    // The debug readout is one row.
-    if (mOptions.showDebug) {
+    // The frame timing is a box at the top centre of the graph. It stays out of the list of boxes,
+    // and it has one size, so it does not move when the numbers change.
+    if (mOptions.showDebug && !mOptions.hideDebug) {
         static QElapsedTimer clock;
         static double smoothedFrame = 16.7;
         if (clock.isValid()) {
@@ -744,16 +856,10 @@ void QPainterWrapper::drawHud(const std::vector<HudTrack> &tracks)
         const std::string text = "Render " + format("%.2f", (double) timings::render) + " ms    Update "
             + format("%.2f", (double) timings::update) + " ms    Frame " + format("%.1f", smoothedFrame)
             + " ms (" + format("%.0f", 1000.0 / std::max(smoothedFrame, 0.1)) + " fps)";
-        // The text changes at each frame, so the box has the width of the widest text.
-        const QRect b = p->textBoundsOfSize(0, "Render 00.00 ms    Update 00.00 ms    Frame 000.0 ms (000 fps)");
-        const double width = b.x() + b.width();
 
-        if (x + width + 2.0 * pad <= right) {
-            const double digit = p->textBoundsOfSize(0, "0").height();
-            const double rowHeight = std::max<double>(digit + 6.0 * dpr, 14.0 * dpr);
-            p->drawRoundedRect(x, top, width + 2.0 * pad, rowHeight + 2.0 * pad - 2.0 * dpr, 6.0 * dpr, fill, border, 1.0f);
-            p->drawTextRotated(0, x + pad, top + pad + 0.5 * rowHeight + 0.5 * digit, 0.0f, Qt::white, text, outlineColor);
-            x += width + 2.0 * pad + gap;
-        }
+        const double x = mPlotLeft + 0.5 * (plotWidth() - r.debugWidth);
+        const double y = stripGap * dpr;
+        p->drawRoundedRect(x, y, r.debugWidth, r.debugHeight, 6.0 * dpr, fill, border, 1.0f);
+        p->drawTextRotated(0, x + pad, y + pad + 0.5 * (r.debugHeight - 2.0 * pad) + 0.5 * digit, 0.0f, Qt::white, text, outlineColor);
     }
 }
