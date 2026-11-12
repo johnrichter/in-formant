@@ -394,6 +394,8 @@ if(INFORMANT_BUILD_TESTS)
     add_test(NAME config_migration COMMAND config_migration_test)
     add_executable(readout_layout_test tests/readout_layout_test.cpp)
     add_test(NAME readout_layout COMMAND readout_layout_test)
+    add_executable(map_layout_test tests/map_layout_test.cpp)
+    add_test(NAME map_layout COMMAND map_layout_test)
 endif()
 
 target_include_directories(in-formant SYSTEM PRIVATE ${ARMADILLO_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS} ${TOMLPP_INCLUDE_DIR})

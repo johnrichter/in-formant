@@ -73,7 +73,10 @@ The report that Record writes uses the same definition as the table. Both divide
 
 ## Move in time
 
-- The map below the graph shows the whole session. Click or drag in the map to go to another time.
+- The map below the graph shows the loudness and the pitch of the session. It shows 2.5 minutes at most. A shorter session shows whole.
+- Click or drag in the map to go to another time.
+- Drag the left or the right edge of the frame to change the time that the graph shows. The View field shows the new time.
+- For a longer session, a strip under the map scrolls the map. A sideways scroll over the map does the same.
 - The mouse wheel moves the graph in time.
 - Live returns to the newest sound.
 - Play window plays the sound of the graph. Export window and Export all save the sound as a WAV file.

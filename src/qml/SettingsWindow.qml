@@ -469,7 +469,17 @@ ApplicationWindow {
                 Label { text: "On the graph"; font.bold: true }
                 OptionSwitch { key: "showDebug"; text: "Frame times, in a box at the top of the graph" }
                 OptionSwitch { key: "showStats"; text: "Statistics of the tracks" }
-                OptionSwitch { key: "showMiniMap"; text: "Map of the whole session, below the graph" }
+                OptionSwitch { key: "showMiniMap"; text: "Map of the session, below the graph" }
+                OptionSlider {
+                    enabled: config.options.showMiniMap
+                    key: "mapWindow"; title: "Time in the map"; unit: " s"; from: 30; to: 900; stepSize: 30
+                }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: "lightgrey"
+                    text: "A session that is shorter than this time shows whole in the map. A longer session shows the newest part, and a strip under the map scrolls it. Drag an edge of the frame in the map to change the time of the view."
+                }
 
                 MenuSeparator { Layout.fillWidth: true }
 

@@ -3,12 +3,14 @@
 #include <algorithm>
 #include <cmath>
 
+#include <QHoverEvent>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QWheelEvent>
 
 #include "../context/config.h"
 #include "../context/datastore.h"
+#include "../context/session.h"
 #include "../context/sessionwrapper.h"
 
 using namespace Gui;
@@ -19,9 +21,12 @@ Main::Config *sConfig = nullptr;
 Main::DataStore *sDataStore = nullptr;
 Main::SessionWrapper *sSession = nullptr;
 
-// The range of the pitch in the map, in Hz.
-constexpr double pitchLow = 60.0;
-constexpr double pitchHigh = 600.0;
+constexpr int sampleRate = Main::Session::sampleRate;
+
+// The distance from an edge of the frame in which a press takes the edge, in pixels.
+constexpr double edgeZone = 6.0;
+// The height of the strip under the map, in pixels.
+constexpr int scrollStrip = 9;
 
 QString formatTime(double seconds)
 {
@@ -35,15 +40,19 @@ QString formatTime(double seconds)
 
 OverviewItem::OverviewItem(QQuickItem *parent)
     : QQuickPaintedItem(parent),
-      mCacheWidth(0),
-      mCacheTotal(0),
+      mDrag(Drag::None),
+      mDragOffset(0),
+      mFixedTime(0),
+      mCacheBinSamples(0),
       mCachePitchEnd(-1),
       mCacheVersion(0),
-      mDragging(false),
-      mDragOffset(0)
+      mPeak(0.02f),
+      mPitchLow(60.0),
+      mPitchHigh(600.0)
 {
     setOpaquePainting(true);
     setAcceptedMouseButtons(Qt::LeftButton);
+    setAcceptHoverEvents(true);
 
     mTimer.setInterval(100);
     connect(&mTimer, &QTimer::timeout, this, &OverviewItem::refresh);
@@ -63,10 +72,49 @@ double OverviewItem::total() const
     return std::max(sDataStore->session().duration(), 1.0);
 }
 
+MapView OverviewItem::currentView()
+{
+    if (mDrag == Drag::Move || mDrag == Drag::LeftEdge || mDrag == Drag::RightEdge) return mDragView;
+
+    const bool live = sConfig->getSessionMode() == 0 && sConfig->getViewLive();
+    mView = updateMapView(mState, sDataStore->session().duration(), sConfig->optionDouble("mapWindow"),
+                          sConfig->getViewTimeSpan(), sSession->windowEnd(), live);
+    return mView;
+}
+
+int OverviewItem::stripHeight() const
+{
+    // The strip shows when the map shows a part of the session.
+    return mView.span < total() - 1e-9 ? scrollStrip : 0;
+}
+
 double OverviewItem::timeAt(double x) const
 {
+    const MapView &view = (mDrag == Drag::None || mDrag == Drag::Scrollbar) ? mView : mDragView;
     const double w = std::max(width(), 1.0);
-    return std::clamp(x / w, 0.0, 1.0) * total();
+    return view.start + std::clamp(x / w, 0.0, 1.0) * view.span;
+}
+
+double OverviewItem::xAt(double time) const
+{
+    const MapView &view = (mDrag == Drag::None || mDrag == Drag::Scrollbar) ? mView : mDragView;
+    return (time - view.start) / view.span * std::max(width(), 1.0);
+}
+
+void OverviewItem::frameEdges(double &left, double &right) const
+{
+    const double w = width();
+    const double end = sSession->windowEnd();
+    const double span = sConfig->getViewTimeSpan();
+    left = std::clamp(xAt(end - span), 0.0, w - 3.0);
+    right = std::clamp(std::max(left + 3.0, xAt(end)), 0.0, w);
+}
+
+bool OverviewItem::frameVisible() const
+{
+    const MapView &view = (mDrag == Drag::None || mDrag == Drag::Scrollbar) ? mView : mDragView;
+    const double end = sSession->windowEnd();
+    return end > view.start && end - sConfig->getViewTimeSpan() < view.start + view.span;
 }
 
 double OverviewItem::pitchEnd() const
@@ -84,37 +132,44 @@ void OverviewItem::refresh()
 {
     if (sConfig == nullptr || sDataStore == nullptr || !isVisible() || width() < 4) return;
 
+    const MapView view = currentView();
     const QString key = QString::number(sDataStore->session().version()) + "|" + QString::number(width()) + "|"
-        + QString::number(height()) + "|" + QString::number(sConfig->getViewEnd(), 'f', 3) + "|"
-        + QString::number(sConfig->getViewTimeSpan()) + "|" + QString::number(sConfig->getViewLive()) + "|"
-        + sConfig->optionString("theme") + sConfig->optionString("customPitch");
+        + QString::number(height()) + "|" + QString::number(view.start, 'f', 3) + "|" + QString::number(view.span, 'f', 3)
+        + "|" + QString::number(sSession->windowEnd(), 'f', 3) + "|" + QString::number(sConfig->getViewTimeSpan())
+        + "|" + QString::number(sConfig->getViewLive()) + "|" + QString::number(mState.follow)
+        + "|" + sConfig->optionString("theme") + sConfig->optionString("customPitch");
     // The picture of the sound can be older than the sound. The map then draws again until it is current.
-    const bool stale = sDataStore->session().version() != mCacheVersion || total() != mCacheTotal
-        || pitchEnd() != mCachePitchEnd;
+    const bool stale = sDataStore->session().version() != mCacheVersion || pitchEnd() != mCachePitchEnd;
     if (key == mKey && !stale) return;
     mKey = key;
     update();
 }
 
-void OverviewItem::rebuildCache(int width, double length)
+void OverviewItem::rebuildCache(const MapView &view, long long binSamples, const MapBins &bins)
 {
     auto &session = sDataStore->session();
-    session.envelope(0.0, length, width, mLow, mHigh);
+    session.envelopeBins(bins.first, binSamples, bins.count, mLow, mHigh);
 
-    mPitch.assign((size_t) width, -1.0f);
+    // The loudness scale rises at once for a louder sound and falls slowly for a quieter one.
+    float target = 0.02f;
+    for (int i = 0; i < bins.count; ++i) target = std::max({ target, mHigh[(size_t) i], -mLow[(size_t) i] });
+    mPeak = target >= mPeak ? target : mPeak - 0.05f * (mPeak - target);
+
+    const double perBin = (double) binSamples / sampleRate;
+    mPitch.assign((size_t) bins.count, 0.0f);
     sDataStore->beginRead();
     auto &track = sDataStore->getPitchTrack();
     mCachePitchEnd = -1;
     if (!track.empty()) {
         mCachePitchEnd = (track.upper_bound(1e300) - 1)->first;
-        const double perBin = length / width;
         const auto first = track.lower_bound(-1e300);
         std::vector<double> values;
-        std::vector<double> frequency((size_t) width, 0.0);
+        std::vector<double> frequency((size_t) bins.count, 0.0);
 
-        for (int i = 0; i < width; ++i) {
-            const long long a = track.lower_bound(i * perBin) - first;
-            const long long b = track.upper_bound((i + 1) * perBin) - first;
+        for (int i = 0; i < bins.count; ++i) {
+            const double t = (double) (bins.first + i) * perBin;
+            const long long a = track.lower_bound(t) - first;
+            const long long b = track.lower_bound(t + perBin) - first;
             if (b <= a) continue;
 
             // Look at entries that are evenly spaced in the bin. The spacing is a power of two, and
@@ -134,26 +189,44 @@ void OverviewItem::rebuildCache(int width, double length)
             frequency[(size_t) i] = values[values.size() / 2];
         }
 
-        // The median of each value and its neighbours removes single columns that jump.
+        // The median of each value and its neighbours removes single bins that jump.
         std::vector<double> near;
-        for (int i = 0; i < width; ++i) {
+        double lowest = 1e9, highest = 0.0;
+        for (int i = 0; i < bins.count; ++i) {
             if (frequency[(size_t) i] <= 0) continue;
 
             near.clear();
-            for (int j = std::max(0, i - 1); j <= std::min(width - 1, i + 1); ++j) {
+            for (int j = std::max(0, i - 1); j <= std::min(bins.count - 1, i + 1); ++j) {
                 if (frequency[(size_t) j] > 0) near.push_back(frequency[(size_t) j]);
             }
             std::nth_element(near.begin(), near.begin() + near.size() / 2, near.end());
             const double f = near[near.size() / 2];
-            mPitch[(size_t) i] = (float) std::clamp(std::log(f / pitchLow) / std::log(pitchHigh / pitchLow), 0.0, 1.0);
+            mPitch[(size_t) i] = (float) f;
+            lowest = std::min(lowest, f);
+            highest = std::max(highest, f);
+        }
+
+        // The scale of the pitch fits the pitch in the map, with a margin. It grows at once and
+        // shrinks slowly. It always covers at least one octave.
+        if (highest > 0.0) {
+            double targetLow = lowest / 1.15;
+            double targetHigh = highest * 1.15;
+            if (targetHigh / targetLow < 2.0) {
+                const double centre = std::sqrt(targetLow * targetHigh);
+                targetLow = centre / std::sqrt(2.0);
+                targetHigh = centre * std::sqrt(2.0);
+            }
+            mPitchLow = targetLow < mPitchLow ? targetLow : mPitchLow + 0.05 * (targetLow - mPitchLow);
+            mPitchHigh = targetHigh > mPitchHigh ? targetHigh : mPitchHigh + 0.05 * (targetHigh - mPitchHigh);
         }
     }
     sDataStore->endRead();
 
-    mCacheWidth = width;
-    mCacheTotal = length;
+    mCacheBins = bins;
+    mCacheBinSamples = binSamples;
     mCacheVersion = session.version();
     mCacheTime = std::chrono::steady_clock::now();
+    (void) view;
 }
 
 void OverviewItem::paint(QPainter *painter)
@@ -171,116 +244,233 @@ void OverviewItem::paint(QPainter *painter)
                               sConfig->optionString("customPitch"), sConfig->optionString("customFormants"));
     }
 
-    // The data of the map changes when the sound grows, but a new picture for each change is not needed.
     auto &session = sDataStore->session();
     const double length = total();
-    const bool sizeChanged = w != mCacheWidth;
-    const bool soundChanged = session.version() != mCacheVersion || length != mCacheTotal || pitchEnd() != mCachePitchEnd;
-    if (sizeChanged || (soundChanged && std::chrono::steady_clock::now() - mCacheTime > std::chrono::milliseconds(250))) {
-        rebuildCache(w, length);
+    const MapView view = (mDrag == Drag::None || mDrag == Drag::Scrollbar) ? currentView() : mDragView;
+    if (mDrag == Drag::None || mDrag == Drag::Scrollbar) mView = view;
+
+    const int strip = stripHeight();
+    const int plotH = h - strip;
+
+    // The data of the map changes when the sound grows, but a new picture for each change is not needed.
+    // A new place, a new width or a new time of the map needs a new picture at once.
+    const long long binSamples = mapBinSamples(view.span, w, sampleRate);
+    const MapBins bins = mapBinRange(view, binSamples, sampleRate);
+    const bool placeChanged = binSamples != mCacheBinSamples || bins.first != mCacheBins.first || bins.count != mCacheBins.count;
+    const bool soundChanged = session.version() != mCacheVersion || pitchEnd() != mCachePitchEnd;
+    if (placeChanged || (soundChanged && std::chrono::steady_clock::now() - mCacheTime > std::chrono::milliseconds(250))) {
+        rebuildCache(view, binSamples, bins);
     }
 
-    const double mid = h / 2.0;
-    QColor envelope = mTheme.accent;
-    envelope.setAlpha(150);
-    painter->setPen(envelope);
-    const int bins = (int) std::min<size_t>(mLow.size(), (size_t) w);
+    const double perBin = (double) mCacheBinSamples / sampleRate;
+    const double pixelsPerSecond = w / view.span;
+    const double mid = plotH / 2.0;
 
     // The trace fills the height of the map at the loudest place. A square root shows quiet sound too.
-    float peak = 0.02f;
-    for (int x = 0; x < bins; ++x) peak = std::max({peak, mHigh[(size_t) x], -mLow[(size_t) x]});
-    auto shape = [peak](float v) { return std::copysign(std::sqrt(std::abs(v) / peak), v); };
-    for (int x = 0; x < bins; ++x) {
-        const double top = mid - shape(mHigh[(size_t) x]) * (mid - 1);
-        const double bottom = mid - shape(mLow[(size_t) x]) * (mid - 1);
-        painter->drawLine(QPointF(x + 0.5, top), QPointF(x + 0.5, std::max(bottom, top + 1.0)));
+    QColor envelope = mTheme.accent;
+    envelope.setAlpha(150);
+    auto shape = [this](float v) { return std::copysign(std::sqrt(std::abs(v) / mPeak), v); };
+    const int count = (int) std::min<size_t>(mLow.size(), (size_t) mCacheBins.count);
+    for (int i = 0; i < count; ++i) {
+        const double t = (double) (mCacheBins.first + i) * perBin;
+        const double x0 = (t - view.start) * pixelsPerSecond;
+        const double x1 = (t + perBin - view.start) * pixelsPerSecond;
+        if (x1 < 0 || x0 > w) continue;
+
+        const double top = mid - shape(mHigh[(size_t) i]) * (mid - 1);
+        const double bottom = mid - shape(mLow[(size_t) i]) * (mid - 1);
+        painter->fillRect(QRectF(x0, top, std::max(1.0, x1 - x0), std::max(bottom - top, 1.0)), envelope);
     }
 
-    // The pitch is a line. It breaks where the track has no pitch for more than 70 ms, and a single
-    // column with no neighbour draws nothing. The pitch entries are 20 ms apart, and a long
-    // session has columns that are wider than that.
-    const double perColumn = mCacheTotal / std::max(mCacheWidth, 1);
-    const int maxGap = std::max(3, (int) std::ceil(0.07 / perColumn));
+    // The pitch is a line. It breaks where the track has no pitch for more than 70 ms, and where
+    // a bin is empty. A bin that has no neighbour draws nothing.
+    const int maxGap = std::max(1, (int) std::ceil(0.07 / perBin));
     painter->setRenderHint(QPainter::Antialiasing, true);
     painter->setPen(QPen(mTheme.pitch, 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-    const int pitchBins = (int) std::min<size_t>(mPitch.size(), (size_t) w);
+    const double logRange = std::log(mPitchHigh / mPitchLow);
+    auto pitchPoint = [&](int i) {
+        const double t = (double) (mCacheBins.first + i) * perBin + 0.5 * perBin;
+        const double y = std::clamp(std::log(mPitch[(size_t) i] / mPitchLow) / logRange, 0.0, 1.0);
+        return QPointF((t - view.start) * pixelsPerSecond, (plotH - 3) - y * (plotH - 6));
+    };
+    const int pitchBins = (int) std::min<size_t>(mPitch.size(), (size_t) mCacheBins.count);
     int previous = -1;
-    for (int x = 0; x < pitchBins; ++x) {
-        if (mPitch[(size_t) x] < 0) continue;
+    for (int i = 0; i < pitchBins; ++i) {
+        if (mPitch[(size_t) i] <= 0) continue;
 
-        const QPointF point(x + 0.5, (h - 3) - mPitch[(size_t) x] * (h - 6));
-        if (previous >= 0 && x - previous <= maxGap) {
-            const QPointF before(previous + 0.5, (h - 3) - mPitch[(size_t) previous] * (h - 6));
-            painter->drawLine(before, point);
+        if (previous >= 0 && i - previous <= maxGap) {
+            painter->drawLine(pitchPoint(previous), pitchPoint(i));
         }
-        previous = x;
+        previous = i;
     }
     painter->setRenderHint(QPainter::Antialiasing, false);
 
-    // The frame of the main view.
-    const double span = sConfig->getViewTimeSpan();
+    // The frame of the main view, with a grip at each edge.
     const bool live = sConfig->getSessionMode() == 0 && sConfig->getViewLive();
-    const double end = sSession->windowEnd();
-    const double left = std::min(std::max(0.0, end - span) / length * w, w - 3.0);
-    const double right = std::min(std::max(left + 3.0, end / length * w), (double) w);
+    if (frameVisible()) {
+        double left, right;
+        frameEdges(left, right);
+        painter->fillRect(QRectF(left, 0, right - left, plotH), QColor(255, 255, 255, 40));
+        painter->setPen(QPen(mTheme.accent, 2));
+        painter->drawRect(QRectF(left + 1, 1, right - left - 2, plotH - 2));
+        painter->fillRect(QRectF(left, 0, 4, plotH), mTheme.accent);
+        painter->fillRect(QRectF(right - 4, 0, 4, plotH), mTheme.accent);
+    }
 
-    QColor fill = QColor(255, 255, 255, 40);
-    painter->fillRect(QRectF(left, 0, right - left, h), fill);
-    painter->setPen(QPen(mTheme.accent, 2));
-    painter->drawRect(QRectF(left + 1, 1, right - left - 2, h - 2));
+    // The strip under the map shows which part of the session the map shows.
+    if (strip > 0) {
+        painter->fillRect(QRectF(0, plotH, w, strip), QColor(255, 255, 255, 22));
+        const double thumbLeft = view.start / length * w;
+        const double thumbWidth = std::max(16.0, view.span / length * w);
+        painter->fillRect(QRectF(thumbLeft, plotH + 1, std::min(thumbWidth, w - thumbLeft), strip - 2), QColor(200, 200, 215, 150));
+    }
 
-    // The start and the end of the sound, and a mark for the live view.
+    // The times at the two ends of the map, and a mark for the live view.
     QFont font = painter->font();
     font.setPixelSize(10);
     painter->setFont(font);
     painter->setPen(QColor(200, 200, 210));
-    painter->drawText(QRectF(4, 2, 80, 14), Qt::AlignLeft | Qt::AlignVCenter, "0:00");
-    const QString endLabel = (live ? QStringLiteral("LIVE  ") : QString()) + formatTime(session.duration());
+    painter->drawText(QRectF(4, 2, 80, 14), Qt::AlignLeft | Qt::AlignVCenter, formatTime(view.start));
+    const bool atEnd = view.start + view.span >= length - 1e-6;
+    const QString endLabel = (live && atEnd ? QStringLiteral("LIVE  ") : QString()) + formatTime(view.start + view.span);
     painter->drawText(QRectF(w - 124, 2, 120, 14), Qt::AlignRight | Qt::AlignVCenter, endLabel);
 }
 
 void OverviewItem::moveEnd(double end)
 {
-    // The last four pixels of the map return to the live view.
-    sSession->moveViewEnd(end, total() * 4.0 / std::max(width(), 1.0));
+    // The last four pixels of the session return to the live view.
+    sSession->moveViewEnd(end, mDragView.span * 4.0 / std::max(width(), 1.0));
+}
+
+OverviewItem::Drag OverviewItem::hitTest(double x, double y) const
+{
+    if (stripHeight() > 0 && y >= height() - stripHeight()) return Drag::Scrollbar;
+
+    if (!frameVisible()) return Drag::Move;
+
+    double left, right;
+    frameEdges(left, right);
+    const double toLeft = std::abs(x - left);
+    const double toRight = std::abs(x - right);
+    if (toLeft <= edgeZone || toRight <= edgeZone) {
+        // A narrow frame has both zones at the same place. The nearer edge wins.
+        return toLeft <= toRight ? Drag::LeftEdge : Drag::RightEdge;
+    }
+    return Drag::Move;
 }
 
 void OverviewItem::mousePressEvent(QMouseEvent *event)
 {
     if (sConfig == nullptr || sSession == nullptr) return;
 
+    mView = currentView();
+    mDragView = mView;
+    const double x = event->position().x();
+    mDrag = hitTest(x, event->position().y());
+
     const double span = sConfig->getViewTimeSpan();
     const double end = sSession->windowEnd();
-    const double t = timeAt(event->position().x());
 
-    // A press inside the frame keeps the place of the frame under the pointer. A press outside
-    // puts the middle of the frame at the pointer.
-    mDragOffset = (t >= end - span && t <= end) ? end - t : -0.5 * span;
-    mDragging = true;
-    moveEnd(t + mDragOffset);
+    switch (mDrag) {
+    case Drag::Scrollbar: {
+        // A press on the thumb keeps its place under the pointer. A press outside puts the middle of the thumb there.
+        const double w = std::max(width(), 1.0);
+        const double thumbLeft = mView.start / total() * w;
+        const double thumbWidth = std::max(16.0, mView.span / total() * w);
+        mDragOffset = (x >= thumbLeft && x <= thumbLeft + thumbWidth) ? x - thumbLeft : 0.5 * thumbWidth;
+        scrollMap(mState, total(), mView, (x - mDragOffset) / w * total() - mView.start);
+        break;
+    }
+    case Drag::LeftEdge:
+        // The right end of the frame stays. The left edge follows the pointer.
+        mFixedTime = end;
+        break;
+    case Drag::RightEdge:
+        // The left end of the frame stays. The right edge follows the pointer.
+        mFixedTime = end - span;
+        break;
+    default: {
+        // A press inside the frame keeps the place of the frame under the pointer. A press outside
+        // puts the middle of the frame at the pointer.
+        const double t = timeAt(x);
+        mDragOffset = (t >= end - span && t <= end) ? end - t : -0.5 * span;
+        mDrag = Drag::Move;
+        moveEnd(t + mDragOffset);
+        break;
+    }
+    }
     event->accept();
 }
 
 void OverviewItem::mouseMoveEvent(QMouseEvent *event)
 {
-    if (!mDragging) return;
-    moveEnd(timeAt(event->position().x()) + mDragOffset);
+    if (mDrag == Drag::None) return;
+    const double x = event->position().x();
+    const double t = timeAt(x);
+
+    switch (mDrag) {
+    case Drag::Move:
+        moveEnd(t + mDragOffset);
+        break;
+    case Drag::LeftEdge:
+        sConfig->setViewTimeSpan(clampViewSpan(mFixedTime - t));
+        break;
+    case Drag::RightEdge: {
+        const double span = clampViewSpan(t - mFixedTime);
+        sConfig->setViewTimeSpan(span);
+        moveEnd(mFixedTime + span);
+        break;
+    }
+    case Drag::Scrollbar: {
+        const double w = std::max(width(), 1.0);
+        scrollMap(mState, total(), mView, (x - mDragOffset) / w * total() - mView.start);
+        break;
+    }
+    default:
+        break;
+    }
     event->accept();
 }
 
 void OverviewItem::mouseReleaseEvent(QMouseEvent *event)
 {
-    mDragging = false;
+    mDrag = Drag::None;
+    // The map follows the main view again after a drag of the frame.
+    mView = currentView();
+    unsetCursor();
     event->accept();
+}
+
+void OverviewItem::hoverMoveEvent(QHoverEvent *event)
+{
+    if (sConfig == nullptr || sSession == nullptr || mDrag != Drag::None) return;
+
+    const Drag zone = hitTest(event->position().x(), event->position().y());
+    if (zone == Drag::LeftEdge || zone == Drag::RightEdge) setCursor(Qt::SizeHorCursor);
+    else unsetCursor();
+}
+
+void OverviewItem::hoverLeaveEvent(QHoverEvent *)
+{
+    unsetCursor();
 }
 
 void OverviewItem::wheelEvent(QWheelEvent *event)
 {
     if (sConfig == nullptr || sSession == nullptr) return;
 
-    // A turn of one step moves the frame by a tenth of its width.
     const QPoint delta = event->angleDelta();
-    const double steps = (std::abs(delta.x()) > std::abs(delta.y()) ? delta.x() : delta.y()) / 120.0;
-    sSession->scrollView(-steps);
+    const bool horizontal = std::abs(delta.x()) > std::abs(delta.y());
+    const double steps = (horizontal ? delta.x() : delta.y()) / 120.0;
+
+    if (horizontal) {
+        // A sideways scroll moves the map by a tenth of its width for each step.
+        mView = currentView();
+        scrollMap(mState, total(), mView, -steps * 0.1 * mView.span);
+    }
+    else {
+        // A turn of one step moves the frame by a tenth of its width.
+        sSession->scrollView(-steps);
+    }
     event->accept();
 }

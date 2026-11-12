@@ -156,6 +156,7 @@ QVariantMap Config::defaultOptions()
     m["showLegend"] = true;
     m["showStats"] = false;
     m["showMiniMap"] = true;
+    m["mapWindow"] = 150.0;      // seconds of the session that the map shows, 150 s is 2.5 minutes
 
     // The readout boxes. The order lists the keys. The side is "bottom" or "left". One switch for each track box.
     m["readoutOrder"] = QString("legend,pitch,f1,f2,f3,f4");

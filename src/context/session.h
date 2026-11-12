@@ -57,6 +57,11 @@ namespace Main {
         // The lowest and the highest sample value (from -1 to 1) in each of the bins, from t0 to t1.
         void envelope(double t0, double t1, int bins, std::vector<float> &low, std::vector<float> &high) const;
 
+        // The same for bins of a fixed number of samples. Bin k starts at the sample k * samplesPerBin,
+        // so a bin has the same samples in each call, also when the first bin changes.
+        void envelopeBins(long long firstBin, long long samplesPerBin, int bins,
+                          std::vector<float> &low, std::vector<float> &high) const;
+
         // Write the sound from t0 to t1 as a 16-bit WAV file. The result is false when it fails.
         bool exportWav(const QString &path, double t0, double t1) const;
 
@@ -65,6 +70,7 @@ namespace Main {
         static constexpr int blockSize = 256;
 
         bool readSamples(long long first, long long count, std::vector<int16_t> &out) const;
+        void envelopeCore(double first, double perBin, int bins, std::vector<float> &low, std::vector<float> &high) const;
         void appendSamples(const std::vector<int16_t> &samples);
 
         mutable std::mutex mMutex;

@@ -251,10 +251,22 @@ void Session::envelope(double t0, double t1, int bins, std::vector<float> &low, 
     high.assign((size_t) std::max(bins, 0), 0.0f);
     if (bins <= 0 || !(t1 > t0)) return;
 
-    std::lock_guard<std::mutex> lock(mMutex);
+    envelopeCore(t0 * sampleRate, (t1 - t0) * sampleRate / bins, bins, low, high);
+}
 
-    const double first = t0 * sampleRate;
-    const double perBin = (t1 - t0) * sampleRate / bins;
+void Session::envelopeBins(long long firstBin, long long samplesPerBin, int bins,
+                           std::vector<float> &low, std::vector<float> &high) const
+{
+    low.assign((size_t) std::max(bins, 0), 0.0f);
+    high.assign((size_t) std::max(bins, 0), 0.0f);
+    if (bins <= 0 || samplesPerBin <= 0) return;
+
+    envelopeCore((double) (firstBin * samplesPerBin), (double) samplesPerBin, bins, low, high);
+}
+
+void Session::envelopeCore(double first, double perBin, int bins, std::vector<float> &low, std::vector<float> &high) const
+{
+    std::lock_guard<std::mutex> lock(mMutex);
 
     // A bin of less than two blocks reads the samples, because the blocks are too coarse.
     if (perBin < 2.0 * blockSize) {

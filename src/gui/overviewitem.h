@@ -7,6 +7,7 @@
 #include <QQuickPaintedItem>
 #include <QTimer>
 
+#include "maplayout.h"
 #include "theme.h"
 
 namespace Main {
@@ -17,9 +18,10 @@ namespace Main {
 
 namespace Gui {
 
-    // A map of the whole session. It shows the loudness and the pitch from the start to the end of the
-    // sound, and a frame around the part that the main view shows. A click or a drag in the map moves
-    // the main view to another time of the session.
+    // A map of the session. It shows the loudness and the pitch of a part of the session, and a frame
+    // around the part that the main view shows. A click or a drag in the map moves the main view. A
+    // drag of an edge of the frame changes the time that the main view shows. A strip under the map
+    // scrolls the map when the session is longer than the map.
     class OverviewItem : public QQuickPaintedItem {
         Q_OBJECT
 
@@ -35,18 +37,33 @@ namespace Gui {
         void mousePressEvent(QMouseEvent *event) override;
         void mouseMoveEvent(QMouseEvent *event) override;
         void mouseReleaseEvent(QMouseEvent *event) override;
+        void hoverMoveEvent(QHoverEvent *event) override;
+        void hoverLeaveEvent(QHoverEvent *event) override;
         void wheelEvent(QWheelEvent *event) override;
 
     private:
+        // What a press in the map starts.
+        enum class Drag { None, Move, LeftEdge, RightEdge, Scrollbar };
+
         void refresh();
-        void rebuildCache(int width, double total);
+        void rebuildCache(const MapView &view, long long binSamples, const MapBins &bins);
 
         // The time of the newest entry of the pitch track. The analysis of a file adds entries after the sound is complete.
         double pitchEnd() const;
 
-        // The length of the session shown by the map, and the time of a position in the map.
+        // The length of the session, and the part of it that the map shows. A drag keeps the part
+        // that the map showed at the press, so the map does not move under the pointer.
         double total() const;
+        MapView currentView();
         double timeAt(double x) const;
+        double xAt(double time) const;
+
+        // The pixels of the frame, and of the strip under the map.
+        void frameEdges(double &left, double &right) const;
+        // False when the frame is outside the part of the session that the map shows.
+        bool frameVisible() const;
+        int stripHeight() const;
+        Drag hitTest(double x, double y) const;
 
         // Move the end of the main view to a time.
         void moveEnd(double end);
@@ -56,20 +73,29 @@ namespace Gui {
         // The values that the picture shows. The map draws again when one of them changes.
         QString mKey;
 
-        // The loudness in each pixel column, and the pitch from 0 (low) to 1 (high), or less than 0 for none.
+        // The map: the state, the part of the session that it shows now, and a copy during a drag.
+        MapState mState;
+        MapView mView;
+        MapView mDragView;
+        Drag mDrag;
+        double mDragOffset;
+        double mFixedTime;
+
+        // The loudness in each bin, and the pitch in Hz (0 for none).
         std::vector<float> mLow, mHigh, mPitch;
-        int mCacheWidth;
-        double mCacheTotal;
+        MapBins mCacheBins;
+        long long mCacheBinSamples;
         double mCachePitchEnd;
         unsigned long long mCacheVersion;
         std::chrono::steady_clock::time_point mCacheTime;
 
+        // The scale of the loudness and of the pitch. Both change slowly, so the picture keeps its look
+        // while new sound arrives.
+        float mPeak;
+        double mPitchLow, mPitchHigh;
+
         QString mThemeKey;
         Theme mTheme;
-
-        // The offset between the pointer and the end of the main view during a drag.
-        bool mDragging;
-        double mDragOffset;
     };
 
 }
