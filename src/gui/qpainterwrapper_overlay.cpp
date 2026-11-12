@@ -22,6 +22,12 @@ std::string format(const char *fmt, double value)
     return buffer;
 }
 
+// A value of a statistic in the narrow columns. A value of 1000 or more has no decimals.
+std::string number(double value)
+{
+    return format(std::fabs(value) >= 1000.0 ? "%.0f" : "%.1f", value);
+}
+
 double percentile(const std::vector<double> &sorted, double fraction)
 {
     if (sorted.empty()) return 0.0;
@@ -38,31 +44,27 @@ struct TrackPoint {
     bool valid;
 };
 
-// A column of the table of statistics. The sample text has the widest usual value of the column.
+// A column of the table of statistics. The column has one statistic for each track.
 struct StatColumn {
     int bit;
     const char *title;
-    const char *sample;
 };
 
 const StatColumn statColumns[] = {
-    { StatCurrent, "Now", "0000.0" }, { StatMin, "Min", "0000.0" }, { StatP5, "P5", "0000.0" },
-    { StatMean, "Mean", "0000.0" }, { StatMedian, "Median", "0000.0" }, { StatStdDev, "SD", "0000.0" },
-    { StatP95, "P95", "0000.0" }, { StatMax, "Max", "0000.0" }, { StatRange, "Range", "0000.0" },
-    { StatCV, "CV", "000.0%" }, { StatVoiced, "Voiced", "100%" }, { StatCount, "N", "00000" },
-    { StatNote, "Note", "A#4 +50c" },
+    { StatCurrent, "Now" }, { StatMin, "Min" }, { StatP5, "P5" }, { StatMean, "Mean" },
+    { StatMedian, "Median" }, { StatStdDev, "SD" }, { StatP95, "P95" }, { StatMax, "Max" },
+    { StatRange, "Range" }, { StatCV, "CV" }, { StatVoiced, "Voiced" }, { StatCount, "N" },
+    { StatNote, "Note" },
 };
 
-// The gap between two columns of the table, and the space before the first column, in device-independent pixels.
-const double statColumnGap = 12.0;
-const double statNameGap = 16.0;
-// The space around a readout box, and between the boxes and the axis.
 const double readoutPad = 7.0;
-const double readoutMargin = 10.0;
+// The space at the left and the right of the strip, and between the boxes of the strip.
+const double stripMargin = 10.0;
+const double stripGap = 8.0;
 
 }
 
-void QPainterWrapper::updateLayout()
+void QPainterWrapper::updateLayout(int trackCount)
 {
     const double dpr = p->devicePixelRatio();
     const double majorLength = 9.0 * dpr;
@@ -81,32 +83,25 @@ void QPainterWrapper::updateLayout()
     }
     if (mOptions.showAxisTitles) left += labelHeight + 10.0 * dpr;
 
-    // The readout boxes have their own column at the far left, left of the frequency axis. The
-    // width has the widest box. The column takes at most 45% of the window.
-    double readout = 0.0;
-    if (mOptions.showDebug) {
-        readout = std::max<double>(readout, p->textBoundsOfSize(1, "Frame: 000.0 ms (000 fps)").width());
+    // The readout boxes stand in a row below the time axis. The row is as high as the highest box.
+    // The legend and the debug box have one line. The table of statistics has a line for each track.
+    const double pad = readoutPad * dpr;
+    const double digit = p->textBoundsOfSize(0, "0").height();
+    const double lineHeight = std::max<double>(digit + 6.0 * dpr, 14.0 * dpr) + 2.0 * pad - 2.0 * dpr;
+    double strip = 0.0;
+    if (mOptions.showDebug) strip = std::max(strip, lineHeight);
+    if (mOptions.showLegend && trackCount > 0) strip = std::max(strip, lineHeight);
+    if (mOptions.showStats && mOptions.statsMask != 0 && trackCount > 0) {
+        const double rowHeight = digit + 7.0 * dpr;
+        const double headerHeight = p->textBoundsOfSize(1, "0").height() + 7.0 * dpr;
+        strip = std::max(strip, headerHeight + trackCount * rowHeight + 2.0 * pad - 3.0 * dpr);
     }
-    if (mOptions.showLegend) {
-        readout = std::max<double>(readout, p->textBoundsOfSize(1, "Pitch").width() + 22.0 * dpr);
-    }
-    if (mOptions.showStats && mOptions.statsMask != 0) {
-        double table = p->textBoundsOfSize(1, "Pitch").width() + statNameGap * dpr;
-        for (const StatColumn &c : statColumns) {
-            if (!(mOptions.statsMask & c.bit)) continue;
-            table += std::max<double>(p->textBoundsOfSize(2, c.title).width(), p->textBoundsOfSize(1, c.sample).width())
-                     + statColumnGap * dpr;
-        }
-        readout = std::max(readout, table - statColumnGap * dpr);
-    }
-    if (readout > 0.0) {
-        readout += 2.0 * readoutPad * dpr + 2.0 * readoutMargin * dpr;
-        readout = std::min(readout, 0.45 * viewport().width());
-    }
-    mReadoutWidth = (int) std::ceil(readout);
+    // The strip has a gap above it and a margin below it.
+    if (strip > 0.0) strip += 2.0 * stripGap * dpr;
+    mStripHeight = (int) std::ceil(strip);
 
-    mPlotLeft = (int) std::ceil(left) + mReadoutWidth;
-    mPlotBottom = (int) std::ceil(bottom);
+    mPlotLeft = (int) std::ceil(left);
+    mPlotBottom = (int) std::ceil(bottom) + mStripHeight;
     p->setPlotMargins(mPlotLeft, mPlotBottom);
 }
 
@@ -443,7 +438,7 @@ void QPainterWrapper::drawFrequencyTrack(
     drawTrackPoints(p, mOptions, points,
                     [this](double t) { return mapTimeToX(t); },
                     [this](double f) { return mapFrequencyToY(f); },
-                    0.1 * viewport().height(),
+                    0.1 * plotHeight(),
                     color);
 }
 
@@ -470,112 +465,133 @@ void QPainterWrapper::drawFrequencyTrack(
                         // v is on the frequency scale of the view already.
                         const double vmin = transformFrequency(mMinFrequency);
                         const double vmax = transformFrequency(mMaxFrequency);
-                        return viewport().height() * (1.0 - (v - vmin) / (vmax - vmin));
+                        return plotHeight() * (1.0 - (v - vmin) / (vmax - vmin));
                     },
-                    0.1 * viewport().height(),
+                    0.1 * plotHeight(),
                     color);
 }
 
-namespace {
+bool QPainterWrapper::plotContains(double x, double y) const
+{
+    return x >= mPlotLeft && x <= viewport().width() && y >= 0 && y <= plotHeight();
+}
 
-struct HudLine {
-    std::string text;
-    QColor color;
-    int size;                 // 0 normal, 1 small, 2 smaller
-    int swatch;               // 0 none, 1 swatch of a track
-    QColor swatchColor;
-};
+double QPainterWrapper::timeAtX(double x) const
+{
+    return mTimeStart + (x - mPlotLeft) / std::max(plotWidth(), 1) * (mTimeEnd - mTimeStart);
+}
 
+void QPainterWrapper::drawCursor(double time, const std::vector<CursorValue> &values)
+{
+    const double dpr = p->devicePixelRatio();
+    const double x = std::round(mapTimeToX(time));
+    if (x < mPlotLeft || x > viewport().width()) return;
+
+    const double plotBottom = plotHeight();
+    const QColor accent = mOptions.theme.accent;
+
+    // The bar has a dark casing and a core in a light tone of the theme, so it shows on any picture.
+    const QColor core = QColor::fromRgbF(0.5 * accent.redF() + 0.5, 0.5 * accent.greenF() + 0.5,
+                                         0.5 * accent.blueF() + 0.5, 1.0);
+    const float bar[4] = { (float) x, 0.0f, (float) x, (float) plotBottom };
+    p->drawSegments(bar, 1, (float) (7.0 * dpr), QColor(0, 0, 0, 235));
+    p->drawSegments(bar, 1, (float) (3.0 * dpr), core);
+
+    // One label for the time, and one for each track that has a value at the moment.
+    struct Label {
+        std::string text;
+        QColor color;
+        double anchorY;
+        double width, height, top;
+        bool dot;
+    };
+    std::vector<Label> labels;
+
+    labels.push_back({ format("%.3f", time) + " s", Qt::white, 0.0, 0, 0, 0, false });
+    for (const CursorValue &v : values) {
+        std::string text = v.name + "  " + number(v.frequency) + " Hz";
+        if (v.isPitch) {
+            double cents = 0;
+            const std::string note = noteName(v.frequency, &cents);
+            char buffer[32];
+            std::snprintf(buffer, sizeof(buffer), "  %s %+.0fc", note.c_str(), cents);
+            text += buffer;
+        }
+        labels.push_back({ text, v.color, std::clamp<double>(mapFrequencyToY(v.frequency), 0.0, plotBottom), 0, 0, 0, true });
+    }
+
+    const double padX = 8.0 * dpr;
+    const double padY = 5.0 * dpr;
+    const double gap = 12.0 * dpr;
+    const double edge = 4.0 * dpr;
+    // The top of the canvas lies a little under the toolbar, so the first label keeps off the edge.
+    const double topEdge = 14.0 * dpr;
+    const double digit = p->textBoundsOfSize(0, "0").height();
+    double widest = 0;
+    for (Label &l : labels) {
+        const QRect b = p->textBoundsOfSize(0, l.text);
+        l.width = b.x() + b.width() + 2.0 * padX;
+        l.height = digit + 2.0 * padY;
+        widest = std::max(widest, l.width);
+    }
+
+    // The labels go to the right of the bar. When they do not fit there, they go to the left.
+    const double roomRight = viewport().width() - x - gap - edge;
+    const double roomLeft = x - mPlotLeft - gap - edge;
+    const bool right = roomRight >= widest || roomRight >= roomLeft;
+
+    // Place the labels from the top down, with no overlap, and then pull them back inside the graph.
+    std::sort(labels.begin(), labels.end(), [](const Label &a, const Label &b) { return a.anchorY < b.anchorY; });
+    double next = topEdge;
+    for (Label &l : labels) {
+        l.top = std::max(l.anchorY - 0.5 * l.height, next);
+        next = l.top + l.height + 3.0 * dpr;
+    }
+    double limit = plotBottom - edge;
+    for (auto it = labels.rbegin(); it != labels.rend(); ++it) {
+        it->top = std::min(it->top, limit - it->height);
+        limit = it->top - 3.0 * dpr;
+    }
+
+    // The panel has an opaque background in a dark tone of the theme, and a border in a light tone of the theme.
+    const QColor panel = QColor::fromRgbF(0.07 * accent.redF() + 0.02, 0.07 * accent.greenF() + 0.02,
+                                          0.07 * accent.blueF() + 0.03, 1.0);
+
+    for (const Label &l : labels) {
+        const double left = right ? x + gap : x - gap - l.width;
+        p->drawRoundedRect((float) left, (float) l.top, (float) l.width, (float) l.height, 5.0f * (float) dpr,
+                           panel, core, (float) (1.4 * dpr));
+        const double baseline = l.top + 0.5 * l.height + 0.5 * digit;
+        p->drawTextRotated(0, (float) (left + padX), (float) baseline, 0.0f, l.color, l.text, outlineColor);
+    }
+
+    // The dots lie on the bar at the value of each track.
+    for (const Label &l : labels) {
+        if (!l.dot) continue;
+        rpm::vector<QPointF> dot(1, QPointF(x, l.anchorY));
+        p->drawScatterWithOutline(dot, (float) (6.0 * dpr), l.color, QColor(255, 255, 255, 255));
+    }
 }
 
 void QPainterWrapper::drawHud(const std::vector<HudTrack> &tracks)
 {
     const double dpr = p->devicePixelRatio();
-    // The panels have their own column at the left of the frequency axis.
-    const double margin = readoutMargin * dpr;
     const double pad = readoutPad * dpr;
+    const double gap = stripGap * dpr;
+    const double right = viewport().width() - stripMargin * dpr;
 
-    double y = 10.0 * dpr;
+    // The boxes stand in a row below the time axis. They start at the top of the strip.
+    const double top = viewport().height() - mStripHeight + stripGap * dpr;
+    double x = stripMargin * dpr;
 
-    auto drawPanel = [&](const std::vector<HudLine> &lines) {
-        if (lines.empty()) return;
-
-        const double swatchWidth = 22.0 * dpr;
-        double width = 0;
-        double height = 0;
-        for (const auto &l : lines) {
-            const QRect b = p->textBoundsOfSize(l.size, l.text);
-            width = std::max<double>(width, b.x() + b.width() + (l.swatch ? swatchWidth : 0.0));
-            height += std::max<double>(p->textBoundsOfSize(l.size, "0").height() + 6.0 * dpr, l.swatch ? 14.0 * dpr : 0.0);
-        }
-
-        p->drawRoundedRect(margin, y, width + 2 * pad, height + 2 * pad - 2.0 * dpr, 6.0 * dpr,
-                           QColor(8, 8, 12, 165), QColor(255, 255, 255, 36), 1.0f);
-
-        double ly = y + pad;
-        for (const auto &l : lines) {
-            const double digit = p->textBoundsOfSize(l.size, "0").height();
-            const double rowHeight = std::max<double>(digit + 6.0 * dpr, l.swatch ? 14.0 * dpr : 0.0);
-            const double baseline = ly + 0.5 * rowHeight + 0.5 * digit;
-            double x = margin + pad;
-            if (l.swatch) {
-                const double cy = ly + 0.5 * rowHeight;
-                const float seg[4] = { (float) x, (float) cy, (float) (x + swatchWidth - 6.0 * dpr), (float) cy };
-                if (mOptions.trackStyle != 0) {
-                    p->drawSegments(seg, 1, (float) mOptions.lineWidth, l.swatchColor);
-                }
-                if (mOptions.trackStyle != 1) {
-                    rpm::vector<QPointF> dot(1, QPointF(x + 0.5 * (swatchWidth - 6.0 * dpr), cy));
-                    p->drawScatterWithOutline(dot, (float) mOptions.dotRadius, l.swatchColor, outlineColor);
-                }
-                x += swatchWidth;
-            }
-            p->drawTextRotated(l.size, x, baseline, 0.0f, l.color, l.text, outlineColor);
-            ly += rowHeight;
-        }
-
-        y += height + 2 * pad + 6.0 * dpr;
-    };
-
-    // The debug readout.
-    if (mOptions.showDebug) {
-        static QElapsedTimer clock;
-        static double smoothedFrame = 16.7;
-        if (clock.isValid()) {
-            const double frame = clock.nsecsElapsed() * 1e-6;
-            smoothedFrame += 0.05 * (std::min(frame, 250.0) - smoothedFrame);
-        }
-        clock.restart();
-
-        std::vector<HudLine> lines;
-        lines.push_back({ "Render: " + format("%.2f", (double) timings::render) + " ms", Qt::white, 1, 0, QColor() });
-        lines.push_back({ "Update: " + format("%.2f", (double) timings::update) + " ms", Qt::white, 1, 0, QColor() });
-        lines.push_back({ "Frame: " + format("%.1f", smoothedFrame) + " ms (" + format("%.0f", 1000.0 / std::max(smoothedFrame, 0.1)) + " fps)", Qt::white, 1, 0, QColor() });
-        drawPanel(lines);
-    }
-
-    // The legend.
-    if (mOptions.showLegend && !tracks.empty()) {
-        std::vector<HudLine> lines;
-        lines.push_back({ "Legend", QColor(180, 180, 195), 2, 0, QColor() });
-        for (const auto &t : tracks) {
-            lines.push_back({ t.name, Qt::white, 1, 1, t.color });
-        }
-        drawPanel(lines);
-    }
+    const QColor fill(8, 8, 12, 200);
+    const QColor border(255, 255, 255, 48);
 
     // The statistics.
     if (mOptions.showStats && !tracks.empty() && mOptions.statsMask != 0) {
-        // A column that does not fit in the readout column is not shown.
-        const double available = mReadoutWidth - 2.0 * margin - 2.0 * pad;
         std::vector<const StatColumn *> active;
-        double needed = p->textBoundsOfSize(1, "Pitch").width() + statNameGap * dpr;
         for (const auto &c : statColumns) {
-            if (!(mOptions.statsMask & c.bit)) continue;
-            needed += std::max<double>(p->textBoundsOfSize(2, c.title).width(), p->textBoundsOfSize(1, c.sample).width())
-                      + statColumnGap * dpr;
-            if (!active.empty() && needed - statColumnGap * dpr > available) break;
-            active.push_back(&c);
+            if (mOptions.statsMask & c.bit) active.push_back(&c);
         }
 
         const size_t rows = tracks.size();
@@ -599,15 +615,15 @@ void QPainterWrapper::drawHud(const std::vector<HudTrack> &tracks)
                 std::string text = "-";
                 if (has) {
                     switch (active[c]->bit) {
-                    case StatCurrent: text = format("%.1f", t.values.back()); break;
-                    case StatMin: text = format("%.1f", sorted.front()); break;
-                    case StatP5: text = format("%.1f", p5); break;
-                    case StatMean: text = format("%.1f", mean); break;
-                    case StatMedian: text = format("%.1f", percentile(sorted, 0.5)); break;
-                    case StatStdDev: text = format("%.1f", sd); break;
-                    case StatP95: text = format("%.1f", p95); break;
-                    case StatMax: text = format("%.1f", sorted.back()); break;
-                    case StatRange: text = format("%.1f", p95 - p5); break;
+                    case StatCurrent: text = number(t.values.back()); break;
+                    case StatMin: text = number(sorted.front()); break;
+                    case StatP5: text = number(p5); break;
+                    case StatMean: text = number(mean); break;
+                    case StatMedian: text = number(percentile(sorted, 0.5)); break;
+                    case StatStdDev: text = number(sd); break;
+                    case StatP95: text = number(p95); break;
+                    case StatMax: text = number(sorted.back()); break;
+                    case StatRange: text = number(p95 - p5); break;
                     case StatCV: text = mean > 0 ? format("%.1f%%", 100.0 * sd / mean) : "-"; break;
                     case StatCount: text = std::to_string(t.count > 0 ? t.count : sorted.size()); break;
                     case StatNote:
@@ -629,49 +645,115 @@ void QPainterWrapper::drawHud(const std::vector<HudTrack> &tracks)
         }
 
         // The width of each column.
-        const double gap = statColumnGap * dpr;
+        const double columnGap = 12.0 * dpr;
         std::vector<double> colWidth(active.size(), 0.0);
-        double nameWidth = p->textBoundsOfSize(1, "Pitch").width();
+        double nameWidth = 0;
         for (size_t c = 0; c < active.size(); ++c) {
-            colWidth[c] = std::max<double>(p->textBoundsOfSize(2, active[c]->title).width() + p->textBoundsOfSize(2, active[c]->title).x(),
-                                           p->textBoundsOfSize(1, active[c]->sample).width());
+            const QRect title = p->textBoundsOfSize(1, active[c]->title);
+            colWidth[c] = title.width() + title.x();
             for (size_t r = 0; r < rows; ++r) {
-                const QRect b = p->textBoundsOfSize(1, cells[r][c]);
+                const QRect b = p->textBoundsOfSize(0, cells[r][c]);
                 colWidth[c] = std::max<double>(colWidth[c], b.width() + b.x());
             }
         }
         for (const auto &t : tracks) {
-            const QRect b = p->textBoundsOfSize(1, t.name);
+            const QRect b = p->textBoundsOfSize(0, t.name);
             nameWidth = std::max<double>(nameWidth, b.width() + b.x());
         }
 
-        const double rowHeight = p->textBoundsOfSize(1, "0").height() + 7.0 * dpr;
-        const double headerHeight = p->textBoundsOfSize(2, "0").height() + 7.0 * dpr;
-        double width = nameWidth + statNameGap * dpr;
-        for (double w : colWidth) width += w + gap;
+        // A column that does not fit in the row is not shown.
+        double width = nameWidth + 16.0 * dpr;
+        size_t shown = 0;
+        for (; shown < active.size(); ++shown) {
+            if (shown > 0 && x + width + colWidth[shown] + 2.0 * pad > right) break;
+            width += colWidth[shown] + columnGap;
+        }
+        width -= columnGap;
 
+        const double rowHeight = p->textBoundsOfSize(0, "0").height() + 7.0 * dpr;
+        const double headerHeight = p->textBoundsOfSize(1, "0").height() + 7.0 * dpr;
         const double height = headerHeight + rows * rowHeight;
-        p->drawRoundedRect(margin, y, width + 2 * pad - gap, height + 2 * pad - 3.0 * dpr, 6.0 * dpr,
-                           QColor(8, 8, 12, 165), QColor(255, 255, 255, 36), 1.0f);
+        p->drawRoundedRect(x, top, width + 2.0 * pad, height + 2.0 * pad - 3.0 * dpr, 6.0 * dpr, fill, border, 1.0f);
 
-        const double textTop = y + pad;
-        double x = margin + pad + nameWidth + statNameGap * dpr;
+        const double textTop = top + pad;
+        double cx = x + pad + nameWidth + 16.0 * dpr;
         const double headerBase = textTop + headerHeight - 3.5 * dpr;
-        for (size_t c = 0; c < active.size(); ++c) {
-            p->drawTextRotated(2, x, headerBase, 0.0f, QColor(170, 170, 185), active[c]->title, outlineColor);
-            x += colWidth[c] + gap;
+        for (size_t c = 0; c < shown; ++c) {
+            p->drawTextRotated(1, cx, headerBase, 0.0f, QColor(170, 170, 185), active[c]->title, outlineColor);
+            cx += colWidth[c] + columnGap;
         }
 
         for (size_t r = 0; r < rows; ++r) {
             const double base = textTop + headerHeight + (r + 1) * rowHeight - 4.0 * dpr;
-            p->drawTextRotated(1, margin + pad, base, 0.0f, tracks[r].color, tracks[r].name, outlineColor);
-            x = margin + pad + nameWidth + statNameGap * dpr;
-            for (size_t c = 0; c < active.size(); ++c) {
-                p->drawTextRotated(1, x, base, 0.0f, Qt::white, cells[r][c], outlineColor);
-                x += colWidth[c] + gap;
+            p->drawTextRotated(0, x + pad, base, 0.0f, tracks[r].color, tracks[r].name, outlineColor);
+            cx = x + pad + nameWidth + 16.0 * dpr;
+            for (size_t c = 0; c < shown; ++c) {
+                p->drawTextRotated(0, cx, base, 0.0f, Qt::white, cells[r][c], outlineColor);
+                cx += colWidth[c] + columnGap;
             }
         }
 
-        y += height + 2 * pad + 6.0 * dpr;
+        x += width + 2.0 * pad + gap;
+    }
+
+    // The legend is one row. Each entry has a swatch and a name.
+    if (mOptions.showLegend && !tracks.empty()) {
+        const double swatchWidth = 22.0 * dpr;
+        const double entryGap = 14.0 * dpr;
+        double width = 0;
+        for (const auto &t : tracks) {
+            const QRect b = p->textBoundsOfSize(0, t.name);
+            width += swatchWidth + b.x() + b.width() + entryGap;
+        }
+        width -= entryGap;
+
+        if (x + width + 2.0 * pad <= right) {
+            const double digit = p->textBoundsOfSize(0, "0").height();
+            const double rowHeight = std::max<double>(digit + 6.0 * dpr, 14.0 * dpr);
+            p->drawRoundedRect(x, top, width + 2.0 * pad, rowHeight + 2.0 * pad - 2.0 * dpr, 6.0 * dpr, fill, border, 1.0f);
+
+            const double cy = top + pad + 0.5 * rowHeight;
+            double ex = x + pad;
+            for (const auto &t : tracks) {
+                const float seg[4] = { (float) ex, (float) cy, (float) (ex + swatchWidth - 6.0 * dpr), (float) cy };
+                if (mOptions.trackStyle != 0) {
+                    p->drawSegments(seg, 1, (float) mOptions.lineWidth, t.color);
+                }
+                if (mOptions.trackStyle != 1) {
+                    rpm::vector<QPointF> dot(1, QPointF(ex + 0.5 * (swatchWidth - 6.0 * dpr), cy));
+                    p->drawScatterWithOutline(dot, (float) mOptions.dotRadius, t.color, outlineColor);
+                }
+                p->drawTextRotated(0, ex + swatchWidth, cy + 0.5 * digit, 0.0f, Qt::white, t.name, outlineColor);
+                const QRect b = p->textBoundsOfSize(0, t.name);
+                ex += swatchWidth + b.x() + b.width() + entryGap;
+            }
+            x += width + 2.0 * pad + gap;
+        }
+    }
+
+    // The debug readout is one row.
+    if (mOptions.showDebug) {
+        static QElapsedTimer clock;
+        static double smoothedFrame = 16.7;
+        if (clock.isValid()) {
+            const double frame = clock.nsecsElapsed() * 1e-6;
+            smoothedFrame += 0.05 * (std::min(frame, 250.0) - smoothedFrame);
+        }
+        clock.restart();
+
+        const std::string text = "Render " + format("%.2f", (double) timings::render) + " ms    Update "
+            + format("%.2f", (double) timings::update) + " ms    Frame " + format("%.1f", smoothedFrame)
+            + " ms (" + format("%.0f", 1000.0 / std::max(smoothedFrame, 0.1)) + " fps)";
+        // The text changes at each frame, so the box has the width of the widest text.
+        const QRect b = p->textBoundsOfSize(0, "Render 00.00 ms    Update 00.00 ms    Frame 000.0 ms (000 fps)");
+        const double width = b.x() + b.width();
+
+        if (x + width + 2.0 * pad <= right) {
+            const double digit = p->textBoundsOfSize(0, "0").height();
+            const double rowHeight = std::max<double>(digit + 6.0 * dpr, 14.0 * dpr);
+            p->drawRoundedRect(x, top, width + 2.0 * pad, rowHeight + 2.0 * pad - 2.0 * dpr, 6.0 * dpr, fill, border, 1.0f);
+            p->drawTextRotated(0, x + pad, top + pad + 0.5 * rowHeight + 0.5 * digit, 0.0f, Qt::white, text, outlineColor);
+            x += width + 2.0 * pad + gap;
+        }
     }
 }

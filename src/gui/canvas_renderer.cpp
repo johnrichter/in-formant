@@ -376,13 +376,14 @@ void CanvasRenderer::drawSpectrogram(
 
     mSpecProgram->bind();
 
-    // The picture fills the graph, which is the canvas without the margins of the axes.
-    float w = mWidth - mPlotLeft;
-    float h = mHeight - mPlotBottom;
-    glViewport(mPlotLeft, mPlotBottom, (GLsizei) w, (GLsizei) h);
+    // The picture fills the graph, which is the canvas without the margins of the axes. The
+    // projection places the picture, and the viewport stays the whole canvas.
+    const float w = mWidth - mPlotLeft;
+    const float h = mHeight - mPlotBottom;
+    glViewport(0, 0, mWidth, mHeight);
 
     QMatrix4x4 projection;
-    projection.ortho(0, w, 0, h, -1, 1);
+    projection.ortho(0, mWidth, 0, mHeight, -1, 1);
     mSpecProgram->setUniformValue(mSpecLoc.projection, projection);
 
     mSpecProgram->setUniformValue(mSpecLoc.frequencyScale, static_cast<int>(freqScale));
@@ -396,8 +397,8 @@ void CanvasRenderer::drawSpectrogram(
     glActiveTexture(GL_TEXTURE0);
     glBindVertexArray(mSpecVao);
 
-    float x2 = w * (sliceTimeEnd - timeStart) / (timeEnd - timeStart);
-    float x1 = w * (sliceTimeStart - timeStart) / (timeEnd - timeStart);
+    float x2 = mPlotLeft + w * (sliceTimeEnd - timeStart) / (timeEnd - timeStart);
+    float x1 = mPlotLeft + w * (sliceTimeStart - timeStart) / (timeEnd - timeStart);
     float y2 = h;
     float y1 = 0;
 
@@ -450,7 +451,8 @@ QRect CanvasRenderer::viewport() const
 void CanvasRenderer::setClip(int x, int y, int width, int height)
 {
     glEnable(GL_SCISSOR_TEST);
-    glScissor(x, mHeight - (y + height), std::max(width, 0), std::max(height, 0));
+    // The canvas shows with its bottom row at the top, so y counts from the top of the picture and is the row of the framebuffer.
+    glScissor(x, y, std::max(width, 0), std::max(height, 0));
 }
 
 void CanvasRenderer::clearClip()

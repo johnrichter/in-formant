@@ -1,5 +1,6 @@
 #include "contextmanager.h"
 #include "config.h"
+#include <cmath>
 #include "cfgpath.h"
 #include "../gui/theme.h"
 #include <algorithm>
@@ -109,6 +110,9 @@ Config::Config()
       mPaused(false),
       mViewLive(true),
       mViewEnd(0.0),
+      mCursorTime(std::nan("")),
+      mCursorClickX(-1.0),
+      mCursorClickY(-1.0),
       mSessionMode(0)
 {
     initSubTable(mTbl, "audio");
@@ -506,6 +510,26 @@ void Config::setViewEnd(double seconds)
 {
     mViewEnd = seconds;
     emit viewEndChanged(seconds);
+}
+
+void Config::pickMoment(double fractionX, double fractionY)
+{
+    mCursorClickY = fractionY;
+    mCursorClickX = fractionX;
+}
+
+void Config::clearMoment()
+{
+    mCursorClickX = -1.0;
+    mCursorTime = std::nan("");
+}
+
+bool Config::takeCursorClick(double &fractionX, double &fractionY)
+{
+    fractionX = mCursorClickX.exchange(-1.0);
+    if (fractionX < 0.0) return false;
+    fractionY = mCursorClickY;
+    return true;
 }
 
 void Config::setSessionMode(int mode)

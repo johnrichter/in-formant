@@ -104,6 +104,15 @@ namespace Main {
         double getViewEnd() const { return mViewEnd; }
         void setViewEnd(double seconds);
 
+        // The moment that the user picked with a click on the graph, in seconds of the session. The
+        // value is not a number when no moment is picked. A click goes in as a fraction of the width
+        // and of the height of the graph item. The view turns it into a time at the next frame.
+        Q_INVOKABLE void pickMoment(double fractionX, double fractionY);
+        Q_INVOKABLE void clearMoment();
+        double getCursorTime() const { return mCursorTime; }
+        void setCursorTime(double seconds) { mCursorTime = seconds; }
+        bool takeCursorClick(double &fractionX, double &fractionY);
+
         // 0 is the live sound of the input device. 1 is a loaded audio file.
         int getSessionMode() const { return mSessionMode; }
         void setSessionMode(int mode);
@@ -227,6 +236,9 @@ namespace Main {
         bool mPaused;
         std::atomic<bool> mViewLive;
         std::atomic<double> mViewEnd;
+        std::atomic<double> mCursorTime;
+        std::atomic<double> mCursorClickX;
+        std::atomic<double> mCursorClickY;
         std::atomic<int> mSessionMode;
         QStringList mAudioCaptureDevices;
     };

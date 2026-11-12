@@ -153,7 +153,20 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
     auto& pitchTrack = dataStore->getPitchTrack();
 
     painter->setTimeRange(timeStart, timeEnd);
-    painter->updateLayout();
+    const int trackCount = (config->getViewShowPitch() ? 1 : 0)
+                           + (config->getViewShowFormants() ? config->getViewFormantCount() : 0);
+    painter->updateLayout(trackCount);
+
+    // A click on the graph picks a moment. The click is a fraction of the item, and the layout gives its time.
+    double clickX, clickY;
+    if (config->takeCursorClick(clickX, clickY)) {
+        const double pixelX = clickX * painter->viewport().width();
+        const double pixelY = clickY * painter->viewport().height();
+        if (painter->plotContains(pixelX, pixelY)) {
+            config->setCursorTime(std::max(0.0, painter->timeAtX(pixelX)));
+        }
+    }
+
     painter->beginPlot();
 
     if (config->getViewShowSpectrogram()) {
@@ -273,9 +286,53 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
         mHudTime = now;
     }
 
+    // The values of the tracks at the picked moment. A value is the entry nearest to the moment. A
+    // track with no entry near the moment has no label.
+    std::vector<Gui::CursorValue> cursorValues;
+    const double cursor = config->getCursorTime();
+    const bool cursorShown = !std::isnan(cursor) && cursor >= timeStart && cursor <= timeEnd;
+    if (cursorShown) {
+        const double tolerance = 1.5 * liveStep + 0.02;
+        auto sample = [&](const char *name, const QColor &color, bool isPitch, OptionalTimeTrack<double> &track) {
+            const auto first = track.lower_bound(-1e300);
+            const auto last = track.upper_bound(1e300);
+            const auto after = track.lower_bound(cursor);
+
+            const OptionalTimeTrack<double>::const_iterator candidates[2] = { after, after == first ? after : after - 1 };
+            double best = tolerance;
+            bool found = false;
+            double frequency = 0.0;
+            for (const auto &it : candidates) {
+                if (it == last || !it->second.has_value()) continue;
+                const double distance = std::fabs(it->first - cursor);
+                if (distance <= best) {
+                    best = distance;
+                    frequency = *it->second;
+                    found = true;
+                }
+            }
+            if (found) {
+                Gui::CursorValue v;
+                v.name = name;
+                v.color = color;
+                v.isPitch = isPitch;
+                v.frequency = frequency;
+                cursorValues.push_back(std::move(v));
+            }
+        };
+
+        if (config->getViewShowPitch()) sample("Pitch", options.theme.pitch, true, pitchTrack);
+        if (config->getViewShowFormants()) {
+            for (int i = 0; i < config->getViewFormantCount(); ++i) {
+                sample(("F" + std::to_string(i + 1)).c_str(), options.theme.formant(i), false, dataStore->getFormantTrack(i));
+            }
+        }
+    }
+
     painter->endPlot();
     painter->drawTimeAxis();
     painter->drawFrequencyScale();
+    if (cursorShown) painter->drawCursor(cursor, cursorValues);
     painter->drawHud(hud);
 
     dataStore->endRead();

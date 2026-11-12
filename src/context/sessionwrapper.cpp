@@ -53,6 +53,7 @@ void SessionWrapper::clearSession()
     mDataStore->clearTracks();
     mDataStore->endWrite();
     mDataStore->session().clear();
+    mConfig->clearMoment();
 }
 
 void SessionWrapper::openFile()

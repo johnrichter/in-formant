@@ -415,6 +415,24 @@ ApplicationWindow {
             onWheel: (event) => sessionControl.scrollView(-(Math.abs(event.angleDelta.x) > Math.abs(event.angleDelta.y) ? event.angleDelta.x : event.angleDelta.y) / 120.0)
         }
 
+        // A click or a drag on the graph picks a moment. A double click or a right click clears it.
+        TapHandler {
+            acceptedButtons: Qt.LeftButton
+            onTapped: (point) => config.pickMoment(point.position.x / canvas.width, point.position.y / canvas.height)
+            onDoubleTapped: config.clearMoment()
+        }
+
+        TapHandler {
+            acceptedButtons: Qt.RightButton
+            onTapped: config.clearMoment()
+        }
+
+        DragHandler {
+            target: null
+            acceptedButtons: Qt.LeftButton
+            onCentroidChanged: if (active) config.pickMoment(centroid.position.x / canvas.width, 0.0)
+        }
+
         Behavior on x {
             NumberAnimation {
                 easing.type: Easing.InOutQuad

@@ -49,6 +49,14 @@ namespace Gui {
     };
 
     // The values of one track for the legend and for the table of statistics.
+    // The value of a track at the moment that the user picked.
+    struct CursorValue {
+        std::string name;
+        QColor color;
+        bool isPitch = false;
+        double frequency = 0.0;
+    };
+
     struct HudTrack {
         std::string name;
         QColor color;

@@ -36,9 +36,10 @@ public:
     // quality 0 is the fast bilinear filter, and 1 is the cubic filter. blur is in the range 0 to 1.
     void setSpectrogramFilter(int quality, double blur);
 
-    // Compute the margins for the axes from the options and the fonts. The call comes before
-    // any drawing of a frame. The graph is the canvas without the margins at the left and at the bottom.
-    void updateLayout();
+    // Compute the margins for the axes and the row of readout boxes from the options and the fonts.
+    // The call comes before any drawing of a frame. trackCount is the number of tracks in the
+    // readouts. The graph is the canvas without the margins at the left and at the bottom.
+    void updateLayout(int trackCount);
 
     // Limit the drawing to the graph, so that tracks do not cross into the margins of the axes.
     void beginPlot();
@@ -64,6 +65,16 @@ public:
     void drawFrequencyTrack(const OptionalTimeTrack<double>::const_iterator& begin,
                             const OptionalTimeTrack<double>::const_iterator& end,
                             const QColor &color);
+
+    // True when the pixel is inside the graph, not in a margin.
+    bool plotContains(double x, double y) const;
+
+    // The time at a pixel column of the graph.
+    double timeAtX(double x) const;
+
+    // The bar of the picked moment, and the values of the tracks at that moment. A label has a
+    // dot on the bar at the value. The labels go to the side of the bar that has the room.
+    void drawCursor(double time, const std::vector<Gui::CursorValue> &values);
 
     // The panels of the debug readout, the legend, and the statistics.
     void drawHud(const std::vector<Gui::HudTrack> &tracks);
@@ -103,9 +114,8 @@ private:
     // The margins of the axes, in pixels.
     int mPlotLeft = 0;
     int mPlotBottom = 0;
-    // The width of the column at the far left that holds the readout boxes. It lies left of the
-    // frequency axis, and the graph does not cover it.
-    int mReadoutWidth = 0;
+    // The height of the row of readout boxes below the time axis. The row is part of the bottom margin.
+    int mStripHeight = 0;
     int plotWidth() const { return viewport().width() - mPlotLeft; }
     int plotHeight() const { return viewport().height() - mPlotBottom; }
 
