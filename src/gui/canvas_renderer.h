@@ -10,6 +10,8 @@
 #include "font.h"
 #include "shaders/spec.h"
 #include "shaders/circle.h"
+#include "shaders/shapes.h"
+#include "theme.h"
 #include "../context/datastore.h"
 
 namespace Main {
@@ -51,6 +53,29 @@ namespace Gui {
 
         void drawLine(float x1, float y1, float x2, float y2, const QColor &color, float thickness);
 
+        // Many line segments of the same width and colour. segments has four floats for each
+        // segment: x1, y1, x2, y2. The width is in pixels at 100 percent zoom.
+        void drawSegments(const float *segments, int count, float width, const QColor &color);
+
+        // A line through the points. The line has an outline. An outline colour with no alpha
+        // draws no outline.
+        void drawPolyline(const rpm::vector<QPointF> &points, float width, const QColor &color, const QColor &outline);
+
+        // A rectangle with round corners. The sizes are in pixels. This function does not scale them.
+        void drawRoundedRect(float x, float y, float width, float height, float radius,
+                             const QColor &fill, const QColor &border = Qt::transparent, float borderWidth = 0.0f);
+
+        // Text at an angle. size is 0 (normal), 1 (small), or 2 (smaller). The angle is in degrees
+        // and the text turns counter-clockwise around its start.
+        void drawTextRotated(int size, float x, float y, float angleDegrees, const QColor &color,
+                             const std::string &text, const QColor &outline = Qt::black);
+
+        // The size of the text in pixels, for a font size 0, 1, or 2.
+        QRect textBoundsOfSize(int size, const std::string &text);
+
+        // The factor between the pixels of the screen and the logical pixels of the interface.
+        double devicePixelRatio() const { return mDevicePixelRatio; }
+
         void prepareSpectrogramDraw();
 
         // The filter of the spectrogram. quality 0 is the bilinear filter, and 1 is the cubic filter.
@@ -88,7 +113,7 @@ namespace Gui {
         QOpenGLShaderProgram *createShaderProgram(const char *vertexSource, const char *fragmentSource);
 
         void drawText(Font *font, float x, float y, const QColor &color, const std::string &text);
-        void drawGlyphs(Font *font, float x, float y, const QColor &color, const std::string &text, const QColor *outlineColor);
+        void drawGlyphs(Font *font, float x, float y, float angleDegrees, const QColor &color, const std::string &text, const QColor *outlineColor);
         void drawCircles(const rpm::vector<QPointF> &points, float radius, const QColor &color);
         void setProjections();
         void drawTextOutlined(Font *font, float x, float y, const QColor &color, const std::string &text, const QColor &outlineColor = Qt::black);
@@ -114,8 +139,11 @@ namespace Gui {
         QOpenGLShaderProgram *mCircleProgram;
         GLuint mCircleVao;
 
-        QOpenGLShaderProgram *mLineProgram;
-        GLuint mLineVao;
+        QOpenGLShaderProgram *mSegmentProgram;
+        GLuint mSegmentVao;
+
+        QOpenGLShaderProgram *mRectProgram;
+        GLuint mRectVao;
 
         GLuint mSpecTex;
         GLuint mHeaderTex;
@@ -133,7 +161,7 @@ namespace Gui {
 
         // Uniform locations of the text program.
         struct {
-            int projection, rects, uvs, glyphCount, passCount, offsets, textColor, outlineColor;
+            int projection, rects, uvs, glyphCount, passCount, offsets, textColor, outlineColor, origin, rotation;
         } mTextLoc;
 
         // Uniform locations of the circle program.
@@ -141,10 +169,15 @@ namespace Gui {
             int projection, centers, radius, fillColor;
         } mCircleLoc;
 
-        // Uniform locations of the line program.
+        // Uniform locations of the segment program.
         struct {
-            int projection, quad, center, radius, fillColor;
-        } mLineLoc;
+            int projection, segments, halfWidth, color;
+        } mSegmentLoc;
+
+        // Uniform locations of the rectangle program.
+        struct {
+            int projection, rect, radius, fillColor, borderColor, borderWidth;
+        } mRectLoc;
     };
 
 }

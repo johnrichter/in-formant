@@ -113,6 +113,9 @@ set(SOURCES
     src/gui/qpainterwrapper.cpp
     src/gui/qpainterwrapper.h
     src/gui/qpainterwrapper_static.cpp
+    src/gui/qpainterwrapper_overlay.cpp
+    src/gui/theme.cpp
+    src/gui/ticks.cpp
     src/gui/cmap.cpp
     src/gui/shaders/text.h
     src/gui/font.cpp

@@ -55,11 +55,33 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
             spectrogram.lower_bound(timeStart), spectrogram.upper_bound(timeEnd));
     }
     
+    const Gui::RenderOptions &options = painter->options();
+    std::vector<Gui::HudTrack> hud;
+
+    // The values of a track in the window of the statistics.
+    const double statsWindow = config->optionDouble("statsWindow");
+    const double statsStart = statsWindow > 0 ? timeEnd - statsWindow : timeStart;
+
+    auto collect = [&](const char *name, const QColor &color, bool isPitch, auto &track) {
+        Gui::HudTrack t;
+        t.name = name;
+        t.color = color;
+        t.isPitch = isPitch;
+        for (auto it = track.lower_bound(statsStart); it != track.upper_bound(timeEnd); ++it) {
+            ++t.frames;
+            if (it->second.has_value()) {
+                t.values.push_back(*it->second);
+            }
+        }
+        hud.push_back(std::move(t));
+    };
+
     if (config->getViewShowPitch()) {
         painter->drawFrequencyTrack(
                 pitchTrack.lower_bound(timeStart),
                 pitchTrack.upper_bound(timeEnd),
-                3, Qt::cyan);
+                options.theme.pitch);
+        collect("Pitch", options.theme.pitch, true, pitchTrack);
     }
 
     if (config->getViewShowFormants()) {
@@ -67,17 +89,19 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
 
         for (int i = 0; i < formantCount; ++i) {
             auto& fi = dataStore->getFormantTrack(i);
-            const auto [r, g, b] = config->getViewFormantColor(i);
-        
+            const QColor color = options.theme.formant(i);
+
             painter->drawFrequencyTrack(
                     fi.lower_bound(timeStart),
                     fi.upper_bound(timeEnd),
-                    3, QColor::fromRgbF(r, g, b));
+                    color);
+            collect(("F" + std::to_string(i + 1)).c_str(), color, false, fi);
         }
     }
 
     painter->drawTimeAxis();
     painter->drawFrequencyScale();
+    painter->drawHud(hud);
 
     dataStore->endRead();
 }

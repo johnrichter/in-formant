@@ -3,6 +3,7 @@
 
 #include "rpcxx.h"
 #include "canvas_renderer.h"
+#include "renderoptions.h"
 #include "../timetrack.h"
 #include "../context/datastore.h"
 #include <Eigen/Dense>
@@ -40,15 +41,24 @@ public:
 
     void drawTimeSeries(const rpm::vector<double> &y, double xstart, double xend, double ymin, double ymax); 
 
+    // The options of the display. They set the style of the tracks and the readouts, and the colours.
+    void setOptions(const Gui::RenderOptions &options);
+    const Gui::RenderOptions &options() const { return mOptions; }
+
+    // The colour map of the original application.
+    static const QVector<QRgb>& defaultColorMap();
+
+    // Draw a track as dots, as a line, or as both, as the options say.
     void drawFrequencyTrack(const TimeTrack<double>::const_iterator& begin,
                             const TimeTrack<double>::const_iterator& end,
-                            float radius,
                             const QColor &color);
 
     void drawFrequencyTrack(const OptionalTimeTrack<double>::const_iterator& begin,
                             const OptionalTimeTrack<double>::const_iterator& end,
-                            float radius,
                             const QColor &color);
+
+    // The panels of the debug readout, the legend, and the statistics.
+    void drawHud(const std::vector<Gui::HudTrack> &tracks);
 
     double mapTimeToX(double time);
     double mapFrequencyToY(double frequency);
@@ -75,6 +85,7 @@ private:
     double mMinFrequency;
     double mMaxFrequency;
     double mMaxGain;
+    Gui::RenderOptions mOptions;
     int mSpectrogramQuality;
     double mSpectrogramBlur;
 

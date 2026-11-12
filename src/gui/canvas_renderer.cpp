@@ -129,25 +129,6 @@ void CanvasRenderer::render()
 
     QPainterWrapper painter(this);
     mRenderContext->render(&painter);
-
-    std::stringstream ss1;
-    ss1 << "Render: " << timings::render;
-    auto renderTimeString = ss1.str();
-
-    std::stringstream ss2;
-    ss2 << "Update: " << timings::update;
-    auto updateTimeString = ss2.str();
-
-    float y = 10;
-    QRect textBox;
-
-    textBox = textBoundsNormal(renderTimeString);
-    y += textBox.height();
-    drawTextNormalOutlined(10, y, Qt::white, renderTimeString);
-
-    textBox = textBoundsNormal(updateTimeString);
-    y += textBox.height() + 10;
-    drawTextNormalOutlined(10, y, Qt::white, updateTimeString);
 }
 
 void CanvasRenderer::setZoomScale(double zoomScale)
@@ -263,42 +244,73 @@ void CanvasRenderer::drawCircles(const rpm::vector<QPointF> &points, float radiu
 
 void CanvasRenderer::drawLine(float x1, float y1, float x2, float y2, const QColor &color, float thickness)
 {
-    thickness *= mZoomScale * (mDpi * mDevicePixelRatio) / 96;
+    const float segment[4] = { x1, y1, x2, y2 };
+    drawSegments(segment, 1, thickness, color);
+}
 
-    float dx = x2 - x1;
-    float dy = y2 - y1;
-    float d = sqrt(dx * dx + dy * dy);
+void CanvasRenderer::drawSegments(const float *segments, int count, float width, const QColor &color)
+{
+    if (count <= 0) {
+        return;
+    }
 
-    float nx = -dy / d;
-    float ny = dx / d;
+    width *= mZoomScale * (mDpi * mDevicePixelRatio) / 96;
 
-    float qx1 = x1 - 0.5 * thickness * nx;
-    float qx2 = x2 + 0.5 * thickness * nx;
-    float qy1 = y1 - 0.5 * thickness * ny;
-    float qy2 = y2 + 0.5 * thickness * ny;
+    mSegmentProgram->bind();
+    mSegmentProgram->setUniformValue(mSegmentLoc.halfWidth, 0.5f * width);
+    mSegmentProgram->setUniformValue(mSegmentLoc.color, color.redF(), color.greenF(), color.blueF(), color.alphaF());
 
-    mLineProgram->bind();
+    glBindVertexArray(mSegmentVao);
 
-    mLineProgram->setUniformValue(mLineLoc.center, (qx1+qx2)/2, (qy1+qy2)/2);
-    mLineProgram->setUniformValue(mLineLoc.radius, thickness);
-    mLineProgram->setUniformValue(mLineLoc.fillColor, color.redF(), color.greenF(), color.blueF());
-
-    glBindVertexArray(mLineVao);
-
-    const QVector2D quad[4] = {
-        { qx1, qy2 },
-        { qx1, qy1 },
-        { qx2, qy1 },
-        { qx2, qy2 },
-    };
-
-    mLineProgram->setUniformValueArray(mLineLoc.quad, quad, 4);
-
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    constexpr int maxSegments = Shaders::segmentMaxSegments;
+    for (int first = 0; first < count; first += maxSegments) {
+        const int n = std::min(maxSegments, count - first);
+        glUniform4fv(mSegmentLoc.segments, n, segments + 4 * first);
+        glDrawArrays(GL_TRIANGLES, 0, 6 * n);
+    }
 
     glBindVertexArray(0);
+    mSegmentProgram->release();
+}
 
-    mLineProgram->release();
+void CanvasRenderer::drawPolyline(const rpm::vector<QPointF> &points, float width, const QColor &color, const QColor &outline)
+{
+    if (points.size() < 2) {
+        return;
+    }
+
+    static std::vector<float> segments;
+    segments.resize(4 * (points.size() - 1));
+    for (size_t i = 0; i + 1 < points.size(); ++i) {
+        segments[4 * i + 0] = (float) points[i].x();
+        segments[4 * i + 1] = (float) points[i].y();
+        segments[4 * i + 2] = (float) points[i + 1].x();
+        segments[4 * i + 3] = (float) points[i + 1].y();
+    }
+
+    // The outline is below the line, so the line has no dark marks at the joints.
+    if (outline.alpha() > 0) {
+        drawSegments(segments.data(), (int) (points.size() - 1), width + 1.6f, outline);
+    }
+    drawSegments(segments.data(), (int) (points.size() - 1), width, color);
+}
+
+void CanvasRenderer::drawRoundedRect(float x, float y, float width, float height, float radius,
+                                     const QColor &fill, const QColor &border, float borderWidth)
+{
+    mRectProgram->bind();
+
+    mRectProgram->setUniformValue(mRectLoc.rect, x, y, width, height);
+    mRectProgram->setUniformValue(mRectLoc.radius, radius);
+    mRectProgram->setUniformValue(mRectLoc.fillColor, fill.redF(), fill.greenF(), fill.blueF(), fill.alphaF());
+    mRectProgram->setUniformValue(mRectLoc.borderColor, border.redF(), border.greenF(), border.blueF(), border.alphaF());
+    mRectProgram->setUniformValue(mRectLoc.borderWidth, borderWidth);
+
+    glBindVertexArray(mRectVao);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
+
+    mRectProgram->release();
 }
 
 void CanvasRenderer::drawSpectrogram(
@@ -433,18 +445,40 @@ QRect CanvasRenderer::viewport() const
 
 void CanvasRenderer::drawText(Font *font, float x, float y, const QColor &color, const std::string &text)
 {
-    drawGlyphs(font, x, y, color, text, nullptr);
+    drawGlyphs(font, x, y, 0.0f, color, text, nullptr);
 }
 
-void CanvasRenderer::drawGlyphs(Font *font, float x, float y, const QColor &color, const std::string &text, const QColor *outlineColor)
+void CanvasRenderer::drawTextOutlined(Font *font, float x, float y, const QColor &color, const std::string &text, const QColor &outlineColor)
+{
+    drawGlyphs(font, x, y, 0.0f, color, text, &outlineColor);
+}
+
+void CanvasRenderer::drawTextRotated(int size, float x, float y, float angleDegrees, const QColor &color,
+                                     const std::string &text, const QColor &outline)
+{
+    Font *font = size == 0 ? mFontNormal : (size == 1 ? mFontSmall : mFontSmaller);
+    drawGlyphs(font, x, y, angleDegrees, color, text, outline.alpha() > 0 ? &outline : nullptr);
+}
+
+QRect CanvasRenderer::textBoundsOfSize(int size, const std::string &text)
+{
+    Font *font = size == 0 ? mFontNormal : (size == 1 ? mFontSmall : mFontSmaller);
+    return textBounds(font, text);
+}
+
+void CanvasRenderer::drawGlyphs(Font *font, float x, float y, float angleDegrees, const QColor &color,
+                                const std::string &text, const QColor *outlineColor)
 {
     if (text.empty()) {
         return;
     }
 
     // Start on a whole pixel. A glyph that starts between two pixels gets blurred by the texture filter.
-    x = std::round(x);
-    y = std::round(mHeight - y);
+    const float originX = std::round(x);
+    const float originY = std::round(mHeight - y);
+
+    // The glyph positions are relative to the origin.
+    float cursor = 0;
 
     // One draw call draws a limited number of glyphs. Draw a long text in chunks.
     constexpr int maxGlyphs = Shaders::textMaxGlyphs;
@@ -453,14 +487,22 @@ void CanvasRenderer::drawGlyphs(Font *font, float x, float y, const QColor &colo
 
     mTextProgram->bind();
 
-    mTextProgram->setUniformValue(mTextLoc.textColor, color.redF(), color.greenF(), color.blueF());
+    const float radians = angleDegrees * float(M_PI) / 180.0f;
+    const float cosine = std::cos(radians);
+    const float sine = std::sin(radians);
+    const float rotation[4] = { cosine, sine, -sine, cosine };
+    glUniformMatrix2fv(mTextLoc.rotation, 1, GL_FALSE, rotation);
+    mTextProgram->setUniformValue(mTextLoc.origin, originX, originY);
+
+    mTextProgram->setUniformValue(mTextLoc.textColor, color.redF(), color.greenF(), color.blueF(), color.alphaF());
     if (outlineColor != nullptr) {
         // The outline is the same text four times, moved by a little more than half a pixel
         // in each diagonal direction.
         const float delta = 0.66667 * mZoomScaleText;
         const float offsets[8] = { -delta, delta, -delta, -delta, delta, delta, delta, -delta };
         glUniform2fv(mTextLoc.offsets, 4, offsets);
-        mTextProgram->setUniformValue(mTextLoc.outlineColor, outlineColor->redF(), outlineColor->greenF(), outlineColor->blueF());
+        mTextProgram->setUniformValue(mTextLoc.outlineColor, outlineColor->redF(), outlineColor->greenF(), outlineColor->blueF(),
+                                      outlineColor->alphaF() * color.alphaF());
         mTextProgram->setUniformValue(mTextLoc.passCount, 5);
     }
     else {
@@ -490,8 +532,8 @@ void CanvasRenderer::drawGlyphs(Font *font, float x, float y, const QColor &colo
 
         // A glyph with no pixels, such as a space, has nothing to draw.
         if (ch.width > 0 && ch.height > 0) {
-            rects[4 * count + 0] = x + ch.bearingX;
-            rects[4 * count + 1] = y - (ch.height - ch.bearingY);
+            rects[4 * count + 0] = cursor + ch.bearingX;
+            rects[4 * count + 1] = -(float(ch.height) - ch.bearingY);
             rects[4 * count + 2] = ch.width;
             rects[4 * count + 3] = ch.height;
 
@@ -505,7 +547,7 @@ void CanvasRenderer::drawGlyphs(Font *font, float x, float y, const QColor &colo
             }
         }
 
-        x += (ch.advance >> 6);
+        cursor += (ch.advance >> 6);
     }
 
     flush();
@@ -514,11 +556,6 @@ void CanvasRenderer::drawGlyphs(Font *font, float x, float y, const QColor &colo
     glBindTexture(GL_TEXTURE_2D, 0);
 
     mTextProgram->release();
-}
-
-void CanvasRenderer::drawTextOutlined(Font *font, float x, float y, const QColor &color, const std::string &text, const QColor &outlineColor)
-{
-    drawGlyphs(font, x, y, color, text, &outlineColor);
 }
 
 QRect CanvasRenderer::textBounds(Font *font, const std::string &text)
@@ -588,6 +625,8 @@ void CanvasRenderer::initShaders()
     mTextLoc.offsets = mTextProgram->uniformLocation("offsets");
     mTextLoc.textColor = mTextProgram->uniformLocation("textColor");
     mTextLoc.outlineColor = mTextProgram->uniformLocation("outlineColor");
+    mTextLoc.origin = mTextProgram->uniformLocation("origin");
+    mTextLoc.rotation = mTextProgram->uniformLocation("rotation");
 
     mTextProgram->bind();
     mTextProgram->setUniformValue("text", 0);
@@ -636,15 +675,25 @@ void CanvasRenderer::initShaders()
 
     glGenVertexArrays(1, &mCircleVao);
 
-    mLineProgram = createShaderProgram(Shaders::lineVertex, Shaders::lineFragment);
+    mSegmentProgram = createShaderProgram(Shaders::segmentVertex, Shaders::segmentFragment);
 
-    mLineLoc.projection = mLineProgram->uniformLocation("projection");
-    mLineLoc.quad = mLineProgram->uniformLocation("quad");
-    mLineLoc.center = mLineProgram->uniformLocation("center");
-    mLineLoc.radius = mLineProgram->uniformLocation("radius");
-    mLineLoc.fillColor = mLineProgram->uniformLocation("fillColor");
+    mSegmentLoc.projection = mSegmentProgram->uniformLocation("projection");
+    mSegmentLoc.segments = mSegmentProgram->uniformLocation("segments");
+    mSegmentLoc.halfWidth = mSegmentProgram->uniformLocation("halfWidth");
+    mSegmentLoc.color = mSegmentProgram->uniformLocation("color");
 
-    glGenVertexArrays(1, &mLineVao);
+    glGenVertexArrays(1, &mSegmentVao);
+
+    mRectProgram = createShaderProgram(Shaders::rectVertex, Shaders::rectFragment);
+
+    mRectLoc.projection = mRectProgram->uniformLocation("projection");
+    mRectLoc.rect = mRectProgram->uniformLocation("rect");
+    mRectLoc.radius = mRectProgram->uniformLocation("radius");
+    mRectLoc.fillColor = mRectProgram->uniformLocation("fillColor");
+    mRectLoc.borderColor = mRectProgram->uniformLocation("borderColor");
+    mRectLoc.borderWidth = mRectProgram->uniformLocation("borderWidth");
+
+    glGenVertexArrays(1, &mRectVao);
 }
 
 void CanvasRenderer::setProjections()
@@ -661,9 +710,12 @@ void CanvasRenderer::setProjections()
     mCircleProgram->bind();
     mCircleProgram->setUniformValue(mCircleLoc.projection, up);
 
-    mLineProgram->bind();
-    mLineProgram->setUniformValue(mLineLoc.projection, up);
-    mLineProgram->release();
+    mSegmentProgram->bind();
+    mSegmentProgram->setUniformValue(mSegmentLoc.projection, up);
+
+    mRectProgram->bind();
+    mRectProgram->setUniformValue(mRectLoc.projection, up);
+    mRectProgram->release();
 }
 
 void CanvasRenderer::deleteFonts()
@@ -684,8 +736,11 @@ void CanvasRenderer::deleteShaders()
     delete mCircleProgram;
     glDeleteVertexArrays(1, &mCircleVao);
 
-    delete mLineProgram;
-    glDeleteVertexArrays(1, &mLineVao);
+    delete mSegmentProgram;
+    glDeleteVertexArrays(1, &mSegmentVao);
+
+    delete mRectProgram;
+    glDeleteVertexArrays(1, &mRectVao);
 }
 
 void CanvasRenderer::initTexture(GLuint &texture, int width, int height)

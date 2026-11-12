@@ -22,6 +22,10 @@ namespace Main {
         Config *mConfig;
         DataStore *mDataStore;
         RenderView *mSelectedView;
+
+        // The resolved theme. The context makes it again only when the theme options change.
+        QString mThemeKey;
+        Gui::Theme mTheme;
     };
 
     class RenderView {

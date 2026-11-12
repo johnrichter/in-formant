@@ -111,6 +111,14 @@ ApplicationWindow {
                 spacing: 1
 
                 Button {
+                    text: "Settings"
+                    Material.background: Material.color(Material.BlueGrey, Material.Shade600)
+                    Layout.alignment: Qt.AlignRight
+                    Layout.rightMargin: 10
+                    onPressed: settingsWindow.show()
+                }
+
+                Button {
                     text: "Oscilloscope"
                     Material.background: Material.color(Material.DeepPurple, Material.ShadeA200)
                     Layout.alignment: Qt.AlignRight
@@ -419,6 +427,10 @@ ApplicationWindow {
 
     OscilloscopeWindow {
         id: oscilloscopeWindow
+    }
+
+    SettingsWindow {
+        id: settingsWindow
     }
 
     Component.onCompleted: {

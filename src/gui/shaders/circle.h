@@ -49,37 +49,6 @@ void main()
 }
 )foo";
 
-// One quad with a soft shape, for the tick marks. The corners are in a uniform.
-constexpr const char *lineVertex = R"foo(
-#version 150
-
-uniform mat4 projection;
-
-// The four corners of the quad, for a triangle fan.
-uniform vec2 quad[4];
-
-void main()
-{
-    gl_Position = projection * vec4(quad[gl_VertexID], 0.0, 1.0);
-}
-)foo";
-
-constexpr const char *lineFragment = R"foo(
-#version 150
-out vec4 FragColor;
-
-uniform vec2 center;
-uniform float radius;
-uniform vec3 fillColor;
-
-void main()
-{
-    float d = length(center - gl_FragCoord.xy) - radius;
-    float t = clamp(d, 0.0, 1.0);
-    FragColor = vec4(fillColor, 1.0 - t);
-}
-)foo";
-
 }
 
 #endif // GUI_SHADERS_CIRCLE_H

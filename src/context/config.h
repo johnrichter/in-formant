@@ -4,6 +4,8 @@
 #include <QObject>
 #include <QString>
 #include <QStringList>
+#include <QVariant>
+#include <QVariantMap>
 #include "../filesystem.hpp"
 #include <fstream>
 #include <toml++/toml.h>
@@ -19,6 +21,8 @@ namespace Main {
 
     class Config : public QObject {
         Q_OBJECT
+        Q_PROPERTY(QVariantMap options      READ options                        NOTIFY optionsChanged)
+        Q_PROPERTY(QVariantMap themeColors  READ themeColors                    NOTIFY optionsChanged)
         Q_PROPERTY(int pitchAlgorithm       READ getPitchAlgorithmNumeric       WRITE setPitchAlgorithm         NOTIFY pitchAlgorithmChanged)
         Q_PROPERTY(int linpredAlgorithm     READ getLinpredAlgorithmNumeric     WRITE setLinpredAlgorithm       NOTIFY linpredAlgorithmChanged)
         Q_PROPERTY(int formantAlgorithm     READ getFormantAlgorithmNumeric     WRITE setFormantAlgorithm       NOTIFY formantAlgorithmChanged)
@@ -40,6 +44,7 @@ namespace Main {
         Q_PROPERTY(QStringList audioCaptureDevices READ getAudioCaptureDevices  NOTIFY audioCaptureDevicesChanged)
     
     signals:
+        void optionsChanged();
         void pitchAlgorithmChanged(int);
         void linpredAlgorithmChanged(int);
         void formantAlgorithmChanged(int);
@@ -64,6 +69,26 @@ namespace Main {
     public:
         Config();
         virtual ~Config();
+
+        // The options are a store of named values for the display, the readouts, and the themes.
+        // Each option has a default. The store saves the options in the [options] table of the
+        // configuration file. QML reads them with config.options.<name>.
+        QVariantMap options() const;
+        Q_INVOKABLE QVariant option(const QString &name) const;
+        Q_INVOKABLE void setOption(const QString &name, const QVariant &value);
+        Q_INVOKABLE void resetOption(const QString &name);
+
+        bool optionBool(const QString &name) const;
+        int optionInt(const QString &name) const;
+        double optionDouble(const QString &name) const;
+        QString optionString(const QString &name) const;
+
+        static QVariantMap defaultOptions();
+
+        // The colours of the selected theme for the QML windows.
+        QVariantMap themeColors() const;
+        Q_INVOKABLE QStringList themeNames() const;
+        Q_INVOKABLE QVariantList themePreview(const QString &name, int count) const;
         
         Module::Audio::Backend getAudioBackend();
         void setAudioBackend(Module::Audio::Backend b);
@@ -178,6 +203,7 @@ namespace Main {
 
     private:
         toml::table mTbl;
+        QVariantMap mOptions;
     
         // WILL NOT BE SERIALIZED
         bool mPaused;

@@ -1,6 +1,7 @@
 #include "contextmanager.h"
 #include "config.h"
 #include "cfgpath.h"
+#include "../gui/theme.h"
 #include <iostream>
 
 using namespace Main;
@@ -111,7 +112,153 @@ Config::Config()
     initSubTable(mTbl, "view");
     initSubTable(mTbl, "ui");
     initSubTable(mTbl, "analysis");
+    initSubTable(mTbl, "options");
+    initSubTable(mTbl, "meta");
+
+    // The configuration file stores each default at the first exit, so a new default has no effect
+    // on an existing file. Version 2 applies the new defaults for the time step and the view duration
+    // one time.
+    constexpr int64_t currentVersion = 2;
+    const int64_t fileVersion = integerField(mTbl["meta"], "version", 0);
+    if (fileVersion < 2) {
+        mTbl["analysis"].as_table()->insert_or_assign("granularity", 10.0);
+        // Closer frames give smoother lines in the tracks.
+        mTbl["analysis"].as_table()->insert_or_assign("pitchSpacing", 20.0);
+        mTbl["analysis"].as_table()->insert_or_assign("formantSpacing", 40.0);
+        mTbl["view"].as_table()->insert_or_assign("timeSpan", 15.0);
+    }
+    mTbl["meta"].as_table()->insert_or_assign("version", currentVersion);
+
+    // Read the options. An option with no stored value, or with a value of the wrong type, keeps its default.
+    mOptions = defaultOptions();
+    for (auto it = mOptions.begin(); it != mOptions.end(); ++it) {
+        auto node = mTbl["options"][it.key().toStdString()];
+        const int type = it.value().typeId();
+        if (type == QMetaType::Bool) {
+            if (auto v = node.value<bool>()) it.value() = *v;
+        }
+        else if (type == QMetaType::Int) {
+            if (auto v = node.value<int64_t>()) it.value() = (int) *v;
+        }
+        else if (type == QMetaType::Double) {
+            if (auto v = node.value<double>()) it.value() = *v;
+        }
+        else if (type == QMetaType::QString) {
+            if (auto v = node.value<std::string>()) it.value() = QString::fromStdString(*v);
+        }
+    }
 }
+
+QVariantMap Config::defaultOptions()
+{
+    QVariantMap m;
+
+    // Readouts and overlays.
+    m["showDebug"] = false;
+    m["showLegend"] = true;
+    m["showStats"] = false;
+    m["showMiniMap"] = true;
+
+    // Axes.
+    m["showAxisLabels"] = true;
+    m["showAxisTitles"] = true;
+    m["freqTickMode"] = 0;       // 0 automatic, 1 custom step, 2 musical notes, 3 octaves
+    m["freqTickStep"] = 100.0;   // Hz, for the custom step
+    m["timeTickMode"] = 0;       // 0 automatic, 1 custom step
+    m["timeTickStep"] = 1.0;     // seconds, for the custom step
+
+    // Tracks.
+    m["trackStyle"] = 2;         // 0 dots, 1 lines, 2 lines and dots
+    m["lineSmoothness"] = 35;    // percent
+    m["lineWidth"] = 2.5;        // pixels at 100 percent zoom
+    m["dotRadius"] = 3.0;        // pixels at 100 percent zoom
+
+    // Track statistics. Each bit of the mask shows one value.
+    m["statsMask"] = 0x1 | 0x2 | 0x8 | 0x40 | 0x80;   // current, min, mean, p95, max
+    m["statsWindow"] = 0.0;      // seconds, 0 means the visible window
+
+    // Colour theme.
+    m["theme"] = QString("Magma");
+    m["customColors"] = QString("#000004,#3b0f70,#b73779,#fc8961,#fcfdbf");
+    m["customPitch"] = QString("#00e5ff");
+    m["customFormants"] = QString("#00ff00,#91ee91,#ff0000,#ff99ff,#ffcc00");
+    return m;
+}
+
+QVariantMap Config::options() const
+{
+    return mOptions;
+}
+
+QVariantMap Config::themeColors() const
+{
+    const Gui::Theme theme = Gui::resolveTheme(optionString("theme"), optionString("customColors"),
+                                               optionString("customPitch"), optionString("customFormants"));
+    return Gui::themeColorMap(theme);
+}
+
+QStringList Config::themeNames() const
+{
+    return Gui::themeNames();
+}
+
+QVariantList Config::themePreview(const QString &name, int count) const
+{
+    if (name == "Custom") {
+        const Gui::Theme t = Gui::resolveTheme(name, optionString("customColors"), optionString("customPitch"),
+                                               optionString("customFormants"));
+        QVariantList list;
+        for (int i = 0; i < count; ++i) {
+            list << QColor::fromRgb(t.colormap[count > 1 ? (i * 255) / (count - 1) : 0]);
+        }
+        return list;
+    }
+    return Gui::themePreview(name, count);
+}
+
+QVariant Config::option(const QString &name) const
+{
+    return mOptions.value(name);
+}
+
+void Config::setOption(const QString &name, const QVariant &value)
+{
+    const QVariant def = defaultOptions().value(name);
+    if (!def.isValid()) {
+        return;
+    }
+
+    QVariant v = value;
+    const int type = def.typeId();
+    if (type == QMetaType::Bool) v = value.toBool();
+    else if (type == QMetaType::Int) v = value.toInt();
+    else if (type == QMetaType::Double) v = value.toDouble();
+    else if (type == QMetaType::QString) v = value.toString();
+
+    if (mOptions.value(name) == v) {
+        return;
+    }
+    mOptions[name] = v;
+
+    auto &tbl = *mTbl["options"].as_table();
+    const std::string key = name.toStdString();
+    if (type == QMetaType::Bool) tbl.insert_or_assign(key, v.toBool());
+    else if (type == QMetaType::Int) tbl.insert_or_assign(key, (int64_t) v.toInt());
+    else if (type == QMetaType::Double) tbl.insert_or_assign(key, v.toDouble());
+    else if (type == QMetaType::QString) tbl.insert_or_assign(key, v.toString().toStdString());
+
+    emit optionsChanged();
+}
+
+void Config::resetOption(const QString &name)
+{
+    setOption(name, defaultOptions().value(name));
+}
+
+bool Config::optionBool(const QString &name) const { return mOptions.value(name).toBool(); }
+int Config::optionInt(const QString &name) const { return mOptions.value(name).toInt(); }
+double Config::optionDouble(const QString &name) const { return mOptions.value(name).toDouble(); }
+QString Config::optionString(const QString &name) const { return mOptions.value(name).toString(); }
 
 Config::~Config()
 {
@@ -320,7 +467,7 @@ void Config::setViewSpectrogramBlur(int percent)
 
 double Config::getViewTimeSpan()
 {
-    return doubleField(mTbl["view"], "timeSpan", 5.0);
+    return doubleField(mTbl["view"], "timeSpan", 15.0);
 }
 
 void Config::setViewTimeSpan(double dur)
@@ -495,7 +642,7 @@ void Config::setAnalysisPitchSpacing(double ms) {
 }
 
 double Config::getAnalysisPitchSpacing() {
-    return doubleField(mTbl["analysis"], "pitchSpacing", 80.0);
+    return doubleField(mTbl["analysis"], "pitchSpacing", 20.0);
 }
 
 void Config::setAnalysisFormantSpacing(double ms) {
@@ -503,7 +650,7 @@ void Config::setAnalysisFormantSpacing(double ms) {
 }
 
 double Config::getAnalysisFormantSpacing() {
-    return doubleField(mTbl["analysis"], "formantSpacing", 80.0);
+    return doubleField(mTbl["analysis"], "formantSpacing", 40.0);
 }
 
 void Config::setAnalysisOscilloscopeSpacing(double ms) {
