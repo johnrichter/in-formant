@@ -180,6 +180,7 @@ ApplicationWindow {
                 OptionSwitch { key: "showLegend"; text: "Legend" }
                 OptionSwitch { key: "showDebug"; text: "Frame times (render, update, frames per second)" }
                 OptionSwitch { key: "showStats"; text: "Statistics of the tracks" }
+                OptionSwitch { key: "showMiniMap"; text: "Map of the whole session, below the graph" }
 
                 MenuSeparator { Layout.fillWidth: true }
 

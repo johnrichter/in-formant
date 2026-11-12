@@ -106,7 +106,15 @@ set(SOURCES
     src/context/guicontext.cpp
     src/context/guicontext.h
     src/context/datastore.cpp
+    src/context/audiofile.cpp
+    src/context/audiofile.h
+    src/context/fileanalyzer.cpp
+    src/context/fileanalyzer.h
     src/context/session.cpp
+    src/context/sessionplayer.cpp
+    src/context/sessionplayer.h
+    src/context/sessionwrapper.cpp
+    src/context/sessionwrapper.h
     src/context/session.h
     src/context/reviewspectrogram.cpp
     src/context/reviewspectrogram.h
@@ -118,6 +126,8 @@ set(SOURCES
     src/gui/qpainterwrapper.h
     src/gui/qpainterwrapper_static.cpp
     src/gui/plotitem.cpp
+    src/gui/overviewitem.cpp
+    src/gui/overviewitem.h
     src/gui/qpainterwrapper_overlay.cpp
     src/gui/theme.cpp
     src/gui/ticks.cpp
@@ -341,6 +351,9 @@ endif()
 target_include_directories(in-formant SYSTEM PRIVATE ${ARMADILLO_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS} ${TOMLPP_INCLUDE_DIR})
 target_link_libraries(in-formant PRIVATE Eigen3::Eigen ${FFTW_LIBRARIES} Qt6::Quick Qt6::QuickControls2 Qt6::QuickTemplates2 Qt6::Qml Qt6::Widgets Qt6::OpenGL Qt6::Svg Qt6::Gui Qt6::Core)
 target_link_directories(in-formant PRIVATE ${FFTW_LIBRARY_DIRS})
+if(APPLE)
+    target_link_libraries(in-formant PRIVATE "-framework AudioToolbox" "-framework CoreFoundation")
+endif()
 
 set(BUILD_SHARED_LIBS TRUE)
 add_subdirectory(external/freetype EXCLUDE_FROM_ALL)

@@ -18,6 +18,8 @@
 
 #include "synthwrapper.h"
 #include "dataviswrapper.h"
+#include "sessionplayer.h"
+#include "sessionwrapper.h"
 
 #define STR_(arg) #arg
 #define STR(arg) STR_(arg)
@@ -87,6 +89,8 @@ namespace Main {
         std::unique_ptr<Audio::Queue> mPlaybackQueue;
 
         std::unique_ptr<DataStore> mDataStore;
+        std::unique_ptr<SessionPlayer> mSessionPlayer;
+        std::unique_ptr<SessionWrapper> mSessionWrapper;
 
         DataVisWrapper mDataVisWrapper;
         

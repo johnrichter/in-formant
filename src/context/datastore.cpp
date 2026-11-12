@@ -58,6 +58,12 @@ void DataStore::startRealTime()
     mIsRealTimeStarted = true;
 }
 
+void DataStore::resetRealTime()
+{
+    mRealTimeOffset = 0;
+    mRealTimeStart = std::chrono::high_resolution_clock::now();
+}
+
 void DataStore::stopRealTime()
 {
     mRealTimeOffset = getRealTime();

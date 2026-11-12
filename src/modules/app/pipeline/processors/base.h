@@ -14,6 +14,9 @@ namespace Module::App::Processors {
 
         virtual bool canProcess(double timeNow) const;
 
+        // Forget the time of the last frame, so that a new capture can start at time zero.
+        void resetTime();
+
         void process(const rpm::vector<double>& slidingWindow, double sampleRate, double timeNow);
 
         virtual void processData(const rpm::vector<double>& data, double sampleRate) = 0;

@@ -60,7 +60,18 @@ void Pipeline::callbackProcessing()
 
         block.resize(granularity * mSampleRate);
         mBuffer.pull(block.data(), (int) block.size());
-        
+
+        // A loaded file replaces the live input, so the sound of the input device is not used.
+        if (mConfig->getSessionMode() != 0) {
+            continue;
+        }
+
+        if (mRestart.exchange(false)) {
+            time = 0;
+            std::fill(slidingWindow.begin(), slidingWindow.end(), 0.0);
+            for (auto& processor : mProcessors) processor->resetTime();
+        }
+
         timer_guard timer(timings::update);
 
         double maxFrameLength = granularity;
@@ -81,10 +92,7 @@ void Pipeline::callbackProcessing()
 
         mDataVis->pushAudio(block.data(), (int) block.size(), mSampleRate);
 
-        // The session keeps the sound of the input device. A loaded file replaces it.
-        if (mConfig->getSessionMode() == 0) {
-            mDataStore->session().append(block.data(), (int) block.size(), mSampleRate);
-        }
+        mDataStore->session().append(block.data(), (int) block.size(), mSampleRate);
 
         for (auto& processor : mProcessors) {
             if (processor->canProcess(time)) {

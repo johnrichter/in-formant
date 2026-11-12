@@ -407,8 +407,13 @@ ApplicationWindow {
     IfCanvas {
         id: canvas
         anchors.top: parent.top
-        anchors.bottom: parent.bottom
+        anchors.bottom: overviewBar.top
         anchors.right: parent.right
+
+        WheelHandler {
+            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+            onWheel: (event) => sessionControl.scrollView(-(Math.abs(event.angleDelta.x) > Math.abs(event.angleDelta.y) ? event.angleDelta.x : event.angleDelta.y) / 120.0)
+        }
 
         Behavior on x {
             NumberAnimation {
@@ -428,6 +433,79 @@ ApplicationWindow {
         width: ((mainWindow.height > mainWindow.width) 
                     ? parent.width  
                     : parent.width - drawer.position * sidebar.width)
+    }
+
+    // The map of the whole session, and the controls for the playback and the export.
+    Rectangle {
+        id: overviewBar
+        anchors.bottom: parent.bottom
+        anchors.right: parent.right
+        width: canvas.width
+        height: config.options.showMiniMap ? 112 : 34
+        color: "#101116"
+
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 0
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 32
+                Layout.leftMargin: 6
+                Layout.rightMargin: 6
+                spacing: 4
+
+                component BarButton: Button {
+                    flat: true
+                    font.pixelSize: 12
+                    implicitHeight: 30
+                    topInset: 0
+                    bottomInset: 0
+                }
+
+                BarButton {
+                    text: "Live"
+                    enabled: !config.viewLive || sessionControl.playing || sessionControl.fileMode
+                    onClicked: sessionControl.goLive()
+                }
+
+                BarButton {
+                    text: "Open file"
+                    onClicked: sessionControl.openFile()
+                }
+
+                BarButton {
+                    text: sessionControl.playing ? "Stop" : "Play window"
+                    onClicked: sessionControl.playing ? sessionControl.stopPlayback() : sessionControl.playWindow()
+                }
+
+                BarButton {
+                    text: "Export window"
+                    enabled: !sessionControl.exporting
+                    onClicked: sessionControl.exportWindow()
+                }
+
+                BarButton {
+                    text: "Export all"
+                    enabled: !sessionControl.exporting
+                    onClicked: sessionControl.exportAll()
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    text: sessionControl.status
+                    color: "lightgrey"
+                    font.pixelSize: 12
+                    elide: Text.ElideRight
+                }
+            }
+
+            IfOverview {
+                visible: config.options.showMiniMap
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+            }
+        }
     }
 
     Timer {

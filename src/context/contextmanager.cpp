@@ -22,6 +22,9 @@ ContextManager::ContextManager(
                   playbackBlockDuration.count(),
                   playbackSampleRate, [](auto...){})),
       mDataStore(std::make_unique<DataStore>()),
+      mSessionPlayer(std::make_unique<SessionPlayer>(&mDataStore->session(), mPlaybackQueue.get())),
+      mSessionWrapper(std::make_unique<SessionWrapper>(mConfig.get(), mDataStore.get(), mSessionPlayer.get(), captureSampleRate,
+                  [this]() { mPipeline->restart(); mDataStore->resetRealTime(); })),
       mPipeline(std::make_unique<App::Pipeline>(
                   mCaptureBuffer.get(), mDataStore.get(), mConfig.get(),
                   &mDataVisWrapper,
@@ -36,9 +39,9 @@ ContextManager::ContextManager(
                   mPlaybackQueue.get())),
       mRenderContext(std::make_unique<RenderContext>(mConfig.get(), mDataStore.get())),
 #ifndef WITHOUT_SYNTH
-      mGuiContext(std::make_unique<GuiContext>(mConfig.get(), mRenderContext.get(), &mSynthWrapper, &mDataVisWrapper))
+      mGuiContext(std::make_unique<GuiContext>(mConfig.get(), mRenderContext.get(), &mSynthWrapper, &mDataVisWrapper, mSessionWrapper.get()))
 #else
-      mGuiContext(std::make_unique<GuiContext>(mConfig.get(), mRenderContext.get(), &mDataVisWrapper))
+      mGuiContext(std::make_unique<GuiContext>(mConfig.get(), mRenderContext.get(), &mDataVisWrapper, mSessionWrapper.get()))
 #endif
 {
 #ifdef ENABLE_TORCH
@@ -356,19 +359,34 @@ void ContextManager::startSynthesisThread()
 
 void ContextManager::synthesisThreadLoop()
 { 
+    // The queue plays either the synthesizer or the stored sound. Only this thread changes its source.
+    bool playingSession = false;
+
     while (mSynthesisRunning) {
+        const bool wantSession = mSessionPlayer->active();
+        if (wantSession != playingSession) {
+            playingSession = wantSession;
+            mPlaybackQueue->setCallback(playingSession
+                ? Module::Audio::QueueCallback(SessionPlayer::audioCallback)
+                : Module::Audio::QueueCallback(App::Synthesizer::audioCallback));
+        }
+
         // Generate sound only while the synthesizer is on. It ran all the time before, with the
         // volume at zero, and it used a few percent of a CPU core.
         const bool synthOn = mSynthWrapper.enabled();
 #ifdef _WIN32
         try {
-            if (synthOn) mPlaybackQueue->pushIfNeeded(mSynthesizer.get()); else mPlaybackQueue->pushSilenceIfNeeded();
+            if (playingSession) mPlaybackQueue->pushIfNeeded(mSessionPlayer.get());
+            else if (synthOn) mPlaybackQueue->pushIfNeeded(mSynthesizer.get()); else mPlaybackQueue->pushSilenceIfNeeded();
         }
         catch (const std::exception& e) {
             StdExceptionHandler(e);
         }
 #else
-        if (synthOn) {
+        if (playingSession) {
+            mPlaybackQueue->pushIfNeeded(mSessionPlayer.get());
+        }
+        else if (synthOn) {
             mPlaybackQueue->pushIfNeeded(mSynthesizer.get());
         }
         else {

@@ -42,6 +42,9 @@ namespace Main {
         void startRealTime();
         void stopRealTime();
 
+        // Set the real time to zero. The clock keeps its state of running or stopped.
+        void resetRealTime();
+
         TimeTrack<SpectrogramCoefs>& getSpectrogram();
 
         OptionalTimeTrack<double>& getPitchTrack();

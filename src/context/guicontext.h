@@ -18,6 +18,7 @@ namespace Main {
     class RenderContext;
     class Config;
     class DataStore;
+    class SessionWrapper;
     class GuiView;
 
     class GuiContext : public QObject {
@@ -25,9 +26,9 @@ namespace Main {
 
     public:
 #ifndef WITHOUT_SYNTH
-        GuiContext(Config *config, RenderContext *renderContext, SynthWrapper *synthWrapper, DataVisWrapper *dataVisWrapper);
+        GuiContext(Config *config, RenderContext *renderContext, SynthWrapper *synthWrapper, DataVisWrapper *dataVisWrapper, SessionWrapper *sessionWrapper);
 #else
-        GuiContext(Config *config, RenderContext *renderContext, DataVisWrapper *dataVisWrapper);
+        GuiContext(Config *config, RenderContext *renderContext, DataVisWrapper *dataVisWrapper, SessionWrapper *sessionWrapper);
 #endif
 
         int exec();

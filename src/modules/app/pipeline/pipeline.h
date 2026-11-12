@@ -31,6 +31,10 @@ namespace Module::App
 
         void processAll();
 
+        // Start the analysis of a new capture at time zero. The call returns at once, and the
+        // thread of the analysis restarts with the next block of sound.
+        void restart() { mRestart = true; }
+
     private:
         Module::Audio::Buffer *mCaptureBuffer;
         Main::DataStore *mDataStore;
@@ -40,6 +44,7 @@ namespace Module::App
         std::atomic<double> mTime;
         std::atomic_bool mThreadRunning;
         std::atomic_bool mStopThread;
+        std::atomic_bool mRestart {false};
 
         std::thread mProcessingThread;
 

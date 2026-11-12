@@ -17,6 +17,12 @@ bool BaseProcessor::canProcess(double timeNow) const
     return timeNow - mTime >= mFrameSpace;
 }
 
+void BaseProcessor::resetTime()
+{
+    mTime = 0;
+    mFrameEnd = 0;
+}
+
 void BaseProcessor::process(const rpm::vector<double>& slidingWindow, double sampleRate, double timeNow)
 {
     const int frameSamples = (int) std::round(mFrameLength * sampleRate);

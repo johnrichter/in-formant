@@ -118,7 +118,8 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
     }
     else {
         const double length = session.duration();
-        timeEnd = std::clamp(config->getViewEnd(), std::min(viewDuration, length), length);
+        timeEnd = fileMode ? std::clamp(config->getViewEnd(), viewDuration, std::max(length, viewDuration))
+                           : std::clamp(config->getViewEnd(), std::min(viewDuration, length), length);
     }
     const double timeStart = timeEnd - viewDuration;
 

@@ -1,4 +1,5 @@
 #include "../gui/canvas.h"
+#include "../gui/overviewitem.h"
 #include "../gui/plotitem.h"
 #include "contextmanager.h"
 #include "qsgrendererinterface.h"
@@ -12,9 +13,9 @@ using namespace Main;
 using namespace std::chrono_literals;
 
 #ifndef WITHOUT_SYNTH
-GuiContext::GuiContext(Config *config, RenderContext *renderContext, SynthWrapper *synthWrapper, DataVisWrapper *dataVisWrapper)
+GuiContext::GuiContext(Config *config, RenderContext *renderContext, SynthWrapper *synthWrapper, DataVisWrapper *dataVisWrapper, SessionWrapper *sessionWrapper)
 #else
-GuiContext::GuiContext(Config *config, RenderContext *renderContext, DataVisWrapper *dataVisWrapper)
+GuiContext::GuiContext(Config *config, RenderContext *renderContext, DataVisWrapper *dataVisWrapper, SessionWrapper *sessionWrapper)
 #endif
     : mConfig(config),
       mRenderContext(renderContext),
@@ -28,10 +29,12 @@ GuiContext::GuiContext(Config *config, RenderContext *renderContext, DataVisWrap
     QQuickStyle::setStyle("Material");
     qmlRegisterType<Gui::CanvasItem>("IfCanvas", 1, 0, "IfCanvas");
     qmlRegisterType<Gui::PlotItem>("IfCanvas", 1, 0, "IfPlot");
+    qmlRegisterType<Gui::OverviewItem>("IfCanvas", 1, 0, "IfOverview");
 
     // The plots of the oscilloscope and of the synthesizer read their data from these objects.
     Gui::PlotItem::setConfig(mConfig);
     Gui::PlotItem::setProvider(Gui::PlotItem::Scope, dataVisWrapper);
+    Gui::OverviewItem::setSources(mConfig, sessionWrapper);
 
     mApp = std::make_unique<QApplication>(argc, argv);
 
@@ -50,6 +53,7 @@ GuiContext::GuiContext(Config *config, RenderContext *renderContext, DataVisWrap
     mQmlEngine->rootContext()->setContextProperty("appName", "InFormant " INFORMANT_VERSION_STR);
 
     mQmlEngine->rootContext()->setContextProperty("config", mConfig);
+    mQmlEngine->rootContext()->setContextProperty("sessionControl", sessionWrapper);
 
 #ifndef WITHOUT_SYNTH
     Gui::PlotItem::setProvider(Gui::PlotItem::Filter, synthWrapper);
