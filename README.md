@@ -153,6 +153,15 @@ Application:
 * **Spectrogram quality:** The drawer has the list "Spectrogram quality" (Fast or Smooth) and the slider "Spectrogram blur" (0 to 100 percent). The keys `spectrogramQuality` and `spectrogramBlur` in the `[view]` table store them. The Smooth filter is a cubic filter on the square root of the power. A blur of 0 gives the sharp Catmull-Rom shape, and a blur of 100 gives the soft B-spline shape. The renderer also averages the bins and the columns that fall in one pixel. It adds noise before the colour lookup to hide steps between colours.
 * **Time step:** The spectrogram has a slice each 10 ms. Before, it had a slice each 20 ms. The key `granularity` in the `[analysis]` table sets the step. A configuration file that stores 20 keeps the old step.
 * **Text:** The renderer starts each string on a whole pixel, so the texture filter does not blur the glyphs.
+* **Time alignment:** The pitch track, the formant tracks, and the spectrogram use the time of the end of each frame. Before this change, the tracks were up to 60 ms early.
+* **Settings window:** The Settings button opens a window with four tabs. The tabs set the axes, the tracks, the readouts, and the colour theme. The `[options]` table of the configuration file stores each setting. The `[meta]` table stores a version number, and a new version applies new defaults one time.
+* **Axes:** Both axes have a title, and a switch hides the titles or the numbers. The frequency axis has the modes automatic, custom step, notes, and octaves. The time axis has the modes automatic and custom step. The automatic modes label the roundest values first, and the labels never overlap.
+* **Tracks and readouts:** A track draws as dots, lines, or both. A slider sets the smoothness of the lines, and a line breaks at a gap or at a large jump. The legend, the debug panel with the render time, and a statistics table each have a switch. The table shows the current value, the minimum, the mean, the 95th percentile, and the maximum for the pitch and each formant. Other statistics are available.
+* **Colour themes:** The application has 6 scientific themes, 16 dark pride themes, and a custom theme. A theme sets the colours of the spectrogram, the tracks, the oscilloscope, and the synthesizer.
+* **Defaults:** The time step is 10 ms and the view is 15 seconds. A configuration file with an older version number gets these values one time.
+* **Oscilloscope:** The window opens at 1100 by 620 pixels. It shows the newest 30 ms of the sound at the rate of the display. A slider sets the time from 5 to 100 ms. The view starts at a rising zero crossing, like the trigger of an oscilloscope. The estimate of the glottal flow has a new value each 20 ms (key `oscilloscopeSpacing`). Before, it had a new value each 160 ms, and the view changed about 6 times each second.
+* **Plots:** The plots of the oscilloscope and the synthesizer use one new item. It draws the grid one time and the lines at each frame. A plot makes data only while it is on the screen. Qt Charts is no longer a dependency.
+* **Synthesizer:** The window takes the size of its contents when it opens for the first time. The setting "Follow pitch estimates" is off by default. The follow mode smooths the pitch on a logarithmic scale, and it switches the voice off after 80 ms with no pitch. The pitch goes to the synthesizer from one thread, because a signal between threads could replace a newer value. The synthesizer makes audio in blocks of 1024 samples, not 4096. The gain follows the peak level with a smooth change, so the loudness does not step between the blocks.
 
 ### Troubleshooting
 
@@ -187,7 +196,7 @@ As of now, development is only really supported on Linux hosts, but is likely fe
 
 Before anything, you must install the various dependencies. Specifics will vary depending on your distribution.
 
-* Qt 5.15.2 (the Quick Controls 2 module and the Charts module are required in addition to the base package)
+* Qt 5.15.2 (the Quick Controls 2 module is required in addition to the base package)
 * FFTW3
 * Eigen3
 * libtorch built with C++11 ABI (from PyTorch)
