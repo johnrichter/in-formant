@@ -43,7 +43,9 @@ int Buffer::getLength() const
 void Buffer::pull(double *pOut, int outLength)
 {
     for (int i = 0; i < outLength; ++i) {
-        while (!mQueue.wait_dequeue_timed(pOut[i], 50) && !sCancel);
+        // The timeout is in microseconds. A timeout of 50 woke this thread 20000 times each second
+        // while it waited for the next block of audio. The pull stops within 5 ms after a cancel.
+        while (!mQueue.wait_dequeue_timed(pOut[i], 5000) && !sCancel);
     }
 }
 

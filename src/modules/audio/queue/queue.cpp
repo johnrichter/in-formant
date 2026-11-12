@@ -1,6 +1,7 @@
 #include "queue.h"
 #include <iostream>
 #include <memory>
+#include <chrono>
 #include <cmath>
 
 using namespace Module::Audio;
@@ -37,8 +38,41 @@ int Queue::getOutSampleRate() const
     return mResampler.getOutputRate();
 }
 
+void Queue::reportUnderrun()
+{
+    // The audio thread sets the flag. Write the message here, because writing to the log can block,
+    // and the audio thread must never block. Write at most one message for each second.
+    static auto lastMessage = std::chrono::steady_clock::now() - std::chrono::seconds(10);
+
+    if (mUnderrun.exchange(false)) {
+        const auto now = std::chrono::steady_clock::now();
+        if (now - lastMessage >= std::chrono::seconds(1)) {
+            lastMessage = now;
+            std::cout << "Audio::Queue] Not enough data to pull. Block duration is " << mBlockDuration.load() << " ms" << std::endl;
+        }
+    }
+}
+
+void Queue::pushSilenceIfNeeded()
+{
+    reportUnderrun();
+
+    const int outputRate = mResampler.getOutputRate();
+    const int blockSizeDst = (int) std::round((mBlockDuration.load() * outputRate) / 1000);
+
+    if ((int) mQueue.size_approx() > blockSizeDst) {
+        return;
+    }
+
+    for (int i = 0; i < blockSizeDst; ++i) {
+        mQueue.emplace(0.0f);
+    }
+}
+
 void Queue::pushIfNeeded(void *userdata)
 {
+    reportUnderrun();
+
     int inputRate = mResampler.getInputRate();
     int outputRate = mResampler.getOutputRate();
     int queueSize = (int) mQueue.size_approx();
@@ -79,8 +113,12 @@ void Queue::pull(float *pOut, int outLength)
             pOut[i] = 0.0;
         }
        
-        float newBlockDuration = mBlockDuration + 0.25f;
-        std::cout << "Audio::Queue] Not enough data to pull. Adjusted block duration to " << newBlockDuration << " ms" << std::endl;
-        mBlockDuration = newBlockDuration;
+        // Make the blocks longer, but not without a limit.
+        constexpr float maxBlockDuration = 200.0f;
+        const float newBlockDuration = mBlockDuration + 0.25f;
+        if (newBlockDuration <= maxBlockDuration) {
+            mBlockDuration = newBlockDuration;
+        }
+        mUnderrun = true;
     }
 }

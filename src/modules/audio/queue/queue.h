@@ -25,10 +25,14 @@ namespace Module::Audio {
         int getOutSampleRate() const;
 
         void pushIfNeeded(void *userdata);
+        void pushSilenceIfNeeded();
         void pull(float *pOut, int outLength);
 
     private: 
+        void reportUnderrun();
+
         std::atomic<float> mBlockDuration;
+        std::atomic<bool> mUnderrun {false};
 
         Resampler mResampler;
         QueueCallback mCallback;

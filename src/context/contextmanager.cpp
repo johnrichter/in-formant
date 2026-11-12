@@ -323,15 +323,23 @@ void ContextManager::startSynthesisThread()
 void ContextManager::synthesisThreadLoop()
 { 
     while (mSynthesisRunning) {
+        // Generate sound only while the synthesizer is on. It ran all the time before, with the
+        // volume at zero, and it used a few percent of a CPU core.
+        const bool synthOn = mSynthWrapper.enabled();
 #ifdef _WIN32
         try {
-            mPlaybackQueue->pushIfNeeded(mSynthesizer.get());
+            if (synthOn) mPlaybackQueue->pushIfNeeded(mSynthesizer.get()); else mPlaybackQueue->pushSilenceIfNeeded();
         }
         catch (const std::exception& e) {
             StdExceptionHandler(e);
         }
 #else
-        mPlaybackQueue->pushIfNeeded(mSynthesizer.get());
+        if (synthOn) {
+            mPlaybackQueue->pushIfNeeded(mSynthesizer.get());
+        }
+        else {
+            mPlaybackQueue->pushSilenceIfNeeded();
+        }
 #endif
         std::this_thread::sleep_for(20ms);
     }
