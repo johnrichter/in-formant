@@ -61,9 +61,9 @@ Multi-arch Android builds are already supported by the underlying build system b
 
 ## How to compile for macOS on Apple silicon (arm64)
 
-The prebuilt Docker images support x86_64 hosts. This section documents how to build the macOS image and the macOS application on an Apple M-series Mac.
+The prebuilt Docker images support x86_64 hosts. This section documents how to build the macOS image and a native arm64 macOS application on an Apple M-series Mac.
 
-The build produces an x86_64 application. The application runs on arm64 through Rosetta 2. A native arm64 build does not exist.
+The build produces a native arm64 application. The application does not need Rosetta 2. Only the Docker image needs Rosetta 2, because the toolchain exists for x86_64 Linux only.
 
 These changes live in the `johnrichter/in-formant` fork. The `in-formant/in-formant` repository is the `upstream` remote.
 
@@ -73,7 +73,7 @@ These changes live in the `johnrichter/in-formant` fork. The `in-formant/in-form
 * The Docker CLI, Docker buildx, and Colima with the `vz` virtual machine type.
 * A Colima virtual machine with Rosetta, 6 CPU cores, and 8 GiB of memory.
 * The project and the ccache directory inside your home directory. Colima shares only the home directory with the virtual machine.
-* 5.5 GB of disk space for the Docker image.
+* 8 GB of disk space for the Docker image.
 
 ### Build steps
 
@@ -107,22 +107,41 @@ CCACHE_DIR="$PWD/build/ccache" script -q /dev/null ./build.sh macos Release
 
 The `build.sh` script runs `docker run -it`, so it needs a terminal. The `script` command provides a terminal when none exists. In a normal terminal window, you can run `./build.sh macos Release` directly. You must set `CCACHE_DIR`, because `build.sh` mounts it into the container. An empty value breaks the `docker run` command.
 
-5. Check the result. The disk image is `dist/InFormant-<version>-macOS-x86_64.dmg`.
+5. Check the result. The disk image is `dist/InFormant-<version>-macOS-arm64.dmg`. A good disk image is about 55 MB.
 
-The `build.sh` script exits with code 0 even when `macdeployqt` fails to fill the disk image. Search the build output for `Bundle creation error`. A disk image smaller than 1 MB is empty. A good disk image is about 55 MB. Mount the disk image to check the content:
+The build stops with an error when a step fails. A disk image smaller than 1 MB is empty. Mount the disk image to check the content:
 
 ```sh
-hdiutil attach -readonly dist/InFormant-*-macOS-x86_64.dmg
+hdiutil attach -readonly dist/InFormant-*-macOS-arm64.dmg
 ```
+
+The `macdeployqt` tool prints `ERROR: no file at ".../libiodbc.2.dylib"` and `ERROR: no file at ".../libpq.5.dylib"`. These messages come from the optional Qt SQL plugins. The application does not use them. Ignore these messages.
+
+### Build for x86_64
+
+The `TARGET_ARCH` build argument selects the architecture. The default value is `arm64`. To build an x86_64 application, build the image with `--build-arg TARGET_ARCH=x86_64`. The disk image then has the name `InFormant-<version>-macOS-x86_64.dmg`. The maintainers of this fork did not test this path after the arm64 changes.
 
 ### Changes in this fork
 
+Build system:
+
 * **Colima settings:** Enable Rosetta. Use 6 CPU cores and 8 GiB of memory. QEMU emulation makes `clang` crash with a segmentation fault. The default 2 GiB of memory is too small.
-* **Platform in `docker/Dockerfile.macos`:** `FROM --platform=linux/amd64`. The toolchain, Qt, and the libraries exist for x86_64 only.
+* **Platform in `docker/Dockerfile.macos`:** `FROM --platform=linux/amd64`. The toolchain, Qt, and the libraries exist for x86_64 Linux only.
 * **Hard link in `docker/Dockerfile.macos`:** `clang++` is a hard link to `clang`. The osxcross wrapper follows symlinks. Then `clang` links in C mode, without `-lc++`.
 * **Root user in `docker/Dockerfile.macos`:** `USER swu` is disabled, so the build runs as root. The packaging step writes `/InFormant.app` and `/InFormant.dmg` in `/`. Docker does not keep a `chown` of `/`.
-* **Disk image margin in `docker/Dockerfile.macos`:** A `sed` step raises the margin from 32 MB to 256 MB. The `macdeployqt` tool sizes the image as the bundle size plus 32 MB. This is too small, and `hfsplus` fails with `error: allocate`.
+* **Target architecture in `docker/Dockerfile.macos`:** The `TARGET_ARCH` argument sets the compiler host `arm64-apple-darwin20.4`, the `-arch` flag of PortAudio and FFTW, and the deployment target 11.0.
+* **Qt 6.2.4:** Qt 6.1.2 has x86_64 macOS binaries only. Qt 6.2.4 is the first version with universal binaries. The `aqtinstall` tool 1.2.2 installs it.
+* **Thin Qt files:** The Dockerfile runs `lipo -thin` on each universal Qt file. The `macdeployqt` tool cannot read the `otool` output of a universal file.
+* **`qmlimportscanner` link:** Qt 6.2 moved the tool to `libexec`. The Dockerfile links it into `bin`, where `macdeployqt` looks for it.
 * **Submodule `docker/macdeployqt`:** The pointer moves to commit `59fb62a`. The old commit has `load(qt_app)` in its project file. Qt 6.1.2 rejects this line.
+* **Signature in `docker/deploy-macos.sh`:** The `install_name_tool` and `strip` commands invalidate the signature of each file. Apple silicon refuses to run an arm64 file with an invalid signature. The script signs the bundle again with `rcodesign` (ad hoc).
+* **Disk image in `docker/deploy-macos.sh`:** The script makes the disk image itself, after the signing step. The image has 256 MB of free space, because `hfsplus` copies each symlink as a full file. The free space compresses to almost nothing.
+
+Application:
+
+* **Black spectrogram:** The patch of upstream pull request 40 moves the shaders from GLSL 120 to GLSL 150. It requests an OpenGL 3.2 Core profile with 4x multisampling. It anchors the canvas to the top of the window.
+* **Toolbar icons:** The CMake file links the Qt SVG module. The `macdeployqt` tool then deploys `libqsvg.dylib`. Without this plugin, Qt prints `Unsupported image format` and the icons stay invisible.
+* **Retina resolution:** `NSHighResolutionCapable` is `true` in `dist-res/Info.plist`. The application renders at the full resolution of the display.
 
 ### Troubleshooting
 
@@ -131,16 +150,27 @@ hdiutil attach -readonly dist/InFormant-*-macOS-x86_64.dmg
 * **`qmake` prints its usage text in the `macdeployqt` step.** The `docker/macdeployqt` submodule is empty. Run `git submodule update --init docker/macdeployqt`.
 * **`Project has no top-level .qmake.conf file`.** The `docker/macdeployqt` submodule uses an old commit. Use commit `59fb62a` or newer.
 * **`mkdir: cannot create directory '/InFormant.app': Permission denied`.** The container user cannot write in `/`. Run the build as root.
-* **`Bundle creation error: (hfsplus) "error: allocate"` and a tiny `.dmg` file.** The disk image is too small. Keep the `sed` step in the Dockerfile.
+* **`Bundle creation error: (hfsplus) "error: allocate"` and a tiny `.dmg` file.** The disk image is too small. Keep the 256 MB margin in `docker/deploy-macos.sh`.
+* **`macdeployqt` cannot parse the `otool` output.** A universal Qt file is in the bundle. Keep the `lipo -thin` step in the Dockerfile.
+* **`qmlimportscanner` is not found.** Keep the link step in the Dockerfile.
+* **The application closes at once, and the shell shows `Killed: 9` or exit code 137.** The signature of the bundle is invalid. Keep the `rcodesign` step in `docker/deploy-macos.sh`.
+* **macOS says that the application does not run on this version of macOS.** The application is x86_64 only. Build with the default `TARGET_ARCH=arm64`.
+* **The toolbar has no icons.** Check that the bundle has `Contents/PlugIns/imageformats/libqsvg.dylib`.
+* **The spectrogram area is black.** The setting `showSpectrogram` is off by default. Also, the area stays black when the microphone sends no sound.
 * **Docker prints `requested image's platform (linux/amd64) does not match the detected host platform`.** This warning is expected on arm64. Ignore it, because Rosetta runs the image.
 
 ### Known limits
 
-* The application is x86_64 only. A native arm64 build needs an arm64 toolchain, Qt, and libraries.
-* The checks mounted the `.dmg` and read its content. The checks did not launch the application.
+* The checks launched the application, saved a picture of the window, and confirmed the toolbar, the axes, and the text. A synthetic signal confirmed that the spectrogram draws with color.
+* The checks did not use a real microphone. A live signal is not confirmed.
+* The application has an ad hoc signature and no notarization.
+* Apple prints `UNSUPPORTED (log once): POSSIBLE ISSUE: unit 0 GLD_TEXTURE_INDEX_2D is unloadable` in the log. The picture shows no visible defect, and the cause is not proven.
+* The application crashes with a segmentation fault when it exits. The crash happens in the window destructor, after the static destructors started. macOS can show a crash report at each exit. The cause is in the upstream code, and this fork does not fix it.
+* The application reads its configuration from `~/Library/Application/informant.conf`.
 * The `hfsplus` tool copies each symlink as a full file. The application bundle uses 143 MB in the image, instead of 60 MB.
 * The build runs as root in the container. On a Linux host, the files in `build` and `dist` belong to root.
 * The Dockerfile clones the osxcross `master` branch with no pin. A future osxcross change can break the image.
+* The repository tracks the Apple SDK archive `docker/MacOSX11.3.sdk.tar.xz` (52 MB). A review tool that blocks binary files can block a merge for this reason.
 
 ## How to compile from source locally
 
