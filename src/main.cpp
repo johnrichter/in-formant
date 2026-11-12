@@ -90,6 +90,10 @@ int main(int argc, char **argv)
 
     int ret = Main::contextManager->exec();
 
+    // Destroy the Qt objects before the static destructors run. Qt thread storage no longer
+    // exists at that point, and the window destructor crashes on macOS.
+    Main::contextManager.reset();
+
     #ifdef DEBUG_THREAD
     exitSignal.set_value();
     if (debugThread.joinable())

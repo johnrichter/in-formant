@@ -9,6 +9,9 @@ namespace Module::App::Processors {
     public:
         BaseProcessor(double frameSpace, double frameLength);
 
+        // The pipeline deletes each processor through a pointer to this class.
+        virtual ~BaseProcessor() = default;
+
         bool canProcess(double timeNow) const;
 
         void process(const rpm::vector<double>& slidingWindow, double sampleRate, double timeNow);

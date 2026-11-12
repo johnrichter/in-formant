@@ -75,16 +75,17 @@ void openFileLogger(const char *name) {
                 perror("read");
                 break;
             }
+            // The end of the file means that the application closed its end of the pipe.
+            // Stop, or this process stays alive after the application exits.
             if (count == 0) {
-                usleep(10000);
-                continue;
+                break;
             }
-            
+
             rdbuf[count] = '\0';
 
             char *pch;
             pch = (char *) memchr(rdbuf, '\n', count);
-            
+
             if (pch == NULL) {
                 appendToLine(linebuf, rdbuf, count);
             }
