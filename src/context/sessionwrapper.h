@@ -11,6 +11,7 @@
 #include "config.h"
 #include "datastore.h"
 #include "fileanalyzer.h"
+#include "recorder.h"
 #include "sessionplayer.h"
 
 namespace Main {
@@ -22,6 +23,8 @@ namespace Main {
         Q_PROPERTY(bool playing READ playing NOTIFY playingChanged)
         Q_PROPERTY(bool exporting READ exporting NOTIFY exportingChanged)
         Q_PROPERTY(bool fileMode READ fileMode NOTIFY fileModeChanged)
+        Q_PROPERTY(bool recording READ recording NOTIFY recordingChanged)
+        Q_PROPERTY(QString recordTime READ recordTime NOTIFY recordingChanged)
         Q_PROPERTY(QString status READ status NOTIFY statusChanged)
 
     public:
@@ -36,6 +39,11 @@ namespace Main {
         bool playing() const { return mPlaying; }
         bool exporting() const { return mExporting.load(); }
         bool fileMode() const { return mConfig->getSessionMode() == 1; }
+        bool recording() const { return mRecorder.recording(); }
+        QString recordTime() const;
+
+        // The window with the main graph, for the pictures of the video.
+        void setMainWindow(QQuickWindow *window) { mRecorder.setMainWindow(window); }
         QString status() const { return mStatus; }
 
         // The window of the view in seconds of the session.
@@ -52,6 +60,12 @@ namespace Main {
 
         // Move the view by steps of a tenth of its width. A positive number moves to a later time.
         Q_INVOKABLE void scrollView(double steps);
+
+        // Start or stop the recording of the live capture to a video, a sound file and a report.
+        Q_INVOKABLE void toggleRecording();
+
+        // Start the recording at a path without extension, or stop it.
+        Q_INVOKABLE void recordTo(const QString &base);
 
         // Ask for an audio file, load the whole file, and analyze it. The file replaces the live sound.
         Q_INVOKABLE void openFile();
@@ -73,6 +87,7 @@ namespace Main {
         void statusChanged();
         void exportFinished(const QString &path, bool ok);
         void fileModeChanged();
+        void recordingChanged();
 
     private:
         void tick();
@@ -89,6 +104,7 @@ namespace Main {
         DataStore *mDataStore;
         SessionPlayer *mPlayer;
 
+        Recorder mRecorder;
         FileAnalyzer mAnalyzer;
         std::function<void()> mResetLive;
         std::thread mLoadThread;

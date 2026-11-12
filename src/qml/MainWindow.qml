@@ -465,17 +465,26 @@ ApplicationWindow {
 
                 BarButton {
                     text: "Live"
-                    enabled: !config.viewLive || sessionControl.playing || sessionControl.fileMode
+                    enabled: !sessionControl.recording && (!config.viewLive || sessionControl.playing || sessionControl.fileMode)
                     onClicked: sessionControl.goLive()
                 }
 
                 BarButton {
                     text: "Open file"
+                    enabled: !sessionControl.recording
                     onClicked: sessionControl.openFile()
                 }
 
                 BarButton {
+                    text: sessionControl.recording ? "Stop recording " + sessionControl.recordTime : "Record"
+                    enabled: !sessionControl.fileMode
+                    Material.foreground: sessionControl.recording ? Material.color(Material.Red, Material.Shade300) : undefined
+                    onClicked: sessionControl.toggleRecording()
+                }
+
+                BarButton {
                     text: sessionControl.playing ? "Stop" : "Play window"
+                    enabled: !sessionControl.recording
                     onClicked: sessionControl.playing ? sessionControl.stopPlayback() : sessionControl.playWindow()
                 }
 

@@ -63,6 +63,7 @@ ApplicationWindow {
         TabButton { text: "Tracks" }
         TabButton { text: "Readouts" }
         TabButton { text: "Theme" }
+        TabButton { text: "Recording" }
     }
 
     StackLayout {
@@ -292,6 +293,44 @@ ApplicationWindow {
                         text: config.options.customFormants
                         onEditingFinished: config.setOption("customFormants", text)
                     }
+                }
+            }
+        }
+
+        // Recording
+        ScrollView {
+            clip: true
+            ColumnLayout {
+                width: settingsWindow.width - 40
+                x: 20
+                spacing: 8
+
+                Label { text: "Recording"; font.bold: true; Layout.topMargin: 14 }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: "lightgrey"
+                    text: "The Record button below the graph writes three files with the same name: a video (.mp4), the sound (.wav) and a report with statistics (.md)."
+                }
+                OptionSwitch { key: "recordVideo"; text: "Write a video" }
+                OptionSlider {
+                    key: "recordWindow"; title: "Time in the graph of the video"; unit: " s"; from: 2; to: 60; stepSize: 1
+                }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: "lightgrey"
+                    text: "A short time shows more detail of the pitch and the formants. A long time shows how they change. The graph on the screen uses this time during a recording."
+                }
+                OptionSlider {
+                    key: "recordFps"; title: "Frames each second"; from: 10; to: 30; stepSize: 1
+                }
+                OptionSwitch { key: "recordWindows"; text: "Show the oscilloscope and synthesizer windows in the video" }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: "lightgrey"
+                    text: "Open windows go in a column at the right of the graph. The video scales them so that it has no empty space."
                 }
             }
         }

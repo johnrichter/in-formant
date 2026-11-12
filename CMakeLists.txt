@@ -110,7 +110,12 @@ set(SOURCES
     src/context/audiofile.h
     src/context/fileanalyzer.cpp
     src/context/fileanalyzer.h
+    src/context/recorder.cpp
+    src/context/recorder.h
+    src/context/recordstats.cpp
+    src/context/recordstats.h
     src/context/session.cpp
+    src/context/videowriter.h
     src/context/sessionplayer.cpp
     src/context/sessionplayer.h
     src/context/sessionwrapper.cpp
@@ -237,6 +242,14 @@ set(SOURCES
     src/tomlplusplus.cpp
 )
 
+# The video file needs the encoder of macOS. The other systems get a stub that reports the missing support.
+if(APPLE)
+    list(APPEND SOURCES src/context/videowriter_mac.mm)
+    set_source_files_properties(src/context/videowriter_mac.mm PROPERTIES LANGUAGE CXX COMPILE_FLAGS "-x objective-c++ -fobjc-arc")
+else()
+    list(APPEND SOURCES src/context/videowriter.cpp)
+endif()
+
 ### REQUIRED MODULES
 
 if(MSVC)
@@ -352,7 +365,7 @@ target_include_directories(in-formant SYSTEM PRIVATE ${ARMADILLO_INCLUDE_DIR} ${
 target_link_libraries(in-formant PRIVATE Eigen3::Eigen ${FFTW_LIBRARIES} Qt6::Quick Qt6::QuickControls2 Qt6::QuickTemplates2 Qt6::Qml Qt6::Widgets Qt6::OpenGL Qt6::Svg Qt6::Gui Qt6::Core)
 target_link_directories(in-formant PRIVATE ${FFTW_LIBRARY_DIRS})
 if(APPLE)
-    target_link_libraries(in-formant PRIVATE "-framework AudioToolbox" "-framework CoreFoundation")
+    target_link_libraries(in-formant PRIVATE "-framework AudioToolbox" "-framework CoreFoundation" "-framework AVFoundation" "-framework CoreMedia" "-framework CoreVideo" "-framework Foundation")
 endif()
 
 set(BUILD_SHARED_LIBS TRUE)

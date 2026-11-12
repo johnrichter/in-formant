@@ -188,6 +188,12 @@ QVariantMap Config::defaultOptions()
     m["scopeWindow"] = 30.0;     // milliseconds of sound in the view
     m["scopeShowGif"] = true;    // show the estimate of the glottal flow
 
+    // Recording.
+    m["recordWindow"] = 10.0;    // seconds of time in the graph of the video, from 2 to 60
+    m["recordFps"] = 20;         // frames each second in the video
+    m["recordWindows"] = true;   // show the oscilloscope and the synthesizer in the video
+    m["recordVideo"] = true;     // write a video, or only the sound and the report
+
     // Colour theme.
     m["theme"] = QString("Magma");
     m["customColors"] = QString("#000004,#3b0f70,#b73779,#fc8961,#fcfdbf");

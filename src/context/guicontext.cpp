@@ -77,6 +77,7 @@ GuiContext::GuiContext(Config *config, RenderContext *renderContext, DataVisWrap
     auto canvasItem = window->findChild<Gui::CanvasItem *>("IfCanvas");
 
     canvasItem->setRenderContext(mRenderContext);
+    sessionWrapper->setMainWindow(window);
 
     canvasItem->installEventFilter(this);
     window->installEventFilter(this);

@@ -18,6 +18,7 @@ SessionWrapper::SessionWrapper(Config *config, DataStore *dataStore, SessionPlay
     : mConfig(config),
       mDataStore(dataStore),
       mPlayer(player),
+      mRecorder(config, dataStore),
       mAnalyzer(config, dataStore, analysisSampleRate),
       mResetLive(std::move(resetLive)),
       mLoadCancel(false),
@@ -25,6 +26,9 @@ SessionWrapper::SessionWrapper(Config *config, DataStore *dataStore, SessionPlay
       mPausedByPlayback(false),
       mExporting(false)
 {
+    connect(&mRecorder, &Recorder::message, this, [this](const QString &text) { setStatus(text); });
+    connect(&mRecorder, &Recorder::recordingChanged, this, &SessionWrapper::recordingChanged);
+
     mTimer.setInterval(33);
     connect(&mTimer, &QTimer::timeout, this, &SessionWrapper::tick);
 }
@@ -53,6 +57,8 @@ void SessionWrapper::clearSession()
 
 void SessionWrapper::openFile()
 {
+    if (mRecorder.recording()) return;
+
     const QString folder = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
     const QString path = QFileDialog::getOpenFileName(nullptr, tr("Open sound"), folder,
         tr("Audio files (*.wav *.mp3 *.m4a *.aac *.flac *.aif *.aiff *.caf *.ogg);;All files (*)"));
@@ -62,6 +68,8 @@ void SessionWrapper::openFile()
 
 void SessionWrapper::loadFile(const QString &path)
 {
+    if (mRecorder.recording()) return;
+
     const QString name = QFileInfo(path).fileName();
 
     if (mPlaying) stopPlayback();
@@ -146,8 +154,39 @@ double SessionWrapper::windowEnd() const
     return clampViewEnd(mConfig->getViewEnd());
 }
 
+QString SessionWrapper::recordTime() const
+{
+    const int s = (int) mRecorder.elapsed();
+    return QString("%1:%2").arg(s / 60).arg(s % 60, 2, 10, QChar('0'));
+}
+
+void SessionWrapper::toggleRecording()
+{
+    if (mRecorder.recording()) {
+        mRecorder.stop();
+        return;
+    }
+
+    // A recording needs the live capture.
+    if (mConfig->getSessionMode() != 0 || mPlaying) {
+        setStatus(QStringLiteral("Return to the live view before a recording"));
+        return;
+    }
+    if (mConfig->isPaused()) mConfig->setPaused(false);
+    mRecorder.start();
+}
+
+void SessionWrapper::recordTo(const QString &base)
+{
+    if (mRecorder.recording() || mConfig->getSessionMode() != 0 || mPlaying) return;
+    if (mConfig->isPaused()) mConfig->setPaused(false);
+    mRecorder.begin(base);
+}
+
 void SessionWrapper::moveViewEnd(double end, double edge)
 {
+    // The view of a recording stays on the newest sound.
+    if (mRecorder.recording()) return;
     if (mPlaying) stopPlayback();
 
     const double length = std::max(mDataStore->session().duration(), 1.0);
@@ -169,6 +208,8 @@ void SessionWrapper::scrollView(double steps)
 
 void SessionWrapper::playWindow()
 {
+    if (mRecorder.recording()) return;
+
     const double end = windowEnd();
     const double start = std::max(0.0, end - mConfig->getViewTimeSpan());
     if (!(end > start)) return;
