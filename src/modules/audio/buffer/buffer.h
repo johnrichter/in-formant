@@ -25,6 +25,7 @@ namespace Module::Audio {
         void push(const float *pIn, int inLength);
 
         static void cancelPulls();
+        static bool pullsCancelled();
 
     private:
         int mId;

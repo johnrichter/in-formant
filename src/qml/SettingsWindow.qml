@@ -332,6 +332,15 @@ ApplicationWindow {
                     color: "lightgrey"
                     text: "Open windows go in a column at the right of the graph. The video scales them so that it has no empty space."
                 }
+
+                Label { text: "Scratch recording"; font.bold: true; Layout.topMargin: 14 }
+                OptionSwitch { key: "keepRecordings"; text: "Keep all recordings when the app closes" }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: "lightgrey"
+                    text: "The app stores the live sound in a scratch file. The app deletes this file when it closes. When you switch this on, the app saves the sound as a WAV file in its data folder instead. Files that you save yourself stay in all cases."
+                }
             }
         }
     }

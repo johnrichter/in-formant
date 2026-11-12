@@ -106,13 +106,14 @@ void Pipeline::processAll()
 {
     const double fs = (double) mCaptureBuffer->getSampleRate();
 
-    if (mTime == 0) {
-        mDataStore->startRealTime();
-    }
-
     static int blockSize = 512;
     rpm::vector<double> data(blockSize);
     mCaptureBuffer->pull(data.data(), (int) data.size());
+
+    // The app is closing, so the block is incomplete and the processing thread must not start.
+    if (Module::Audio::Buffer::pullsCancelled())
+        return;
+
     mTime = mTime + blockSize / fs;
 
     mDataStore->setTime(mTime);

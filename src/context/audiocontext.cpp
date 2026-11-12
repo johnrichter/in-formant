@@ -1,5 +1,6 @@
 #include "audiocontext.h"
 #include <array>
+#include <iostream>
 #include <stdexcept>
 
 using namespace Main;
@@ -70,7 +71,8 @@ std::string Main::getAudioBackendName(Audio::Backend type)
 }
 
 AudioContext::AudioContext(Audio::Backend type, Audio::Buffer *captureBuffer, Audio::Queue *playbackQueue)
-    : mCaptureStreamOpened(false),
+    : mInitialized(false),
+      mCaptureStreamOpened(false),
       mCaptureStreamStarted(false),
       mPlaybackStreamOpened(false),
       mPlaybackStreamStarted(false)
@@ -117,20 +119,45 @@ AudioContext::AudioContext(Audio::Backend type, Audio::Buffer *captureBuffer, Au
     mAudio->setCaptureBuffer(captureBuffer);
     mAudio->setPlaybackQueue(playbackQueue);
     mAudio->initialize();
+    mInitialized = true;
     mAudio->refreshDevices();
 }
 
 AudioContext::~AudioContext()
 {
-    stopCaptureStream();
-    closeCaptureStream();
-    stopPlaybackStream();
-    closePlaybackStream();
-    mAudio->terminate();
+    try {
+        stopCaptureStream();
+        closeCaptureStream();
+        stopPlaybackStream();
+        closePlaybackStream();
+        if (mInitialized) {
+            mAudio->terminate();
+        }
+    }
+    catch (const std::exception &e) {
+        std::cout << "AudioContext] " << e.what() << std::endl;
+    }
 }
 
 void AudioContext::refreshDevices()
 {
+    mAudio->refreshDevices();
+}
+
+void AudioContext::reinitialize()
+{
+    stopCaptureStream();
+    closeCaptureStream();
+    stopPlaybackStream();
+    closePlaybackStream();
+
+    if (mInitialized) {
+        mInitialized = false;
+        mAudio->terminate();
+    }
+
+    mAudio->initialize();
+    mInitialized = true;
     mAudio->refreshDevices();
 }
 

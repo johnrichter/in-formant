@@ -60,3 +60,8 @@ void Buffer::cancelPulls()
 {
     sCancel = true;
 }
+
+bool Buffer::pullsCancelled()
+{
+    return sCancel;
+}

@@ -34,6 +34,10 @@ namespace Main {
         // Delete the sound, and start again.
         void clear();
 
+        // Delete the sound files of earlier runs that ended in a crash. When keepFolder is not
+        // empty, the sound of each file goes there as a WAV file first.
+        static void recoverOrphans(const QString &keepFolder);
+
         // Add samples of any sample rate. The caller can use any thread.
         void append(const double *samples, int count, double fs);
 

@@ -1,6 +1,12 @@
 #include "contextmanager.h"
 #include "timings.h"
 
+#include <QDateTime>
+#include <QDir>
+#include <QMetaObject>
+#include <QStandardPaths>
+#include <QTimer>
+
 #include <chrono>
 #include <iostream>
 
@@ -78,12 +84,7 @@ ContextManager::ContextManager(
             });
     QObject::connect(mConfig.get(), &Config::audioCaptureDeviceChanged,
             [this](QString) {
-                mAudioContext->stopCaptureStream();
-                mAudioContext->closeCaptureStream();
-                mAudioContext->openCaptureStream(findCaptureDevice());
-                if (!mConfig->isPaused()) {
-                    mAudioContext->startCaptureStream();
-                }
+                onAudioDevicesChanged();
             });
     QObject::connect(mConfig.get(), &Config::pausedChanged,
             [this](bool paused) {
@@ -92,14 +93,58 @@ ContextManager::ContextManager(
                     mDataStore->stopRealTime();
                 }
                 else {
-                    mAudioContext->startCaptureStream();
-                    mDataStore->startRealTime();
+                    // The system can change its default input device while the capture is off.
+                    if (!mAudioReady || captureDeviceIsStale()) {
+                        reinitializeAudio(false);
+                    }
+                    startCapture();
                 }
             });
+
+    // Follow the changes of the devices of the system. The function runs on a thread of the
+    // system, so it posts the work to the Qt thread, and it waits a short time for the burst of
+    // notifications that one change makes.
+    mDeviceWatcher = std::make_unique<DeviceWatcher>([this]() {
+        if (mDeviceChangePending.exchange(true)) return;
+        QMetaObject::invokeMethod(mConfig.get(), [this]() {
+            QTimer::singleShot(300, mConfig.get(), [this]() {
+                mDeviceChangePending = false;
+                onAudioDevicesChanged();
+            });
+        }, Qt::QueuedConnection);
+    });
+}
+
+namespace {
+
+// The folder for the sound that the user asks to keep (the setting keepRecordings).
+QString keptRecordingsFolder()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/Recordings";
+}
+
+}
+
+void ContextManager::keepScratchRecording()
+{
+    // The sound of the capture goes to a scratch file. The file is deleted at the end of the run,
+    // unless the user asks to keep it. A sound that comes from an audio file is not a recording.
+    if (!mConfig->optionBool("keepRecordings") || mConfig->getSessionMode() != 0) return;
+
+    const double length = mDataStore->session().duration();
+    if (length < 1.0) return;
+
+    const QString folder = keptRecordingsFolder();
+    QDir().mkpath(folder);
+    const QString path = folder + "/informant-session-" + QDateTime::currentDateTime().toString("yyyyMMdd-HHmmss") + ".wav";
+    mDataStore->session().exportWav(path, 0.0, length);
 }
 
 int ContextManager::exec()
 {
+    // Remove the scratch files of runs that ended in a crash. Keep their sound when the user asks.
+    Session::recoverOrphans(mConfig->optionBool("keepRecordings") ? keptRecordingsFolder() : QString());
+
     openAndStartAudioStreams();
     startAnalysisThread();
 #ifndef WITHOUT_SYNTH
@@ -112,6 +157,8 @@ int ContextManager::exec()
 #ifndef WITHOUT_SYNTH
     stopSynthesisThread();
 #endif
+
+    keepScratchRecording();
 
     return retCode;
 }
@@ -158,19 +205,92 @@ void ContextManager::publishCaptureDevices()
     for (const auto &device : mAudioContext->getCaptureDevices()) {
         names.push_back(QString::fromStdString(device.name));
     }
-    std::cout << "ContextManager] Input devices: " << names.join(" | ").toStdString() << std::endl;
-    mConfig->setAudioCaptureDevices(names);
+
+    QString defaultName;
+    if (!mAudioContext->getCaptureDevices().empty()) {
+        defaultName = QString::fromStdString(mAudioContext->getDefaultCaptureDevice().name);
+    }
+
+    std::cout << "ContextManager] Input devices: " << names.join(" | ").toStdString()
+              << " (default: " << defaultName.toStdString() << ")" << std::endl;
+    mConfig->setAudioCaptureDevices(names, defaultName);
 }
 
 void ContextManager::openAndStartAudioStreams()
 {
     publishCaptureDevices();
     mAudioContext->openCaptureStream(findCaptureDevice());
-    mAudioContext->startCaptureStream();
+    mOpenedDefaultInputId = systemDefaultInputDeviceId();
+
+    // The application starts in the paused state. The capture starts when the user presses play.
+    if (!mConfig->isPaused()) {
+        mAudioContext->startCaptureStream();
+    }
 #ifndef WITHOUT_SYNTH
     mAudioContext->openPlaybackStream(nullptr);
     mAudioContext->startPlaybackStream();
 #endif
+}
+
+void ContextManager::reinitializeAudio(bool startCapture)
+{
+    if (mReinitializing) return;
+    mReinitializing = true;
+
+    try {
+        mAudioContext->reinitialize();
+        mAudioReady = true;
+
+        publishCaptureDevices();
+        mAudioContext->openCaptureStream(findCaptureDevice());
+        mOpenedDefaultInputId = systemDefaultInputDeviceId();
+#ifndef WITHOUT_SYNTH
+        mAudioContext->openPlaybackStream(nullptr);
+        mAudioContext->startPlaybackStream();
+#endif
+        if (startCapture) {
+            mAudioContext->startCaptureStream();
+        }
+    }
+    catch (const std::exception &e) {
+        mAudioReady = false;
+        std::cout << "ContextManager] The audio system did not start: " << e.what() << std::endl;
+        mSessionWrapper->showStatus(QStringLiteral("No input device available"));
+    }
+
+    mReinitializing = false;
+}
+
+bool ContextManager::captureDeviceIsStale()
+{
+    // A named device does not change with the default. The watcher handles a change of the list.
+    if (!mConfig->getAudioCaptureDevice().isEmpty()) return false;
+
+    return mOpenedDefaultInputId != systemDefaultInputDeviceId();
+}
+
+void ContextManager::startCapture()
+{
+    try {
+        mAudioContext->startCaptureStream();
+        mDataStore->startRealTime();
+    }
+    catch (const std::exception &e) {
+        std::cout << "ContextManager] The capture did not start: " << e.what() << std::endl;
+        mSessionWrapper->showStatus(QStringLiteral("The input device did not start"));
+        mConfig->setPaused(true);
+    }
+}
+
+void ContextManager::onAudioDevicesChanged()
+{
+    const bool running = !mConfig->isPaused();
+
+    // While the capture runs, its clock stops for the short gap of the restart.
+    if (running) mDataStore->stopRealTime();
+    reinitializeAudio(running);
+    if (running && mAudioReady) mDataStore->startRealTime();
+    else if (running) mConfig->setPaused(true);
 }
 
 void ContextManager::startAnalysisThread()

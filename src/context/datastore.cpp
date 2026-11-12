@@ -54,6 +54,10 @@ double DataStore::getRealTime() const
 
 void DataStore::startRealTime()
 {
+    // A second call while the clock runs must not restart it.
+    if (mIsRealTimeStarted)
+        return;
+
     mRealTimeStart = std::chrono::high_resolution_clock::now();
     mIsRealTimeStarted = true;
 }

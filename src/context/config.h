@@ -46,6 +46,7 @@ namespace Main {
         Q_PROPERTY(bool paused              READ isPaused                       WRITE setPaused                 NOTIFY pausedChanged)
         Q_PROPERTY(QString audioCaptureDevice READ getAudioCaptureDevice        WRITE setAudioCaptureDevice     NOTIFY audioCaptureDeviceChanged)
         Q_PROPERTY(QStringList audioCaptureDevices READ getAudioCaptureDevices  NOTIFY audioCaptureDevicesChanged)
+        Q_PROPERTY(QString audioDefaultCaptureDevice READ getAudioDefaultCaptureDevice NOTIFY audioCaptureDevicesChanged)
     
     signals:
         void optionsChanged();
@@ -128,7 +129,8 @@ namespace Main {
 
         // The names of the input devices that the audio backend found.
         QStringList getAudioCaptureDevices() const;
-        void setAudioCaptureDevices(const QStringList &names);
+        void setAudioCaptureDevices(const QStringList &names, const QString &defaultName = QString());
+        QString getAudioDefaultCaptureDevice() const;
 
         PitchAlgorithm getPitchAlgorithm();
         void setPitchAlgorithm(PitchAlgorithm alg);
@@ -243,6 +245,7 @@ namespace Main {
         std::atomic<double> mCursorClickY;
         std::atomic<int> mSessionMode;
         QStringList mAudioCaptureDevices;
+        QString mAudioDefaultCaptureDevice;
     };
 
 }

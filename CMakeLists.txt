@@ -115,6 +115,7 @@ set(SOURCES
     src/context/audiofile.h
     src/context/fileanalyzer.cpp
     src/context/fileanalyzer.h
+    src/context/devicewatcher.h
     src/context/recorder.cpp
     src/context/recorder.h
     src/context/recordstats.cpp
@@ -255,6 +256,14 @@ else()
     list(APPEND SOURCES src/context/videowriter.cpp)
 endif()
 
+# macOS tells the application when the default input device changes. The other systems get a stub.
+if(APPLE)
+    list(APPEND SOURCES src/context/devicewatcher_mac.mm)
+    set_source_files_properties(src/context/devicewatcher_mac.mm PROPERTIES LANGUAGE CXX COMPILE_FLAGS "-x objective-c++ -fobjc-arc")
+else()
+    list(APPEND SOURCES src/context/devicewatcher.cpp)
+endif()
+
 ### REQUIRED MODULES
 
 if(MSVC)
@@ -376,7 +385,7 @@ target_include_directories(in-formant SYSTEM PRIVATE ${ARMADILLO_INCLUDE_DIR} ${
 target_link_libraries(in-formant PRIVATE Eigen3::Eigen ${FFTW_LIBRARIES} Qt6::Quick Qt6::QuickControls2 Qt6::QuickTemplates2 Qt6::Qml Qt6::Widgets Qt6::OpenGL Qt6::Svg Qt6::Gui Qt6::Core)
 target_link_directories(in-formant PRIVATE ${FFTW_LIBRARY_DIRS})
 if(APPLE)
-    target_link_libraries(in-formant PRIVATE "-framework AudioToolbox" "-framework CoreFoundation" "-framework AVFoundation" "-framework CoreMedia" "-framework CoreVideo" "-framework Foundation")
+    target_link_libraries(in-formant PRIVATE "-framework AudioToolbox" "-framework CoreAudio" "-framework CoreFoundation" "-framework AVFoundation" "-framework CoreMedia" "-framework CoreVideo" "-framework Foundation")
 endif()
 
 set(BUILD_SHARED_LIBS TRUE)

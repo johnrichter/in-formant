@@ -275,7 +275,8 @@ ApplicationWindow {
                     Label { text: "Input device:" }
                     ComboBox {
                         implicitWidth: parent.width - 10
-                        model: ["System default"].concat(config.audioCaptureDevices)
+                        model: ["System default" + (config.audioDefaultCaptureDevice !== "" ? " (" + config.audioDefaultCaptureDevice + ")" : "")]
+                                .concat(config.audioCaptureDevices)
                         currentIndex: Math.max(0, model.indexOf(config.audioCaptureDevice))
                         onActivated: config.audioCaptureDevice = (currentIndex === 0 ? "" : model[currentIndex])
                         Layout.alignment: Qt.AlignHCenter
@@ -421,6 +422,25 @@ ApplicationWindow {
         WheelHandler {
             acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
             onWheel: (event) => sessionControl.scrollView(-(Math.abs(event.angleDelta.x) > Math.abs(event.angleDelta.y) ? event.angleDelta.x : event.angleDelta.y) / 120.0)
+        }
+
+        // The application starts with the capture off. This hint shows on the empty graph.
+        Label {
+            id: playHint
+            anchors.centerIn: parent
+            text: "Press play to start"
+            color: "lightgrey"
+            font.pixelSize: 24
+            property bool noSound: true
+            visible: config.paused && !sessionControl.fileMode && noSound
+
+            Timer {
+                interval: 250
+                repeat: true
+                running: config.paused
+                triggeredOnStart: true
+                onTriggered: playHint.noSound = sessionControl.duration() <= 0
+            }
         }
 
         // A click or a drag on the graph picks a moment. A double click or a right click clears it.

@@ -108,7 +108,7 @@ toml::table Main::getConfigTable()
 
 Config::Config()
     : mTbl(getConfigTable()),
-      mPaused(false),
+      mPaused(true),
       mViewLive(true),
       mViewEnd(0.0),
       mCursorTime(std::nan("")),
@@ -198,6 +198,9 @@ QVariantMap Config::defaultOptions()
     m["recordFps"] = 20;         // frames each second in the video
     m["recordWindows"] = true;   // show the oscilloscope and the synthesizer in the video
     m["recordVideo"] = true;     // write a video, or only the sound and the report
+
+    // The sound of the capture goes to a scratch file. It is deleted at the end of the run unless this is true.
+    m["keepRecordings"] = false;
 
     // Colour theme.
     m["theme"] = QString("Magma");
@@ -315,9 +318,15 @@ QStringList Config::getAudioCaptureDevices() const
     return mAudioCaptureDevices;
 }
 
-void Config::setAudioCaptureDevices(const QStringList &names)
+QString Config::getAudioDefaultCaptureDevice() const
+{
+    return mAudioDefaultCaptureDevice;
+}
+
+void Config::setAudioCaptureDevices(const QStringList &names, const QString &defaultName)
 {
     mAudioCaptureDevices = names;
+    mAudioDefaultCaptureDevice = defaultName;
     emit audioCaptureDevicesChanged();
 }
 

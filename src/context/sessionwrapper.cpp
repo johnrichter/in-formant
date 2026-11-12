@@ -134,6 +134,11 @@ void SessionWrapper::onAnalyzed(bool completed, const QString &name)
     if (completed) setStatus("Loaded " + name);
 }
 
+double SessionWrapper::duration() const
+{
+    return mDataStore->session().duration();
+}
+
 double SessionWrapper::windowStart() const
 {
     return windowEnd() - mConfig->getViewTimeSpan();

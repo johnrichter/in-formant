@@ -19,6 +19,12 @@ namespace Main {
 
         void refreshDevices();
 
+        // Closes every stream, and builds the state of the audio system again. The system reads the
+        // device list and the default devices only when it starts, so this is the way to see a new
+        // default device. It throws when the audio system cannot start. Then ready() is false.
+        void reinitialize();
+        bool ready() const { return mInitialized; }
+
         const rpm::vector<Audio::Device>& getCaptureDevices() const;
         const rpm::vector<Audio::Device>& getPlaybackDevices() const;
         
@@ -39,6 +45,7 @@ namespace Main {
 
     private:
         std::unique_ptr<Audio::AbstractBase> mAudio;
+        bool mInitialized;
         bool mCaptureStreamOpened, mCaptureStreamStarted;
         bool mPlaybackStreamOpened, mPlaybackStreamStarted;
     };

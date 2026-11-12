@@ -4,6 +4,7 @@
 #include "../analysis/analysis.h"
 #include "../modules/app/app.h"
 #include "audiocontext.h"
+#include "devicewatcher.h"
 #include "rendercontext.h"
 #include "guicontext.h"
 #include "datastore.h"
@@ -59,6 +60,16 @@ namespace Main {
         void openAndStartAudioStreams();
         const Audio::Device *findCaptureDevice();
         void publishCaptureDevices();
+
+        // Rebuild the state of the audio system, and open the streams again. Only the Qt thread
+        // calls these functions. The capture starts when startCapture is true.
+        void reinitializeAudio(bool startCapture);
+        bool captureDeviceIsStale();
+        void startCapture();
+        void onAudioDevicesChanged();
+
+        // Save the sound of the run as a WAV file, when the user asks for it.
+        void keepScratchRecording();
 
         void startAnalysisThread();
         void analysisThreadLoop();
@@ -125,6 +136,17 @@ namespace Main {
         int mAnalysisLpOffset;
         int mAnalysisLpOrder;
         int mAnalysisPitchSampleRate;
+
+        // False when the audio system could not start, for example with no input device.
+        bool mAudioReady = true;
+        bool mReinitializing = false;
+        std::atomic_bool mDeviceChangePending{false};
+
+        // The default input device of the system at the time the capture stream opened.
+        uint32_t mOpenedDefaultInputId = 0;
+
+        // This member is the last one, so the watcher ends before the objects that its function uses.
+        std::unique_ptr<DeviceWatcher> mDeviceWatcher;
     };
 
 }

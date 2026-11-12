@@ -245,6 +245,7 @@ void PortAudio::closePlaybackStream()
 {
     err = Pa_CloseStream(mPlaybackStream);
     checkError();
+    mPlaybackStream = nullptr;
 }
 
 int PortAudio::captureCallback(

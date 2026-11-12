@@ -4,8 +4,16 @@
 #include <cmath>
 #include <cstring>
 
+#include <QCoreApplication>
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
+
+#ifndef _WIN32
+#include <cerrno>
+#include <csignal>
+#endif
 
 using namespace Main;
 
@@ -19,9 +27,57 @@ int16_t toInt16(double v)
 
 std::unique_ptr<QTemporaryFile> makeFile()
 {
-    auto file = std::make_unique<QTemporaryFile>(QDir::tempPath() + "/informant-session-XXXXXX.raw");
+    // The process number in the name lets a later run find the files of a run that ended in a crash.
+    const QString name = QStringLiteral("/informant-session-%1-XXXXXX.raw").arg(QCoreApplication::applicationPid());
+    auto file = std::make_unique<QTemporaryFile>(QDir::tempPath() + name);
     file->open();
     return file;
+}
+
+bool processRuns(qint64 pid)
+{
+#ifdef _WIN32
+    (void) pid;
+    return true;
+#else
+    if (pid <= 0) return false;
+    return ::kill((pid_t) pid, 0) == 0 || errno == EPERM;
+#endif
+}
+
+// The header of a mono WAV file with 16-bit samples at the stored sample rate.
+void writeWavHeader(QFile &file, long long samples)
+{
+    auto put32 = [&](uint32_t v) { file.write(reinterpret_cast<const char *>(&v), 4); };
+    auto put16 = [&](uint16_t v) { file.write(reinterpret_cast<const char *>(&v), 2); };
+
+    file.write("RIFF", 4);
+    put32((uint32_t) (36 + samples * 2));
+    file.write("WAVEfmt ", 8);
+    put32(16);
+    put16(1);
+    put16(1);
+    put32(Session::sampleRate);
+    put32(Session::sampleRate * 2);
+    put16(2);
+    put16(16);
+    file.write("data", 4);
+    put32((uint32_t) (samples * 2));
+}
+
+bool saveRawAsWav(const QString &rawPath, const QString &wavPath)
+{
+    QFile in(rawPath);
+    if (!in.open(QIODevice::ReadOnly)) return false;
+
+    QFile out(wavPath);
+    if (!out.open(QIODevice::WriteOnly | QIODevice::Truncate)) return false;
+
+    writeWavHeader(out, in.size() / 2);
+    while (!in.atEnd()) {
+        out.write(in.read(1 << 20));
+    }
+    return out.error() == QFile::NoError;
 }
 
 }
@@ -38,6 +94,34 @@ Session::Session()
 }
 
 Session::~Session() = default;
+
+void Session::recoverOrphans(const QString &keepFolder)
+{
+    const QFileInfoList files = QDir(QDir::tempPath()).entryInfoList({ QStringLiteral("informant-session-*.raw") }, QDir::Files);
+
+    for (const QFileInfo &info : files) {
+        // The name is informant-session-<process>-<random>.raw. A name from an older version has no
+        // process number. Such a file counts as left over after one hour without a change.
+        const QStringList parts = info.completeBaseName().split('-');
+        bool hasProcess = false;
+        qint64 pid = 0;
+        if (parts.size() >= 4) pid = parts[2].toLongLong(&hasProcess);
+
+        if (hasProcess) {
+            if (processRuns(pid)) continue;
+        }
+        else if (info.lastModified().secsTo(QDateTime::currentDateTime()) < 3600) {
+            continue;
+        }
+
+        if (!keepFolder.isEmpty() && info.size() > 0) {
+            QDir().mkpath(keepFolder);
+            const QString name = QStringLiteral("informant-recovered-%1.wav").arg(info.lastModified().toString("yyyyMMdd-HHmmss"));
+            saveRawAsWav(info.absoluteFilePath(), keepFolder + "/" + name);
+        }
+        QFile::remove(info.absoluteFilePath());
+    }
+}
 
 void Session::clear()
 {
@@ -228,23 +312,8 @@ bool Session::exportWav(const QString &path, double t0, double t1) const
     QFile file(path);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) return false;
 
-    auto put32 = [&](uint32_t v) { file.write(reinterpret_cast<const char *>(&v), 4); };
-    auto put16 = [&](uint16_t v) { file.write(reinterpret_cast<const char *>(&v), 2); };
-
-    // The header of a mono WAV file with 16-bit samples. The file uses the byte order of the
-    // computer, and each supported computer has little-endian order.
-    file.write("RIFF", 4);
-    put32((uint32_t) (36 + total * 2));
-    file.write("WAVEfmt ", 8);
-    put32(16);
-    put16(1);
-    put16(1);
-    put32(sampleRate);
-    put32(sampleRate * 2);
-    put16(2);
-    put16(16);
-    file.write("data", 4);
-    put32((uint32_t) (total * 2));
+    // The file uses the byte order of the computer, and each supported computer has little-endian order.
+    writeWavHeader(file, total);
 
     constexpr long long chunk = 1 << 20;
     std::vector<int16_t> raw;

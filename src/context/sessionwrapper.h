@@ -46,6 +46,12 @@ namespace Main {
         void setMainWindow(QQuickWindow *window) { mRecorder.setMainWindow(window); }
         QString status() const { return mStatus; }
 
+        // Show a message in the status line. Call this from the thread of the application.
+        void showStatus(const QString &text) { setStatus(text); }
+
+        // The length of the stored sound in seconds.
+        Q_INVOKABLE double duration() const;
+
         // The window of the view in seconds of the session.
         Q_INVOKABLE double windowStart() const;
         Q_INVOKABLE double windowEnd() const;
