@@ -2,6 +2,17 @@
 
 # InFormant™ - a real-time pitch and formant tracking software
 
+## About this repository
+
+This repository is a fork of [in-formant/in-formant](https://github.com/in-formant/in-formant), the upstream project. It keeps the upstream history and adds the changes that the sections below describe.
+
+The repository left the GitHub fork network, for two reasons:
+
+* GitHub refuses new Git LFS objects on a public fork, unless the fork network already has LFS objects.
+* The upstream repository does not use Git LFS. It is about 220 MB, because it stores binary files as plain Git objects. This fork stores all binary files in Git LFS, so the repository is much smaller.
+
+The move to Git LFS rewrote the history of this repository. Its commit IDs differ from the commit IDs of upstream. The content of each file is the same. The `upstream` remote still works for `git fetch`, but a merge or a rebase on upstream needs more care than before. To give a change to upstream, send a patch (`git format-patch`) or a branch that has no LFS files. Submodules keep their own files and are not in Git LFS.
+
 ## Table of Contents
 
 * [Prebuilt binaries](#prebuilt-binaries)
