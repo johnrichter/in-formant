@@ -7,7 +7,7 @@
 * [Prebuilt binaries](#prebuilt-binaries)
 * [Compiling from source](#how-to-compile-from-source-using-docker)
   * [Using Docker](#how-to-compile-from-source-using-docker)
-  * [On Apple silicon (arm64)](#how-to-compile-for-macos-on-apple-silicon-arm64)
+  * [On macOS with Apple silicon](#how-to-build-for-macos-on-apple-silicon)
   * [Locally](#how-to-compile-from-source-locally)
 
 ## Prebuilt binaries
@@ -16,7 +16,7 @@ There are several prebuilt binaries included with each new release:
 
 * an AppImage file, for Linux (simply set the executable flag and run it)
 * two ZIP archives, for 32-bit and 64-bit Windows (the 32-bit will run on both editions of Windows)
-* a DMG image, for macOS 10.14 Mojave or newer (only 64-bit PC architecture supported, no ARM binaries yet)
+* a DMG image, for macOS 27 or newer (Apple silicon only, no Intel binaries)
 * ~~an APK file, for Android 9 Pie or newer (**prefer [the Play Store version](https://play.google.com/store/apps/details?id=fr.cloyunhee.speechanalysis) for smaller downloads**)~~ 
 
 Android is not yet supported for 3.x
@@ -30,14 +30,14 @@ The build system uses Docker images in order to have a consistent build environm
 You can pull prebuilt Docker images from the Docker Hub:
 
 ```sh
-for arch in linux win32 win64 macos android ; do docker pull clorika/sabuilder:$arch ; done
+for arch in linux win32 win64 android ; do docker pull clorika/sabuilder:$arch ; done
 ```
 
 However these are not always kept up to date with the various Dockerfiles included in the repository so you can always build them yourself:
 
 ```sh
 cd docker
-# Replace ARCH with one of [ linux, win32, win64, macos, android ]
+# Replace ARCH with one of [ linux, win32, win64, android ]
 docker build -t clorika/sabuilder:ARCH . -f Dockerfile.ARCH
 ```
 
@@ -48,7 +48,7 @@ docker build -t clorika/sabuilder:ARCH . -f Dockerfile.ARCH
 Run the `build.sh` script from the project root.
 
 The script takes two arguments:
-- The first one is the target platform: must be one of `linux`, `win32`, `win64`, `macos`, `android`.
+- The first one is the target platform: must be one of `linux`, `win32`, `win64`, `android`.
 - The second one is the build configuration: must be one of `Release`, `RelWithDebInfo`, `Debug`.
 
 There is an additional third argument for the `android` target to specify the target architecture.
@@ -59,83 +59,62 @@ Multi-arch Android builds are already supported by the underlying build system b
 
 **Note:** This script immediately creates a native package for the given target platform after a successful build. If you wish to build the project to contribute to it, you should use a local build environment. (see [How to compile from source locally](#how-to-compile-from-source-locally))
 
-## How to compile for macOS on Apple silicon (arm64)
+## How to build for macOS on Apple silicon
 
-The prebuilt Docker images support x86_64 hosts. This section documents how to build the macOS image and a native arm64 macOS application on an Apple M-series Mac.
-
-The build produces a native arm64 application. The application does not need Rosetta 2. Only the Docker image needs Rosetta 2, because the toolchain exists for x86_64 Linux only.
+The build runs natively on a Mac. It does not use Docker. It makes an arm64 application that does not need Rosetta 2. Intel Macs are not supported.
 
 These changes live in the `johnrichter/in-formant` fork. The `in-formant/in-formant` repository is the `upstream` remote.
 
 ### Requirements
 
-* Rosetta 2 on the Mac.
-* The Docker CLI, Docker buildx, and Colima with the `vz` virtual machine type.
-* A Colima virtual machine with Rosetta, 6 CPU cores, and 8 GiB of memory.
-* The project and the ccache directory inside your home directory. Colima shares only the home directory with the virtual machine.
-* 8 GB of disk space for the Docker image.
+* An Apple silicon Mac with macOS 27 or newer.
+* Xcode, or the Xcode command line tools, with the macOS 27 SDK.
+* Python 3.
+* `pkg-config`. For example, install it with `brew install pkgconf`.
+* An internet connection and 10 GB of free disk space for the first build.
 
 ### Build steps
 
-1. Configure Colima. Colima saves these values for the next start.
+1. Initialize the submodule that the build needs.
 
 ```sh
-colima stop
-colima start --vm-type vz --vz-rosetta --cpu 6 --memory 8
+git submodule update --init external/tomlplusplus
 ```
 
-2. Initialize the submodules that the macOS build needs.
+2. Run the build script from the project root. The first build downloads Qt and builds two libraries, so it takes longer than the next builds.
 
 ```sh
-git submodule update --init docker/macdeployqt external/tomlplusplus
+./build-macos.sh
 ```
 
-3. Build the Docker image. The first build takes more than 15 minutes.
+3. Check the result. The disk image is `dist/InFormant-<version>-macOS-arm64.dmg`. A good disk image is about 66 MB.
 
-```sh
-cd docker
-docker build -t clorika/sabuilder:macos . -f Dockerfile.macos
-cd ..
-```
-
-4. Build the application from the project root.
-
-```sh
-mkdir -p build/ccache
-CCACHE_DIR="$PWD/build/ccache" script -q /dev/null ./build.sh macos Release
-```
-
-The `build.sh` script runs `docker run -it`, so it needs a terminal. The `script` command provides a terminal when none exists. In a normal terminal window, you can run `./build.sh macos Release` directly. You must set `CCACHE_DIR`, because `build.sh` mounts it into the container. An empty value breaks the `docker run` command.
-
-5. Check the result. The disk image is `dist/InFormant-<version>-macOS-arm64.dmg`. A good disk image is about 55 MB.
-
-The build stops with an error when a step fails. A disk image smaller than 1 MB is empty. Mount the disk image to check the content:
+To check the content, mount the disk image.
 
 ```sh
 hdiutil attach -readonly dist/InFormant-*-macOS-arm64.dmg
 ```
 
+The script writes its downloads and build files in `build/native`. It reads these settings from the environment:
+
+* `BUILD_TYPE`: `Release` (default), `RelWithDebInfo`, or `Debug`.
+* `QT_VERSION`: The Qt version that `aqtinstall` installs. The default is 6.8.3.
+* `WORK_DIR`: The folder for downloads and build files. The default is `build/native`.
+* `JOBS`: The number of parallel jobs. The default is the number of CPU cores.
+
 The `macdeployqt` tool prints `ERROR: no file at ".../libiodbc.2.dylib"` and `ERROR: no file at ".../libpq.5.dylib"`. These messages come from the optional Qt SQL plugins. The application does not use them. Ignore these messages.
-
-### Build for x86_64
-
-The `TARGET_ARCH` build argument selects the architecture. The default value is `arm64`. To build an x86_64 application, build the image with `--build-arg TARGET_ARCH=x86_64`. The disk image then has the name `InFormant-<version>-macOS-x86_64.dmg`. The maintainers of this fork did not test this path after the arm64 changes.
 
 ### Changes in this fork
 
 Build system:
 
-* **Colima settings:** Enable Rosetta. Use 6 CPU cores and 8 GiB of memory. QEMU emulation makes `clang` crash with a segmentation fault. The default 2 GiB of memory is too small.
-* **Platform in `docker/Dockerfile.macos`:** `FROM --platform=linux/amd64`. The toolchain, Qt, and the libraries exist for x86_64 Linux only.
-* **Hard link in `docker/Dockerfile.macos`:** `clang++` is a hard link to `clang`. The osxcross wrapper follows symlinks. Then `clang` links in C mode, without `-lc++`.
-* **Root user in `docker/Dockerfile.macos`:** `USER swu` is disabled, so the build runs as root. The packaging step writes `/InFormant.app` and `/InFormant.dmg` in `/`. Docker does not keep a `chown` of `/`.
-* **Target architecture in `docker/Dockerfile.macos`:** The `TARGET_ARCH` argument sets the compiler host `arm64-apple-darwin20.4`, the `-arch` flag of PortAudio and FFTW, and the deployment target 11.0.
-* **Qt 6.2.4:** Qt 6.1.2 has x86_64 macOS binaries only. Qt 6.2.4 is the first version with universal binaries. The `aqtinstall` tool 1.2.2 installs it.
-* **Thin Qt files:** The Dockerfile runs `lipo -thin` on each universal Qt file. The `macdeployqt` tool cannot read the `otool` output of a universal file.
-* **`qmlimportscanner` link:** Qt 6.2 moved the tool to `libexec`. The Dockerfile links it into `bin`, where `macdeployqt` looks for it.
-* **Submodule `docker/macdeployqt`:** The pointer moves to commit `59fb62a`. The old commit has `load(qt_app)` in its project file. Qt 6.1.2 rejects this line.
-* **Signature in `docker/deploy-macos.sh`:** The `install_name_tool` and `strip` commands invalidate the signature of each file. Apple silicon refuses to run an arm64 file with an invalid signature. The script signs the bundle again with `rcodesign` (ad hoc).
-* **Disk image in `docker/deploy-macos.sh`:** The script makes the disk image itself, after the signing step. The image has 256 MB of free space, because `hfsplus` copies each symlink as a full file. The free space compresses to almost nothing.
+* **Native build:** The script `build-macos.sh` installs Qt with `aqtinstall` in a Python virtual environment. It builds FFTW 3.3.10 and PortAudio 19.7, and it installs Eigen 3.4.0, in a local folder. Then it builds the application with CMake and Ninja.
+* **Minimum version:** The deployment target is macOS 27.0. The CMake file sets it, and `LSMinimumSystemVersion` in `dist-res/Info.plist` states it.
+* **AGL framework:** The macOS 27 SDK has no AGL framework, but Qt 6.8.3 links it. The CMake file replaces it with the OpenGL framework.
+* **Libraries:** The script gives the `macdeployqt` tool the folders of FreeType and libsamplerate, so the bundle has both libraries. The search for packages ignores `/opt/homebrew`, so the build never mixes in other versions.
+* **Signature:** The `macdeployqt` tool changes library paths, and this invalidates the signatures. Apple silicon refuses to run an arm64 file with an invalid signature. The script signs the whole bundle again (ad hoc) and verifies it.
+* **Disk image:** The script makes a compressed disk image with `hdiutil`.
+* **Docker:** The Docker image and the x86_64 build for macOS are gone. The Docker builds for Linux, Windows, and Android stay.
 
 Application:
 
@@ -145,6 +124,8 @@ Application:
 * **Frame rate:** The renderer built all fonts again at each frame, and it updated a vertex buffer for each glyph, line, and point. On Apple, each buffer update sends the command buffer to the GPU. The frame rate was about 7 frames per second. The renderer now builds the fonts one time, and the shaders take the corners of each quad from a uniform. The frame rate follows the display refresh rate.
 * **Exit crash:** `BaseProcessor` and `FormantSolver` had no virtual destructor, and the pipeline deleted derived objects through them. Clang compiled this undefined behavior to a trap. `main` also destroys the context manager before the static destructors run. Also, the configuration is saved at exit, so the settings were never saved before.
 * **Logger process:** The logger child process did not stop at the end of the pipe, so each launch from a terminal left one process alive. It now stops.
+* **Logger exit:** The logger child process now ends without the static destructors. Before, Qt threw an error at exit, and macOS reported a crash.
+* **Window size:** The main window opens at 1600 by 900 pixels.
 * **Input device:** The drawer has an "Input device" list. The setting `captureDevice` in the `[audio]` table of the configuration file stores the name. An empty name selects the default input device of macOS. Before this change, the application always used the default device. This device can be a webcam microphone with a low sample rate.
 * **First launch:** The spectrogram, the pitch track, and the formant tracks are on by default. Before this change, a new installation showed a black window.
 * **Spectrogram jump:** The picture of the spectrogram jumped back and forth. The right edge of the texture used the column before the new slices. It now uses the column after them.
@@ -172,33 +153,25 @@ Application:
 
 ### Troubleshooting
 
-* **`make: *** ... Segmentation fault` in the osxcross step.** QEMU emulates x86_64. Enable Rosetta in Colima.
-* **`ld: symbol(s) not found` with `std::__1::` symbols at the end of the osxcross step.** The `clang++` command runs as `clang`. Keep the hard link step in the Dockerfile.
-* **`qmake` prints its usage text in the `macdeployqt` step.** The `docker/macdeployqt` submodule is empty. Run `git submodule update --init docker/macdeployqt`.
-* **`Project has no top-level .qmake.conf file`.** The `docker/macdeployqt` submodule uses an old commit. Use commit `59fb62a` or newer.
-* **`mkdir: cannot create directory '/InFormant.app': Permission denied`.** The container user cannot write in `/`. Run the build as root.
-* **`Bundle creation error: (hfsplus) "error: allocate"` and a tiny `.dmg` file.** The disk image is too small. Keep the 256 MB margin in `docker/deploy-macos.sh`.
-* **`macdeployqt` cannot parse the `otool` output.** A universal Qt file is in the bundle. Keep the `lipo -thin` step in the Dockerfile.
-* **`qmlimportscanner` is not found.** Keep the link step in the Dockerfile.
-* **The application closes at once, and the shell shows `Killed: 9` or exit code 137.** The signature of the bundle is invalid. Keep the `rcodesign` step in `docker/deploy-macos.sh`.
-* **macOS says that the application does not run on this version of macOS.** The application is x86_64 only. Build with the default `TARGET_ARCH=arm64`.
+* **The script prints `this script needs macOS 27 or newer`.** Update macOS. The script checks the version, because the build uses the macOS 27 SDK.
+* **The script prints `the Xcode command line tools are missing`.** Run `xcode-select --install`.
+* **The script prints `pkg-config is missing`.** Install it, for example with `brew install pkgconf`.
+* **The link step fails with `framework 'AGL' not found`.** Keep the `WrapOpenGL_AGL` setting in the CMake file. Delete the folder `build/native/build`, and run the script again.
+* **The application closes at once, and the shell shows `Killed: 9`.** The signature of the bundle is invalid. Keep the `codesign` step in `build-macos.sh`.
 * **The toolbar has no icons.** Check that the bundle has `Contents/PlugIns/imageformats/libqsvg.dylib`.
 * **The spectrogram area is black.** The area stays black when the microphone sends no sound. Make sure that macOS gives microphone access to InFormant. To ask again, run `tccutil reset Microphone fr.cloyunhee.InFormant`, and then start the application. Choose the input device in the drawer.
-* **Docker prints `requested image's platform (linux/amd64) does not match the detected host platform`.** This warning is expected on arm64. Ignore it, because Rosetta runs the image.
 
 ### Known limits
 
 * The checks launched the application, saved a picture of the window, and confirmed the toolbar, the axes, and the text. Speech from a loudspeaker, picked up by the microphone, drew the spectrogram, the pitch track, and the formant tracks.
 * The checks used the built-in input path of one Mac with a USB webcam microphone. Other input devices are not tested.
+* The native build is tested on one Mac with macOS 27.0.1 and Qt 6.8.3. The application starts, shows the window, and quits with no crash report.
 * The application has an ad hoc signature and no notarization.
 * The application reads its configuration from `~/Library/Application/informant.conf`.
-* The `hfsplus` tool copies each symlink as a full file. The application bundle uses 143 MB in the image, instead of 60 MB.
-* The build runs as root in the container. On a Linux host, the files in `build` and `dist` belong to root.
-* The Dockerfile clones the osxcross `master` branch with no pin. A future osxcross change can break the image.
 * The checks of the playback confirmed the data flow, the position, and the view that follows the sound. Nobody listened to the sound.
 * Video recording needs macOS. The other systems write the sound and the report only.
 * The checks covered views up to 5 minutes, a 20 second speech file in two formats (AIFF and AAC), and recordings of 13 seconds. A view of many hours uses one short analysis for each column. This path has no test with hours of sound.
-* The repository tracks the Apple SDK archive `docker/MacOSX11.3.sdk.tar.xz` (52 MB). A review tool that blocks binary files can block a merge for this reason.
+* The repository still tracks the Apple SDK archive `docker/MacOSX11.3.sdk.tar.xz` (52 MB). The build does not use it any more. A review tool that blocks binary files can block a merge for this reason.
 
 ## How to compile from source locally
 

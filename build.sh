@@ -23,9 +23,6 @@ case $target in
     linux)
         tag=linux
         ;;
-    macos)
-        tag=macos
-        ;;
     android)
         tag=android
         arch=${3:-x86}
