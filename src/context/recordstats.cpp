@@ -18,11 +18,13 @@ struct Summary {
         for (double v : values) sum += v;
         return sum / (double) values.size();
     }
+    // The sample standard deviation, with N - 1 in the divisor. One value has no spread.
     double sd() const {
+        if (values.size() < 2) return 0.0;
         const double m = mean();
         double sum = 0;
         for (double v : values) sum += (v - m) * (v - m);
-        return std::sqrt(sum / (double) values.size());
+        return std::sqrt(sum / (double) (values.size() - 1));
     }
 
     // The value at a fraction of the sorted values, with a linear step between two values.

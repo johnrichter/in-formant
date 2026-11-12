@@ -44,6 +44,25 @@ The row below the graph can show a table for the last seconds of the capture. Ea
 | N | The number of values. |
 | Note | The musical note of the mean pitch, and the error in cents. |
 
+### What SD and CV tell you
+
+SD is the standard deviation. It measures how far the values spread around the mean. SD has the unit of the track, which is hertz for pitch and for each formant.
+
+CV is the coefficient of variation. CV is SD divided by the mean, in percent. CV has no unit, so you can compare tracks that have different means.
+
+- A low SD or CV means that the value stays close to the mean. The sound is steady.
+- A high SD or CV means that the value moves a lot.
+- A pitch SD of 20 Hz with a mean of 200 Hz gives a CV of 10%.
+- The same SD of 20 Hz with a mean of 100 Hz gives a CV of 20%. The same step in hertz is a larger step for a low voice.
+
+How to use the two values:
+
+- **Pitch.** The ear hears pitch changes as ratios. CV compares the movement of a low voice and a high voice better than SD does. A higher CV means more intonation.
+- **Formants.** In a sustained vowel, a low SD means a stable formant. A high SD means that the vowel moved, or that the tracker made errors.
+- **Errors.** One jump of the tracker to a wrong octave raises SD and CV a lot. Look at the track before you trust a high value.
+
+The report that Record writes uses the same definition as the table. Both divide the sum of squares by N - 1.
+
 ## Move in time
 
 - The map below the graph shows the whole session. Click or drag in the map to go to another time.

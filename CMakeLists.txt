@@ -381,6 +381,19 @@ else()
     add_executable(in-formant WIN32 ${SOURCES} ${RESOURCES_OBJ})
 endif()
 
+### TESTS
+
+# The tests cover the logic that has no window or sound device. Run them with ctest.
+option(INFORMANT_BUILD_TESTS "Build the unit tests" OFF)
+if(INFORMANT_BUILD_TESTS)
+    enable_testing()
+    add_library(tomlpp_for_tests STATIC src/tomlplusplus.cpp)
+    target_include_directories(tomlpp_for_tests SYSTEM PUBLIC ${TOMLPP_INCLUDE_DIR})
+    add_executable(config_migration_test tests/config_migration_test.cpp)
+    target_link_libraries(config_migration_test PRIVATE tomlpp_for_tests)
+    add_test(NAME config_migration COMMAND config_migration_test)
+endif()
+
 target_include_directories(in-formant SYSTEM PRIVATE ${ARMADILLO_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS} ${TOMLPP_INCLUDE_DIR})
 target_link_libraries(in-formant PRIVATE Eigen3::Eigen ${FFTW_LIBRARIES} Qt6::Quick Qt6::QuickControls2 Qt6::QuickTemplates2 Qt6::Qml Qt6::Widgets Qt6::OpenGL Qt6::Svg Qt6::Gui Qt6::Core)
 target_link_directories(in-formant PRIVATE ${FFTW_LIBRARY_DIRS})

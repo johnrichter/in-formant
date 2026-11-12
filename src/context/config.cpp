@@ -1,5 +1,6 @@
 #include "contextmanager.h"
 #include "config.h"
+#include "configmigration.h"
 #include <QFile>
 #include <cmath>
 #include "cfgpath.h"
@@ -124,22 +125,7 @@ Config::Config()
     initSubTable(mTbl, "options");
     initSubTable(mTbl, "meta");
 
-    // The configuration file stores each default at the first exit, so a new default has no effect
-    // on an existing file. Each version applies new defaults one time.
-    constexpr int64_t currentVersion = 3;
-    const int64_t fileVersion = integerField(mTbl["meta"], "version", 0);
-    if (fileVersion < 2) {
-        mTbl["analysis"].as_table()->insert_or_assign("granularity", 10.0);
-        // Closer frames give smoother lines in the tracks.
-        mTbl["analysis"].as_table()->insert_or_assign("pitchSpacing", 20.0);
-        mTbl["analysis"].as_table()->insert_or_assign("formantSpacing", 40.0);
-        mTbl["view"].as_table()->insert_or_assign("timeSpan", 15.0);
-    }
-    if (fileVersion < 3) {
-        // The glottal flow estimate follows the sound at a high rate.
-        mTbl["analysis"].as_table()->insert_or_assign("oscilloscopeSpacing", 20.0);
-    }
-    mTbl["meta"].as_table()->insert_or_assign("version", currentVersion);
+    migrateConfig(mTbl);
 
     // Read the options. An option with no stored value, or with a value of the wrong type, keeps its default.
     mOptions = defaultOptions();
@@ -182,11 +168,11 @@ QVariantMap Config::defaultOptions()
     // Tracks.
     m["trackStyle"] = 2;         // 0 dots, 1 lines, 2 lines and dots
     m["lineSmoothness"] = 35;    // percent
-    m["lineWidth"] = 2.5;        // pixels at 100 percent zoom
-    m["dotRadius"] = 3.0;        // pixels at 100 percent zoom
+    m["lineWidth"] = 2.0;        // pixels at 100 percent zoom
+    m["dotRadius"] = 2.0;        // pixels at 100 percent zoom
 
     // Track statistics. Each bit of the mask shows one value.
-    m["statsMask"] = 0x1 | 0x2 | 0x8 | 0x40 | 0x80;   // current, min, mean, p95, max
+    m["statsMask"] = 0x1 | 0x2 | 0x8 | 0x10 | 0x40 | 0x80;   // current, min, mean, median, p95, max
     m["statsWindow"] = 0.0;      // seconds, 0 means the visible window
 
     // Oscilloscope.
@@ -443,7 +429,7 @@ void Config::setViewMinFrequency(int f)
 
 int Config::getViewMaxFrequency()
 {
-    return integerField(mTbl["view"], "maxFrequency", 6000);
+    return integerField(mTbl["view"], "maxFrequency", 5500);
 }
 
 void Config::setViewMaxFrequency(int f)
