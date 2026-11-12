@@ -3,3 +3,26 @@
 /unused
 *.swp
 /.cache
+
+# Binaries and build output. Never commit these. Git LFS routes the binary types
+# that the project must track (see .gitattributes).
+*.dmg
+*.app/
+*.exe
+*.dll
+*.dylib
+*.so
+*.so.*
+*.a
+*.lib
+*.o
+*.obj
+*.pdb
+*.apk
+*.aab
+*.pyc
+
+# Local tool state and operating system files.
+/.claude/
+.DS_Store
+*.ips
