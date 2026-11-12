@@ -74,13 +74,14 @@ void Pipeline::callbackProcessing()
                 slidingWindow.end());
         std::copy(block.begin(), block.end(), std::prev(slidingWindow.end(), block.size()));
 
+        // The sliding window ends at the end of the new block.
+        time += granularity;
+
         for (auto& processor : mProcessors) {
             if (processor->canProcess(time)) {
                 processor->process(slidingWindow, mSampleRate, time);
             }
         }
-
-        time += granularity;
     }
 }
 

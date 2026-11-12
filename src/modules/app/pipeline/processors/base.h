@@ -22,6 +22,10 @@ namespace Module::App::Processors {
         double getFrameLength() const;
 
     protected:
+        // The time of the newest sample in the frame, in seconds.
+        double getFrameEndTime() const;
+
+        // The time of the center of the frame, in seconds.
         double getCenteredTime() const;
 
     private:
@@ -29,6 +33,7 @@ namespace Module::App::Processors {
         double mFrameLength;
 
         double mTime;
+        double mFrameEnd;
 
         rpm::vector<double> mData;
     };
