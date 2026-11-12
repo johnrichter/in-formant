@@ -331,6 +331,7 @@ void CanvasRenderer::drawSpectrogram(
         const QVector<QRgb>& colorTable,
         float sliceTimeStart,
         float sliceTimeEnd,
+        float holdTimeEnd,
         float timeStart,
         float timeEnd)
 {
@@ -397,7 +398,9 @@ void CanvasRenderer::drawSpectrogram(
     glActiveTexture(GL_TEXTURE0);
     glBindVertexArray(mSpecVao);
 
-    float x2 = mPlotLeft + w * (sliceTimeEnd - timeStart) / (timeEnd - timeStart);
+    // The newest slice is centred on a time that is earlier than the end of the view. The picture
+    // holds the newest slice up to holdTimeEnd, so that no black bar shows at the right edge.
+    float x2 = mPlotLeft + w * (std::max(sliceTimeEnd, holdTimeEnd) - timeStart) / (timeEnd - timeStart);
     float x1 = mPlotLeft + w * (sliceTimeStart - timeStart) / (timeEnd - timeStart);
     float y2 = h;
     float y1 = 0;
@@ -408,8 +411,14 @@ void CanvasRenderer::drawSpectrogram(
     // The column numbers can grow very large, so the end column wraps. Large numbers lose the
     // precision of a float after some hours.
     const int xEnd = (xOffset + chunkSize1 + chunkSize2) % spectrogramColumns;
+    float holdColumns = 0.0f;
+    if (holdTimeEnd > sliceTimeEnd && sliceTimeEnd > sliceTimeStart) {
+        holdColumns = float(totalSize) * (holdTimeEnd - sliceTimeEnd) / (sliceTimeEnd - sliceTimeStart);
+    }
     float texX1 = float(xEnd - totalSize) / float(spectrogramColumns);
-    float texX2 = float(xEnd) / float(spectrogramColumns);
+    float texX2 = (float(xEnd) + holdColumns) / float(spectrogramColumns);
+    // The shader holds the position at the centre of the newest column.
+    mSpecProgram->setUniformValue(mSpecLoc.lastPosition, float(xEnd) - 0.5f);
     float texY1 = 0.0f;
     float texY2 = 1.0f;
 
@@ -663,6 +672,7 @@ void CanvasRenderer::initShaders()
     mSpecLoc.quality = mSpecProgram->uniformLocation("quality");
     mSpecLoc.blur = mSpecProgram->uniformLocation("blur");
     mSpecLoc.quad = mSpecProgram->uniformLocation("quad");
+    mSpecLoc.lastPosition = mSpecProgram->uniformLocation("lastPosition");
 
     // The spectrogram texture is on unit 0, and the colour map is on unit 1.
     mSpecProgram->bind();

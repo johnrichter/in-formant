@@ -96,6 +96,11 @@ void QPainterWrapper::drawSpectrogram(SliceIterator begin, SliceIterator end)
     const double sliceTimeStart = firstTime - 0.5 * sliceSpacing;
     const double sliceTimeEnd = lastTime + 0.5 * sliceSpacing;
 
+    // The stamp of a slice is the centre of its window, so the newest slice ends before the end of
+    // the view by about half a window. A short gap at the right edge shows the newest slice.
+    constexpr double maxHold = 0.4;   // seconds
+    const double holdTimeEnd = (mTimeEnd > sliceTimeEnd && mTimeEnd - sliceTimeEnd <= maxHold) ? mTimeEnd : sliceTimeEnd;
+
     // Only store the slices that are not in the texture yet.
     double &lastTimeEnd = mSpectrogramLastTime;
 
@@ -179,6 +184,7 @@ void QPainterWrapper::drawSpectrogram(SliceIterator begin, SliceIterator end)
             mOptions.theme.colormap,
             sliceTimeStart,
             sliceTimeEnd,
+            holdTimeEnd,
             mTimeStart,
             mTimeEnd);
         
@@ -204,6 +210,7 @@ void QPainterWrapper::drawSpectrogram(SliceIterator begin, SliceIterator end)
             mOptions.theme.colormap,
             sliceTimeStart,
             sliceTimeEnd,
+            holdTimeEnd,
             mTimeStart,
             mTimeEnd);
     }
@@ -243,6 +250,7 @@ void QPainterWrapper::drawSpectrogramImage(unsigned long long id, const rpm::vec
         mMaxGain,
         mOptions.theme.colormap,
         timeStart,
+        timeEnd,
         timeEnd,
         mTimeStart,
         mTimeEnd);

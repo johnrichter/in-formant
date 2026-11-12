@@ -99,6 +99,7 @@ namespace Gui {
                 const QVector<QRgb>& colorTable,
                 float sliceTimeStart,
                 float sliceTimeEnd,
+                float holdTimeEnd,
                 float timeStart,
                 float timeEnd);
 
@@ -178,7 +179,7 @@ namespace Gui {
 
         // Uniform locations of the spectrogram program.
         struct {
-            int projection, frequencyScale, minFrequency, maxFrequency, gainScale, quality, blur, quad;
+            int projection, frequencyScale, minFrequency, maxFrequency, gainScale, quality, blur, quad, lastPosition;
         } mSpecLoc;
 
         // Uniform locations of the text program.

@@ -52,6 +52,10 @@ uniform int quality;
 // The shape of the cubic filter. 0 is sharp, and 1 is the smoothest.
 uniform float blur;
 
+// The position of the centre of the newest column. The picture holds this column for the
+// time between the newest slice and the end of the view.
+uniform float lastPosition;
+
 #define INV_LOG_2   1.44269504089
 #define INV_LOG_10  0.4342944819
 #define ERB_A       21.33228113095401739888262
@@ -159,6 +163,8 @@ void main()
     float dfreq = abs(dFdy(freq));
 
     float position = TexCoords.x * float(COLUMNS);
+    float dposition = abs(dFdx(position));
+    position = min(position, lastPosition);
 
     float value;
 
@@ -175,11 +181,9 @@ void main()
         }
 
         float row = freq / nyquist * float(count - 1) + 0.5;
-        value = sqrt(max(texture(tex, vec2(TexCoords.x, row / float(ROWS))).r, 0.0));
+        value = sqrt(max(texture(tex, vec2(position / float(COLUMNS), row / float(ROWS))).r, 0.0));
     }
     else {
-        float dposition = abs(dFdx(position));
-
         float sum = 0.0;
         float weight = 0.0;
 
