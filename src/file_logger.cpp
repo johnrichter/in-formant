@@ -117,7 +117,9 @@ void openFileLogger(const char *name) {
 
         close(fd);
         close(pipefd[0]);
-        exit(EXIT_SUCCESS);
+        // This process is a copy of the program. Leave without the static destructors of the copy.
+        // Those of Qt throw an exception at exit, and the system then reports a crash.
+        _exit(EXIT_SUCCESS);
     }
     else {
         close(fd);
