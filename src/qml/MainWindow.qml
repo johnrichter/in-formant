@@ -74,6 +74,29 @@ ApplicationWindow {
                     }
                 }
 
+                // The graph shows the spectrogram and all tracks, or the pitch track alone.
+                Row {
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.leftMargin: 8
+                    Layout.rightMargin: 4
+                    spacing: 2
+
+                    Button {
+                        text: "Full"
+                        flat: true
+                        font.pixelSize: 12
+                        highlighted: config.options.graphMode !== "pitch"
+                        onClicked: config.setOption("graphMode", "full")
+                    }
+                    Button {
+                        text: "Pitch only"
+                        flat: true
+                        font.pixelSize: 12
+                        highlighted: config.options.graphMode === "pitch"
+                        onClicked: config.setOption("graphMode", "pitch")
+                    }
+                }
+
                 ToolButton {
                     icon.source: config.paused ? "qrc:/icons/play_arrow.svg" : "qrc:/icons/stop.svg"
                     checked: config.paused 

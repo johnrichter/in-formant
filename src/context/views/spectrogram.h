@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 
+#include "../../gui/pitchaxis.h"
 #include "../reviewspectrogram.h"
 #include "views.h"
 
@@ -25,6 +26,10 @@ namespace Main::View {
         std::unique_ptr<ReviewSpectrogram> mReview;
         ReviewRequest mLastRequest;
         bool mHasRequest = false;
+
+        // The axis of the pitch-only graph.
+        Gui::PitchAxis mPitchAxis;
+        bool mPitchAxisValid = false;
         std::chrono::steady_clock::time_point mLastRequestTime;
 
         // The newest values of the statistics, and the time that they were computed.

@@ -51,6 +51,11 @@ void RenderContext::render(QPainterWrapper *painter)
     options.lineSmoothness = mConfig->optionInt("lineSmoothness") / 100.0;
     options.lineWidth = mConfig->optionDouble("lineWidth");
     options.dotRadius = mConfig->optionDouble("dotRadius");
+    // The pitch-only graph has one track, so the track is larger.
+    if (mConfig->optionString("graphMode") == "pitch") {
+        options.lineWidth *= 1.6;
+        options.dotRadius *= 1.4;
+    }
     options.statsMask = mConfig->optionInt("statsMask");
 
     const QString themeKey = mConfig->optionString("theme") + "|" + mConfig->optionString("customColors")

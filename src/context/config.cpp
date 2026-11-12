@@ -156,6 +156,7 @@ QVariantMap Config::defaultOptions()
     m["showLegend"] = true;
     m["showStats"] = false;
     m["showMiniMap"] = true;
+    m["graphMode"] = QString("full");  // "full" for the spectrogram and all tracks, "pitch" for the pitch track alone
     m["showBands"] = false;      // show the pitch zones in the graph
     m["bandsInExport"] = true;   // keep the zones on the screen while a recording runs
     m["bandEdges"] = QString("60,150,180,300");  // Hz: the edges of the three zones

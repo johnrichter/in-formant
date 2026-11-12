@@ -1,4 +1,5 @@
 #include "spectrogram.h"
+#include "../../gui/pitchaxis.h"
 #include "../timings.h"
 #include <algorithm>
 #include <cmath>
@@ -101,6 +102,11 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
     const bool fileMode = config->getSessionMode() == 1;
     Session &session = dataStore->session();
 
+    // The pitch-only mode shows the pitch track alone, on an axis that fits the pitch.
+    const bool pitchOnly = config->optionString("graphMode") == "pitch";
+    const bool showSpectrogram = config->getViewShowSpectrogram() && !pitchOnly;
+    const bool showFormants = config->getViewShowFormants() && !pitchOnly;
+
     // Remove the old live slices about once for each second. Removing from the front of a vector
     // moves every element after it, and the write lock stops the analysis thread while it runs.
     // The pitch track and the formant tracks keep a whole session, because the overview and the
@@ -157,9 +163,29 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
     auto& pitchTrack = dataStore->getPitchTrack();
 
     painter->setTimeRange(timeStart, timeEnd);
+
+    if (pitchOnly) {
+        EntryVector fitStorage;
+        const Picked fitRange = pick(pitchTrack, timeStart, timeEnd, fitStorage, 2000, false);
+        std::vector<double> values;
+        for (auto it = fitRange.begin; it != fitRange.end; ++it) {
+            if (it->second.has_value()) values.push_back(*it->second);
+        }
+
+        // With no pitch in view, the axis keeps its last range.
+        const Gui::PitchAxis target = Gui::fitPitchAxis(values, mPitchAxis);
+        mPitchAxis = mPitchAxisValid ? Gui::easePitchAxis(mPitchAxis, target) : target;
+        mPitchAxisValid = true;
+
+        painter->setMinFrequency(mPitchAxis.low);
+        painter->setMaxFrequency(mPitchAxis.high);
+        // Pitch is heard on a logarithmic scale, so equal musical steps have equal height.
+        painter->setFrequencyScale(FrequencyScale::Logarithmic);
+    }
+
     std::vector<std::string> trackNames;
     if (config->getViewShowPitch()) trackNames.push_back("Pitch");
-    if (config->getViewShowFormants()) {
+    if (showFormants) {
         for (int i = 0; i < config->getViewFormantCount(); ++i) trackNames.push_back("F" + std::to_string(i + 1));
     }
     painter->updateLayout(trackNames);
@@ -176,7 +202,7 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
 
     painter->beginPlot();
 
-    if (config->getViewShowSpectrogram()) {
+    if (showSpectrogram) {
         if (useReview) {
             if (!mReview) mReview = std::make_unique<ReviewSpectrogram>(&session);
 
@@ -276,7 +302,7 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
         collect("Pitch", options.theme.pitch, true, pitchTrack);
     }
 
-    if (config->getViewShowFormants()) {
+    if (showFormants) {
         const int formantCount = config->getViewFormantCount();
 
         for (int i = 0; i < formantCount; ++i) {
@@ -331,7 +357,7 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
         };
 
         if (config->getViewShowPitch()) sample("Pitch", options.theme.pitch, true, pitchTrack);
-        if (config->getViewShowFormants()) {
+        if (showFormants) {
             for (int i = 0; i < config->getViewFormantCount(); ++i) {
                 sample(("F" + std::to_string(i + 1)).c_str(), options.theme.formant(i), false, dataStore->getFormantTrack(i));
             }

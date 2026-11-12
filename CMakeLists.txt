@@ -401,6 +401,8 @@ if(INFORMANT_BUILD_TESTS)
     add_test(NAME oklab COMMAND oklab_test)
     add_executable(bands_test tests/bands_test.cpp)
     add_test(NAME bands COMMAND bands_test)
+    add_executable(pitch_axis_test tests/pitch_axis_test.cpp)
+    add_test(NAME pitch_axis COMMAND pitch_axis_test)
 
     # The offline test of the synthesizer voice. It needs the filter code and the allocator only.
     add_executable(voice_test tests/voice_test.cpp
