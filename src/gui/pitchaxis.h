@@ -3,11 +3,30 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <cstring>
 #include <vector>
 
 // The vertical axis of the pitch-only graph. The functions have no drawing code, so a test can run them.
 
 namespace Gui {
+
+// True when the value is not infinite and not NaN. The build uses fast math, and then std::isfinite
+// can give a wrong answer, so this function reads the exponent bits and the compiler does not optimize it.
+#if defined(__clang__)
+#define GUI_NO_FAST_MATH __attribute__((optnone, noinline))
+#elif defined(__GNUC__)
+#define GUI_NO_FAST_MATH __attribute__((optimize("no-fast-math"), noinline))
+#else
+#define GUI_NO_FAST_MATH
+#endif
+
+GUI_NO_FAST_MATH inline bool isFiniteValue(double v)
+{
+    std::uint64_t bits;
+    std::memcpy(&bits, &v, sizeof bits);
+    return ((bits >> 52) & 0x7ff) != 0x7ff;
+}
 
 struct PitchAxis {
     double low = 80.0;
@@ -21,12 +40,23 @@ inline double semitonesBetween(double low, double high)
     return 12.0 * std::log2(high / low);
 }
 
+// The fixed range of the pitch-only graph. The low edge is at least 0 Hz. The high edge is at most
+// 2000 Hz and at least 50 Hz above the low edge. A wrong value gives the default range of 0 to 500 Hz.
+inline PitchAxis fixedPitchAxis(double low, double high)
+{
+    if (!isFiniteValue(low) || !isFiniteValue(high)) return { 0.0, 500.0 };
+    PitchAxis axis;
+    axis.low = std::clamp(low, 0.0, 1950.0);
+    axis.high = std::clamp(high, axis.low + 50.0, 2000.0);
+    return axis;
+}
+
 // The range that shows the values with a margin. The 5th and the 95th percentile set the edges, so
 // a few wrong values, for example an octave error, do not stretch the axis. The range is never
 // narrower than 12 semitones. Too few values give the fallback range.
 inline PitchAxis fitPitchAxis(std::vector<double> values, const PitchAxis &fallback = PitchAxis())
 {
-    values.erase(std::remove_if(values.begin(), values.end(), [](double v) { return !(v > 0.0) || !std::isfinite(v); }),
+    values.erase(std::remove_if(values.begin(), values.end(), [](double v) { return !isFiniteValue(v) || !(v > 0.0); }),
                  values.end());
     if (values.size() < 5) return fallback;
 

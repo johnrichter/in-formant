@@ -164,7 +164,15 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
 
     painter->setTimeRange(timeStart, timeEnd);
 
-    if (pitchOnly) {
+    if (pitchOnly && !config->optionBool("pitchAxisAuto")) {
+        // A fixed range, so the zones and the whole voice stay in view. The scale is linear.
+        const Gui::PitchAxis fixed = Gui::fixedPitchAxis(config->optionDouble("pitchAxisMin"), config->optionDouble("pitchAxisMax"));
+        painter->setMinFrequency(fixed.low);
+        painter->setMaxFrequency(fixed.high);
+        painter->setFrequencyScale(FrequencyScale::Linear);
+        mPitchAxisValid = false;
+    }
+    else if (pitchOnly) {
         EntryVector fitStorage;
         const Picked fitRange = pick(pitchTrack, timeStart, timeEnd, fitStorage, 2000, false);
         std::vector<double> values;

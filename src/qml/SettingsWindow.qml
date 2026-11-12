@@ -190,6 +190,29 @@ ApplicationWindow {
 
                 MenuSeparator { Layout.fillWidth: true }
 
+                Label { text: "Pitch-only graph"; font.bold: true }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "From"; color: "lightgrey" }
+                    TextField {
+                        Layout.preferredWidth: 80
+                        text: String(config.options.pitchAxisMin)
+                        validator: DoubleValidator { bottom: 0; top: 1950; decimals: 0; notation: DoubleValidator.StandardNotation }
+                        onEditingFinished: { const v = parseFloat(text); if (!isNaN(v)) config.setOption("pitchAxisMin", v) }
+                    }
+                    Label { text: "to"; color: "lightgrey" }
+                    TextField {
+                        Layout.preferredWidth: 80
+                        text: String(config.options.pitchAxisMax)
+                        validator: DoubleValidator { bottom: 50; top: 2000; decimals: 0; notation: DoubleValidator.StandardNotation }
+                        onEditingFinished: { const v = parseFloat(text); if (!isNaN(v)) config.setOption("pitchAxisMax", v) }
+                    }
+                    Label { text: "Hz"; color: "lightgrey" }
+                }
+                OptionSwitch { key: "pitchAxisAuto"; text: "Fit the range to the pitch in view (logarithmic scale)" }
+
+                MenuSeparator { Layout.fillWidth: true }
+
                 Label { text: "Pitch zones"; font.bold: true }
                 OptionSwitch { key: "showBands"; text: "Show the pitch zones in the graph" }
                 OptionSwitch { key: "bandsInExport"; text: "Keep the zones in recordings" }
