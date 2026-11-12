@@ -8,7 +8,7 @@ ApplicationWindow {
     title: appName + " - Settings"
     visible: false
 
-    width: 560
+    width: 640
     height: 680
     minimumWidth: 460
     minimumHeight: 420
@@ -16,37 +16,58 @@ ApplicationWindow {
     Material.theme: Material.Dark
     Material.accent: Material.DeepPurple
 
-    // One switch for a true or false option.
-    component OptionSwitch: Switch {
-        property string key
-        checked: config.options[key]
-        onToggled: config.setOption(key, checked)
+    function mel(f) {
+        return 2595 * Math.log10(1 + f / 700);
     }
 
-    // One slider for a number option. The label shows the value and the unit.
-    component OptionSlider: ColumnLayout {
-        property string key
+    function hz(m) {
+        return 700 * (Math.pow(10, m / 2595) - 1);
+    }
+
+    // One slider for a number of the configuration. The label shows the title and the value.
+    component ConfigSlider: ColumnLayout {
+        id: cs
         property string title
-        property string unit: ""
+        property string valueText
         property real from: 0
         property real to: 100
-        property real stepSize: 1
-        property int decimals: 0
+        property real stepSize: 0
+        property real value: 0
+        signal moved(real newValue)
         Layout.fillWidth: true
         spacing: 0
 
         RowLayout {
             Layout.fillWidth: true
-            Label { text: title; Layout.fillWidth: true }
-            Label { text: Number(config.options[key]).toFixed(decimals) + unit; color: "lightgrey" }
+            Label { text: cs.title; Layout.fillWidth: true }
+            Label { text: cs.valueText; color: "lightgrey" }
         }
         Slider {
             Layout.fillWidth: true
-            from: parent.from
-            to: parent.to
-            stepSize: parent.stepSize
-            value: config.options[key]
-            onMoved: config.setOption(key, value)
+            from: cs.from
+            to: cs.to
+            stepSize: cs.stepSize
+            value: cs.value
+            onMoved: cs.moved(value)
+        }
+    }
+
+    // One list of choices for a number of the configuration.
+    component ConfigCombo: ColumnLayout {
+        id: cc
+        property string title
+        property alias model: box.model
+        property int index: 0
+        signal picked(int newIndex)
+        Layout.fillWidth: true
+        spacing: 2
+
+        Label { text: cc.title }
+        ComboBox {
+            id: box
+            Layout.fillWidth: true
+            currentIndex: cc.index
+            onActivated: cc.picked(currentIndex)
         }
     }
 
@@ -59,16 +80,191 @@ ApplicationWindow {
 
     header: TabBar {
         id: tabs
+        objectName: "settingsTabs"
+        TabButton { text: "General" }
+        TabButton { text: "Display" }
+        TabButton { text: "Input" }
         TabButton { text: "Axes" }
         TabButton { text: "Tracks" }
         TabButton { text: "Readouts" }
         TabButton { text: "Theme" }
-        TabButton { text: "Recording" }
     }
 
     StackLayout {
         anchors.fill: parent
         currentIndex: tabs.currentIndex
+
+        // General
+        ScrollView {
+            clip: true
+            ColumnLayout {
+                width: settingsWindow.width - 40
+                x: 20
+                spacing: 8
+
+                Label { text: "Scratch recording"; font.bold: true; Layout.topMargin: 14 }
+                OptionSwitch { key: "keepRecordings"; text: "Keep all recordings when the app closes" }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: "lightgrey"
+                    text: "The app stores the live sound in a scratch file. The app deletes this file when it closes. When you switch this on, the app saves the sound as a WAV file in its data folder instead. Files that you save yourself stay in all cases."
+                }
+
+                MenuSeparator { Layout.fillWidth: true }
+
+                Label { text: "Keys"; font.bold: true }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: "lightgrey"
+                    text: "Space starts and stops the capture. The key combination for the preferences (Command and comma on a Mac) opens this window."
+                }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: "lightgrey"
+                    text: "The Record button below the graph asks for the choices of the video at each start. The time of the view is a field at the right end of the bar below the graph."
+                }
+            }
+        }
+
+        // Display
+        ScrollView {
+            clip: true
+            ColumnLayout {
+                width: settingsWindow.width - 40
+                x: 20
+                spacing: 8
+
+                Label { text: "Layers"; font.bold: true; Layout.topMargin: 14 }
+                Switch {
+                    text: "Spectrogram"
+                    checked: config.viewShowSpectrogram
+                    onToggled: config.viewShowSpectrogram = checked
+                }
+                Switch {
+                    text: "Pitch track"
+                    checked: config.viewShowPitch
+                    onToggled: config.viewShowPitch = checked
+                }
+                Switch {
+                    text: "Formant tracks"
+                    checked: config.viewShowFormants
+                    onToggled: config.viewShowFormants = checked
+                }
+
+                MenuSeparator { Layout.fillWidth: true }
+
+                Label { text: "Frequency range of the view"; font.bold: true }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: config.viewMinFrequency + " Hz"; color: "lightgrey" }
+                    Item { Layout.fillWidth: true }
+                    Label { text: config.viewMaxFrequency + " Hz"; color: "lightgrey" }
+                }
+                RangeSlider {
+                    Layout.fillWidth: true
+                    from: settingsWindow.mel(1)
+                    to: settingsWindow.mel(16000)
+                    first.value: settingsWindow.mel(config.viewMinFrequency)
+                    first.onMoved: config.viewMinFrequency = Math.max(1, settingsWindow.hz(first.value))
+                    second.value: settingsWindow.mel(config.viewMaxFrequency)
+                    second.onMoved: config.viewMaxFrequency = Math.max(100, settingsWindow.hz(second.value))
+                }
+                ConfigCombo {
+                    title: "Frequency scale"
+                    model: [ "Linear", "Logarithmic", "Mel", "ERB" ]
+                    index: config.viewFrequencyScale
+                    onPicked: (i) => config.viewFrequencyScale = i
+                }
+
+                MenuSeparator { Layout.fillWidth: true }
+
+                Label { text: "Spectrogram"; font.bold: true }
+                ConfigSlider {
+                    title: "FFT size"
+                    valueText: String(config.viewFFTSize)
+                    from: Math.log2(512); to: Math.log2(4096); stepSize: 1
+                    value: Math.log2(config.viewFFTSize)
+                    onMoved: (v) => config.viewFFTSize = Math.pow(2, Math.round(v))
+                }
+                ConfigSlider {
+                    title: "Gain normalization"
+                    valueText: config.viewMaxGain + " dB"
+                    from: -100; to: 40
+                    value: config.viewMaxGain
+                    onMoved: (v) => config.viewMaxGain = v
+                }
+                ConfigCombo {
+                    title: "Quality"
+                    model: [ "Fast", "Smooth" ]
+                    index: config.viewSpectrogramQuality
+                    onPicked: (i) => config.viewSpectrogramQuality = i
+                }
+                ConfigSlider {
+                    enabled: config.viewSpectrogramQuality > 0
+                    title: "Blur"
+                    valueText: config.viewSpectrogramBlur + " %"
+                    from: 0; to: 100; stepSize: 1
+                    value: config.viewSpectrogramBlur
+                    onMoved: (v) => config.viewSpectrogramBlur = v
+                }
+            }
+        }
+
+        // Input
+        ScrollView {
+            clip: true
+            ColumnLayout {
+                width: settingsWindow.width - 40
+                x: 20
+                spacing: 8
+
+                Label { text: "Input device"; font.bold: true; Layout.topMargin: 14 }
+                ComboBox {
+                    Layout.fillWidth: true
+                    model: ["System default" + (config.audioDefaultCaptureDevice !== "" ? " (" + config.audioDefaultCaptureDevice + ")" : "")]
+                            .concat(config.audioCaptureDevices)
+                    currentIndex: Math.max(0, model.indexOf(config.audioCaptureDevice))
+                    onActivated: config.audioCaptureDevice = (currentIndex === 0 ? "" : model[currentIndex])
+                }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: "lightgrey"
+                    text: "The system default follows the choice in the sound settings of the system. The app switches to a new default device by itself."
+                }
+
+                MenuSeparator { Layout.fillWidth: true }
+
+                Label { text: "Algorithms"; font.bold: true }
+                ConfigCombo {
+                    title: "Pitch"
+                    model: [ "YIN", "McLeod", "RAPT" ]
+                    index: config.pitchAlgorithm
+                    onPicked: (i) => config.pitchAlgorithm = i
+                }
+                ConfigCombo {
+                    title: "Formants"
+                    model: HAS_TORCH ? [ "Simple LPC", "Filtered LPC", "DeepFormants" ] : [ "Simple LPC", "Filtered LPC" ]
+                    index: config.formantAlgorithm
+                    onPicked: (i) => config.formantAlgorithm = i
+                }
+                ConfigCombo {
+                    title: "Linear prediction (LPC)"
+                    model: [ "Autocorrelation", "Covariance", "Burg" ]
+                    index: config.linpredAlgorithm
+                    onPicked: (i) => config.linpredAlgorithm = i
+                }
+                ConfigCombo {
+                    title: "Glottal inverse filtering"
+                    model: [ "IAIF", "GFM-IAIF" ]
+                    index: config.invglotAlgorithm
+                    onPicked: (i) => config.invglotAlgorithm = i
+                }
+            }
+        }
 
         // Axes
         ScrollView {
@@ -293,53 +489,6 @@ ApplicationWindow {
                         text: config.options.customFormants
                         onEditingFinished: config.setOption("customFormants", text)
                     }
-                }
-            }
-        }
-
-        // Recording
-        ScrollView {
-            clip: true
-            ColumnLayout {
-                width: settingsWindow.width - 40
-                x: 20
-                spacing: 8
-
-                Label { text: "Recording"; font.bold: true; Layout.topMargin: 14 }
-                Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: "lightgrey"
-                    text: "The Record button below the graph writes three files with the same name: a video (.mp4), the sound (.wav) and a report with statistics (.md)."
-                }
-                OptionSwitch { key: "recordVideo"; text: "Write a video" }
-                OptionSlider {
-                    key: "recordWindow"; title: "Time in the graph of the video"; unit: " s"; from: 2; to: 60; stepSize: 1
-                }
-                Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: "lightgrey"
-                    text: "A short time shows more detail of the pitch and the formants. A long time shows how they change. The graph on the screen uses this time during a recording."
-                }
-                OptionSlider {
-                    key: "recordFps"; title: "Frames each second"; from: 10; to: 30; stepSize: 1
-                }
-                OptionSwitch { key: "recordWindows"; text: "Show the oscilloscope and synthesizer windows in the video" }
-                Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: "lightgrey"
-                    text: "Open windows go in a column at the right of the graph. The video scales them so that it has no empty space."
-                }
-
-                Label { text: "Scratch recording"; font.bold: true; Layout.topMargin: 14 }
-                OptionSwitch { key: "keepRecordings"; text: "Keep all recordings when the app closes" }
-                Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: "lightgrey"
-                    text: "The app stores the live sound in a scratch file. The app deletes this file when it closes. When you switch this on, the app saves the sound as a WAV file in its data folder instead. Files that you save yourself stay in all cases."
                 }
             }
         }

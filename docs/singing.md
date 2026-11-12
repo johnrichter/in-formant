@@ -30,7 +30,7 @@ Vibrato is a regular small change of the pitch. In classical singing it often ha
 
 How to see vibrato:
 
-- Set the view time to 2 or 3 seconds with the slider in the drawer.
+- Set the view time to 2 or 3 seconds in the View field below the graph.
 - Choose the line style for tracks in the Tracks tab of the settings. Set the smoothness of the line low, so the line does not hide the movement.
 - Count the peaks in one second. Measure the width of the movement against the frequency axis. Select the notes or the octaves mode of the axis to read the width in semitones.
 
