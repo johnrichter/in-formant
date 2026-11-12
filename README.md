@@ -147,6 +147,12 @@ Application:
 * **Logger process:** The logger child process did not stop at the end of the pipe, so each launch from a terminal left one process alive. It now stops.
 * **Input device:** The drawer has an "Input device" list. The setting `captureDevice` in the `[audio]` table of the configuration file stores the name. An empty name selects the default input device of macOS. Before this change, the application always used the default device. This device can be a webcam microphone with a low sample rate.
 * **First launch:** The spectrogram, the pitch track, and the formant tracks are on by default. Before this change, a new installation showed a black window.
+* **Spectrogram jump:** The picture of the spectrogram jumped back and forth. The right edge of the texture used the column before the new slices. It now uses the column after them.
+* **CPU use:** The application used 65 to 88 percent of one core. It now uses 16 to 23 percent. The window of the charts that are not visible no longer updates its series. The renderer draws all glyphs of a string, and all points of a track, in one draw call. The spectrogram code no longer copies the visible slices for each frame. The audio queue no longer fills the log, and the synthesizer sends no sound while it is off.
+* **Freeze:** A quit signal could freeze the application. The signal handler called Qt in the middle of a chart update, and the update held a lock. The handler now writes one byte to a pipe, and the event loop quits.
+* **Spectrogram quality:** The drawer has the list "Spectrogram quality" (Fast or Smooth) and the slider "Spectrogram blur" (0 to 100 percent). The keys `spectrogramQuality` and `spectrogramBlur` in the `[view]` table store them. The Smooth filter is a cubic filter on the square root of the power. A blur of 0 gives the sharp Catmull-Rom shape, and a blur of 100 gives the soft B-spline shape. The renderer also averages the bins and the columns that fall in one pixel. It adds noise before the colour lookup to hide steps between colours.
+* **Time step:** The spectrogram has a slice each 10 ms. Before, it had a slice each 20 ms. The key `granularity` in the `[analysis]` table sets the step. A configuration file that stores 20 keeps the old step.
+* **Text:** The renderer starts each string on a whole pixel, so the texture filter does not blur the glyphs.
 
 ### Troubleshooting
 
