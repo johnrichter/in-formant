@@ -171,7 +171,6 @@ Application:
 * The checks of the playback confirmed the data flow, the position, and the view that follows the sound. Nobody listened to the sound.
 * Video recording needs macOS. The other systems write the sound and the report only.
 * The checks covered views up to 5 minutes, a 20 second speech file in two formats (AIFF and AAC), and recordings of 13 seconds. A view of many hours uses one short analysis for each column. This path has no test with hours of sound.
-* The repository still tracks the Apple SDK archive `docker/MacOSX11.3.sdk.tar.xz` (52 MB). The build does not use it any more. A review tool that blocks binary files can block a merge for this reason.
 
 ## How to compile from source locally
 
