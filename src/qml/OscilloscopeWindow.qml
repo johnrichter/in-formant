@@ -56,8 +56,11 @@ ApplicationWindow {
         }
     }
 
+    // Update the charts only while the window is on the screen. A chart that nobody sees
+    // still repaints on the CPU for every update, and this took about a third of the main thread.
     Connections {
         target: dataVis
+        enabled: synthWindow.visible
         function onSoundChanged() {
             dataVis.updateSoundSeries(oscSoundSeries, oscAxisX, oscAxisY)
         }

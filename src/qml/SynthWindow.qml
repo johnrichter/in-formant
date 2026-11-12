@@ -273,8 +273,11 @@ ApplicationWindow {
                     }
                 }
 
+                // Update the charts only while the window is on the screen. A chart that nobody sees
+                // still repaints on the CPU for every update, and this took about a third of the main thread.
                 Connections {
                     target: synth
+                    enabled: synthWindow.visible
                     function onFilterResponseChanged() {
                         synth.updateFilterResponseSeries(filterSpectrumSeries, filterSpectrumAxisX, filterSpectrumAxisY)
                     }
