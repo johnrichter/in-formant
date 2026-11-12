@@ -263,17 +263,21 @@ ApplicationWindow {
                     Layout.preferredWidth: 72
                     implicitHeight: 28
                     font.pixelSize: 12
-                    topPadding: 2
-                    bottomPadding: 2
+                    topPadding: 0
+                    bottomPadding: 0
+                    topInset: 0
+                    bottomInset: 0
                     horizontalAlignment: Text.AlignRight
+                    verticalAlignment: Text.AlignVCenter
                     inputMethodHints: Qt.ImhFormattedNumbersOnly
                     validator: DoubleValidator { bottom: 0.5; top: 86400; decimals: 1; notation: DoubleValidator.StandardNotation }
-                    text: String(config.viewTimeSpan)
+                    clip: true
+                    text: String(Math.round(config.viewTimeSpan * 10) / 10)
                     onEditingFinished: {
                         const v = parseFloat(text)
                         if (!isNaN(v)) config.viewTimeSpan = Math.min(Math.max(v, 0.5), 86400)
                         // Show the stored value again, also when the input was out of range.
-                        text = Qt.binding(function() { return String(config.viewTimeSpan) })
+                        text = Qt.binding(function() { return String(Math.round(config.viewTimeSpan * 10) / 10) })
                         focus = false
                     }
                 }

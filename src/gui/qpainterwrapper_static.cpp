@@ -96,9 +96,9 @@ void QPainterWrapper::drawSpectrogram(SliceIterator begin, SliceIterator end)
     const double sliceTimeStart = firstTime - 0.5 * sliceSpacing;
     const double sliceTimeEnd = lastTime + 0.5 * sliceSpacing;
 
-    // The stamp of a slice is the centre of its window, so the newest slice ends before the end of
-    // the view by about half a window. A short gap at the right edge shows the newest slice.
-    constexpr double maxHold = 0.4;   // seconds
+    // The live view ends at the time of the newest slice. A gap of a few milliseconds can still
+    // remain, because the sound arrives in blocks. The newest slice fills such a gap.
+    constexpr double maxHold = 0.03;   // seconds
     const double holdTimeEnd = (mTimeEnd > sliceTimeEnd && mTimeEnd - sliceTimeEnd <= maxHold) ? mTimeEnd : sliceTimeEnd;
 
     // Only store the slices that are not in the texture yet.

@@ -132,8 +132,12 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
     double timeEnd;
     if (live) {
         // The graph starts at time zero at the left, and it fills towards the right. After the
-        // sound fills the width, the graph scrolls.
-        const double timeDelay = 50.0 / 1000.0;
+        // sound fills the width, the graph scrolls. The stamp of a slice is the centre of its
+        // window, so the newest slice is older than the newest sound by half a window. The view
+        // ends at the time of the newest slice, so the picture reaches the right edge and shows
+        // no repeated or empty part.
+        const double sliceRate = 2.0 * config->getViewMaxFrequency();
+        const double timeDelay = 0.5 * config->getViewFFTSize() / sliceRate;
         timeEnd = std::max(realTimeEnd - timeDelay, viewDuration);
     }
     else {

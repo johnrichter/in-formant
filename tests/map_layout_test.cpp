@@ -110,5 +110,15 @@ int main()
         CHECK(clampViewSpan(12.0) == 12.0);
     }
 
+    // A drag of a frame edge sets a span with one decimal, and the span stays inside the session or the map time.
+    {
+        CHECK_NEAR(dragViewSpan(37.4999999, 600.0, 150.0), 37.5, 1e-9);
+        CHECK_NEAR(dragViewSpan(7.252709999, 14.0, 150.0), 7.3, 1e-9);
+        CHECK(dragViewSpan(1e9, 600.0, 150.0) == 600.0);
+        CHECK(dragViewSpan(1e9, 20.0, 150.0) == 150.0);
+        CHECK(dragViewSpan(-5.0, 600.0, 150.0) == minViewSpan);
+        CHECK(dragViewSpan(1e9, 1e9, 1e9) == maxViewSpan);
+    }
+
     return TEST_RESULT();
 }

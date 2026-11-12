@@ -119,6 +119,14 @@ inline double clampViewSpan(double span)
     return std::clamp(span, minViewSpan, maxViewSpan);
 }
 
+// The span that a drag of a frame edge sets. The span has one decimal, so the View field shows a
+// short number. The span cannot be longer than the longer of the session and the map time.
+inline double dragViewSpan(double span, double duration, double mapWindow)
+{
+    const double limit = std::max(std::max(duration, mapWindow), minViewSpan);
+    return std::clamp(std::round(span * 10.0) / 10.0, minViewSpan, std::min(limit, maxViewSpan));
+}
+
 }
 
 #endif // GUI_MAPLAYOUT_H

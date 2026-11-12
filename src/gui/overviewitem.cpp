@@ -413,10 +413,10 @@ void OverviewItem::mouseMoveEvent(QMouseEvent *event)
         moveEnd(t + mDragOffset);
         break;
     case Drag::LeftEdge:
-        sConfig->setViewTimeSpan(clampViewSpan(mFixedTime - t));
+        sConfig->setViewTimeSpan(dragViewSpan(mFixedTime - t, total(), sConfig->optionDouble("mapWindow")));
         break;
     case Drag::RightEdge: {
-        const double span = clampViewSpan(t - mFixedTime);
+        const double span = dragViewSpan(t - mFixedTime, total(), sConfig->optionDouble("mapWindow"));
         sConfig->setViewTimeSpan(span);
         moveEnd(mFixedTime + span);
         break;
