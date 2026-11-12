@@ -567,6 +567,8 @@ ApplicationWindow {
                     StatBox { bit: 0x400; text: "Pitch note and cents" }
                 }
 
+                OptionSwitch { key: "rangeSemitones"; text: "Show the Range in semitones (st) and not in Hz"; enabled: config.options.showStats }
+
                 RowLayout {
                     enabled: config.options.showStats
                     Label { text: "Window of the statistics" }

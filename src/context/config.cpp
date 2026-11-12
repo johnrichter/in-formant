@@ -163,6 +163,7 @@ QVariantMap Config::defaultOptions()
     m["practiceFolder"] = QString("");       // the folder of the sessions, empty for Documents/InFormant/Practice
     m["practiceKeepAudio"] = true;           // write the sound of a session into its folder
     m["graphMode"] = QString("full");  // "full" for the spectrogram and all tracks, "pitch" for the pitch track alone
+    m["rangeSemitones"] = false; // show the Range statistic in semitones and not in Hz
     m["showBands"] = false;      // show the pitch zones in the graph
     m["bandsInExport"] = true;   // keep the zones on the screen while a recording runs
     m["bandEdges"] = QString("60,150,180,300");  // Hz: the edges of the three zones

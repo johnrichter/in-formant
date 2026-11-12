@@ -57,6 +57,7 @@ void RenderContext::render(QPainterWrapper *painter)
         options.dotRadius *= 1.4;
     }
     options.statsMask = mConfig->optionInt("statsMask");
+    options.rangeSemitones = mConfig->optionBool("rangeSemitones");
 
     const QString themeKey = mConfig->optionString("theme") + "|" + mConfig->optionString("customColors")
         + "|" + mConfig->optionString("customPitch") + "|" + mConfig->optionString("customFormants") + "|" + mConfig->optionString("colorSaturation");

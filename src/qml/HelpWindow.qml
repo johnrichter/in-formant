@@ -22,6 +22,7 @@ ApplicationWindow {
         { title: "Feminization", file: "feminization" },
         { title: "Masculinization", file: "masculinization" },
         { title: "Singing", file: "singing" },
+        { title: "Warm-ups", file: "warmups-and-vocal-health" },
         { title: "The math", file: "the-math" }
     ]
 

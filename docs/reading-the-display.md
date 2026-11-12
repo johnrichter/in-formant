@@ -46,7 +46,7 @@ The frame times show in a separate box at the top of the graph. The app hides th
 | P5, P95 | The value that 5% or 95% of the values do not exceed. |
 | Mean, Median | The average value, and the middle value. |
 | SD | The standard deviation. It shows how much the value changes. |
-| Range | P95 minus P5. It ignores a few extreme values. |
+| Range | P95 minus P5. It ignores a few extreme values. A switch in the Readouts tab shows it in semitones (st). |
 | CV | SD divided by the mean, in percent. |
 | Voiced | The share of frames that have a value. |
 | N | The number of values. |
@@ -83,6 +83,55 @@ The report that Record writes uses the same definition as the table. Both divide
 - Open file analyzes an audio file.
 - Record saves a video, the sound, and a report with the statistics.
 
+## Pitch zones
+
+The Display tab has a switch for pitch zones. The zones are three coloured bands behind the tracks:
+
+- **Masculine** is blue. The default range is 60 to 150 Hz.
+- **Androgynous** is yellow-green. The default range is 150 to 180 Hz.
+- **Feminine** is pink. The default range is 180 to 300 Hz.
+
+A text field sets the four edges. The bands follow the frequency scale. A thin band has no label.
+
+The zones show ranges of pitch that many listeners hear in a certain way. This is a rough stereotype. It differs between languages, voices, and listeners. A zone is not a goal.
+
+The recorder grabs the whole window, so a video shows the zones. The switch "Keep the zones in recordings" turns this off.
+
+## Pitch-only graph
+
+The two buttons "Full" and "Pitch only" in the toolbar set what the graph shows. The pitch-only mode hides the spectrogram and the formant tracks. It draws the pitch track larger.
+
+- The vertical axis goes from 0 to 500 Hz. The Display tab sets the two edges.
+- A switch fits the axis to the pitch in view instead. This uses a logarithmic scale and a minimum range of 12 semitones.
+- The pitch zones show in this mode too.
+
+Use this mode for a pitch slide, for a warm-up, and for a talk where you only watch the pitch.
+
+## Colours
+
+The Theme tab sets the colours of the spectrogram, the tracks, and the plots.
+
+- A colour map changes from near black to a light tint. The colours change in a way that looks even, so no grey patch shows between two colours.
+- The saturation slider makes the colours weaker or stronger.
+- The brightness has its own slider. It is the Gain normalization slider in the Display tab. A loud sound must not fill the map with its last colour.
+- Each track has a dark outline, so it stays visible on every colour.
+
+## Practice mode and progress
+
+The Practice button below the graph starts a session on the live capture. Choose the task in the list next to the button: Free, Vowels, Reading, or Conversation.
+
+- The M key, or the Mark button, saves a mark. A mark has the time, a note if you type one, and the pitch and F1 to F4 of the last half second.
+- Click Stop practice to save the session. A window shows a summary and compares it with your last session of the same task.
+- A folder for the session holds the statistics, a report, the marks, and the sound. The General tab of the settings sets the folder. The default is Documents/InFormant/Practice.
+- The Progress button opens a chart of your change. Choose a measure, a task, and a period. Compare like with like. A formant median over mixed tasks says little.
+
+## The synthesizer
+
+The Synthesizer window makes a steady test voice. It starts in constant mode, so its sound does not change by itself.
+
+- Sliders set the pitch, F1 to F4, the bandwidths, and the amount of pitch jitter.
+- The switches "Follow pitch estimates" and "Follow formant estimates" make the synthesizer follow your voice. Use headphones when you switch them on. Without headphones, the microphone hears the synthesizer, and the sound changes by itself.
+
 ## Settings that change what you see
 
 - **View time.** A short view shows fast changes. A long view shows a trend.
@@ -90,6 +139,7 @@ The report that Record writes uses the same definition as the table. Both divide
 - **View frequency range.** This range only sets what you see. It does not change the formant tracks.
 - **Formant limit.** The formant tracker uses its own limit. The default is 5200 Hz. Phoneticians often use 5000 Hz for male voices and 5500 Hz for female voices. The `maxFrequency` value in the `[analysis]` table of the configuration file sets this limit.
 - **FFT size.** A larger size separates close harmonics better. It shows fast changes less well.
+- **Gain normalization.** This slider sets the brightness of the spectrogram.
 
 ## Know the limits
 

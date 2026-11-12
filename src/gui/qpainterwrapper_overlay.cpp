@@ -771,7 +771,7 @@ TrackStats computeStats(const HudTrack &t)
 }
 
 // The text of one statistic of one track. A track with no value has a dash.
-std::string statText(const HudTrack &t, const TrackStats &s, int bit)
+std::string statText(const HudTrack &t, const TrackStats &s, int bit, bool rangeSemitones)
 {
     if (bit == StatVoiced) {
         return t.frames > 0 ? format("%.0f%%", 100.0 * (t.count > 0 ? t.count : t.values.size()) / t.frames) : "-";
@@ -787,7 +787,9 @@ std::string statText(const HudTrack &t, const TrackStats &s, int bit)
     case StatStdDev: return number(s.sd);
     case StatP95: return number(s.p95);
     case StatMax: return number(s.sorted.back());
-    case StatRange: return number(s.p95 - s.p5);
+    case StatRange:
+        if (rangeSemitones) return s.p5 > 0 && s.p95 >= s.p5 ? format("%.1fst", 12.0 * std::log2(s.p95 / s.p5)) : "-";
+        return number(s.p95 - s.p5);
     case StatCV: return s.mean > 0 ? format("%.1f%%", 100.0 * s.sd / s.mean) : "-";
     case StatCount: return std::to_string(t.count > 0 ? t.count : s.sorted.size());
     case StatNote:
@@ -879,7 +881,7 @@ void QPainterWrapper::drawHud(const std::vector<HudTrack> &tracks)
         drawSwatch(box.x + pad, base - 0.5 * digit, *track);
         p->drawTextRotated(0, box.x + pad + r.swatchWidth, base, 0.0f, track->color, track->name, outlineColor);
         if (c.showCurrent) {
-            const std::string text = statText(*track, stats, StatCurrent);
+            const std::string text = statText(*track, stats, StatCurrent, mOptions.rangeSemitones);
             p->drawTextRotated(0, valueRight - textRight(text), base, 0.0f, Qt::white, text, outlineColor);
         }
 
@@ -888,7 +890,7 @@ void QPainterWrapper::drawHud(const std::vector<HudTrack> &tracks)
             for (const auto &col : statColumns) {
                 if (col.bit != bit) continue;
                 p->drawTextRotated(0, box.x + pad, base, 0.0f, greyText, col.title, outlineColor);
-                const std::string text = statText(*track, stats, bit);
+                const std::string text = statText(*track, stats, bit, mOptions.rangeSemitones);
                 p->drawTextRotated(0, valueRight - textRight(text), base, 0.0f, Qt::white, text, outlineColor);
             }
         }

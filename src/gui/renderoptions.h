@@ -56,6 +56,8 @@ namespace Gui {
         double lineWidth = 2.0;
         double dotRadius = 2.0;
 
+        // Show the Range statistic in semitones, 12 times the log2 of P95 over P5, and not in Hz.
+        bool rangeSemitones = false;
         int statsMask = StatCurrent | StatMin | StatMean | StatP95 | StatMax;
 
         Theme theme;

@@ -14,6 +14,7 @@
         <file alias="help/feminization.md">../docs/feminization.md</file>
         <file alias="help/masculinization.md">../docs/masculinization.md</file>
         <file alias="help/singing.md">../docs/singing.md</file>
+        <file alias="help/warmups-and-vocal-health.md">../docs/warmups-and-vocal-health.md</file>
         <file alias="help/the-math.md">../docs/the-math.md</file>
     </qresource>
 </RCC>
