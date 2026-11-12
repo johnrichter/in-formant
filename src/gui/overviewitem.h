@@ -41,6 +41,9 @@ namespace Gui {
         void refresh();
         void rebuildCache(int width, double total);
 
+        // The time of the newest entry of the pitch track. The analysis of a file adds entries after the sound is complete.
+        double pitchEnd() const;
+
         // The length of the session shown by the map, and the time of a position in the map.
         double total() const;
         double timeAt(double x) const;
@@ -57,6 +60,7 @@ namespace Gui {
         std::vector<float> mLow, mHigh, mPitch;
         int mCacheWidth;
         double mCacheTotal;
+        double mCachePitchEnd;
         unsigned long long mCacheVersion;
         std::chrono::steady_clock::time_point mCacheTime;
 

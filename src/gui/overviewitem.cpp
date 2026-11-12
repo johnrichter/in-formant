@@ -37,6 +37,7 @@ OverviewItem::OverviewItem(QQuickItem *parent)
     : QQuickPaintedItem(parent),
       mCacheWidth(0),
       mCacheTotal(0),
+      mCachePitchEnd(-1),
       mCacheVersion(0),
       mDragging(false),
       mDragOffset(0)
@@ -68,6 +69,17 @@ double OverviewItem::timeAt(double x) const
     return std::clamp(x / w, 0.0, 1.0) * total();
 }
 
+double OverviewItem::pitchEnd() const
+{
+    sDataStore->beginRead();
+    auto &track = sDataStore->getPitchTrack();
+    const auto first = track.lower_bound(-1e300);
+    const auto end = track.upper_bound(1e300);
+    const double last = end == first ? -1.0 : (end - 1)->first;
+    sDataStore->endRead();
+    return last;
+}
+
 void OverviewItem::refresh()
 {
     if (sConfig == nullptr || sDataStore == nullptr || !isVisible() || width() < 4) return;
@@ -76,7 +88,10 @@ void OverviewItem::refresh()
         + QString::number(height()) + "|" + QString::number(sConfig->getViewEnd(), 'f', 3) + "|"
         + QString::number(sConfig->getViewTimeSpan()) + "|" + QString::number(sConfig->getViewLive()) + "|"
         + sConfig->optionString("theme") + sConfig->optionString("customPitch");
-    if (key == mKey) return;
+    // The picture of the sound can be older than the sound. The map then draws again until it is current.
+    const bool stale = sDataStore->session().version() != mCacheVersion || total() != mCacheTotal
+        || pitchEnd() != mCachePitchEnd;
+    if (key == mKey && !stale) return;
     mKey = key;
     update();
 }
@@ -89,26 +104,47 @@ void OverviewItem::rebuildCache(int width, double length)
     mPitch.assign((size_t) width, -1.0f);
     sDataStore->beginRead();
     auto &track = sDataStore->getPitchTrack();
+    mCachePitchEnd = -1;
     if (!track.empty()) {
+        mCachePitchEnd = (track.upper_bound(1e300) - 1)->first;
         const double perBin = length / width;
+        const auto first = track.lower_bound(-1e300);
         std::vector<double> values;
-        for (int i = 0; i < width; ++i) {
-            const auto begin = track.lower_bound(i * perBin);
-            const auto end = track.upper_bound((i + 1) * perBin);
-            const long long count = end - begin;
-            if (count <= 0) continue;
+        std::vector<double> frequency((size_t) width, 0.0);
 
-            // Look at up to eight entries that are evenly spaced in the bin.
+        for (int i = 0; i < width; ++i) {
+            const long long a = track.lower_bound(i * perBin) - first;
+            const long long b = track.upper_bound((i + 1) * perBin) - first;
+            if (b <= a) continue;
+
+            // Look at entries that are evenly spaced in the bin. The spacing is a power of two, and
+            // the entries have the places that are multiples of the spacing in the track. A new
+            // entry at the end of the track then does not change which old entries the map uses, and
+            // the line does not flicker while the sound grows.
+            long long step = 1;
+            while ((b - a) / step > 24) step *= 2;
             values.clear();
-            const long long step = std::max(1LL, count / 8);
-            for (long long k = 0; k < count; k += step) {
-                const auto &entry = *(begin + k);
+            for (long long k = (a + step - 1) / step * step; k < b; k += step) {
+                const auto &entry = *(first + k);
                 if (entry.second.has_value() && *entry.second > 0) values.push_back(*entry.second);
             }
-            if (values.size() * 3 < (size_t) std::min(8LL, count)) continue;
+            if (values.empty()) continue;
 
             std::nth_element(values.begin(), values.begin() + values.size() / 2, values.end());
-            const double f = values[values.size() / 2];
+            frequency[(size_t) i] = values[values.size() / 2];
+        }
+
+        // The median of each value and its neighbours removes single columns that jump.
+        std::vector<double> near;
+        for (int i = 0; i < width; ++i) {
+            if (frequency[(size_t) i] <= 0) continue;
+
+            near.clear();
+            for (int j = std::max(0, i - 1); j <= std::min(width - 1, i + 1); ++j) {
+                if (frequency[(size_t) j] > 0) near.push_back(frequency[(size_t) j]);
+            }
+            std::nth_element(near.begin(), near.begin() + near.size() / 2, near.end());
+            const double f = near[near.size() / 2];
             mPitch[(size_t) i] = (float) std::clamp(std::log(f / pitchLow) / std::log(pitchHigh / pitchLow), 0.0, 1.0);
         }
     }
@@ -139,7 +175,7 @@ void OverviewItem::paint(QPainter *painter)
     auto &session = sDataStore->session();
     const double length = total();
     const bool sizeChanged = w != mCacheWidth;
-    const bool soundChanged = session.version() != mCacheVersion || length != mCacheTotal;
+    const bool soundChanged = session.version() != mCacheVersion || length != mCacheTotal || pitchEnd() != mCachePitchEnd;
     if (sizeChanged || (soundChanged && std::chrono::steady_clock::now() - mCacheTime > std::chrono::milliseconds(250))) {
         rebuildCache(w, length);
     }
@@ -160,13 +196,26 @@ void OverviewItem::paint(QPainter *painter)
         painter->drawLine(QPointF(x + 0.5, top), QPointF(x + 0.5, std::max(bottom, top + 1.0)));
     }
 
-    painter->setPen(mTheme.pitch);
+    // The pitch is a line. It breaks where the track has no pitch for more than 70 ms, and a single
+    // column with no neighbour draws nothing. The pitch entries are 20 ms apart, and a long
+    // session has columns that are wider than that.
+    const double perColumn = mCacheTotal / std::max(mCacheWidth, 1);
+    const int maxGap = std::max(3, (int) std::ceil(0.07 / perColumn));
+    painter->setRenderHint(QPainter::Antialiasing, true);
+    painter->setPen(QPen(mTheme.pitch, 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     const int pitchBins = (int) std::min<size_t>(mPitch.size(), (size_t) w);
+    int previous = -1;
     for (int x = 0; x < pitchBins; ++x) {
         if (mPitch[(size_t) x] < 0) continue;
-        const double y = (h - 3) - mPitch[(size_t) x] * (h - 6);
-        painter->fillRect(QRectF(x, y - 1, 2, 2), mTheme.pitch);
+
+        const QPointF point(x + 0.5, (h - 3) - mPitch[(size_t) x] * (h - 6));
+        if (previous >= 0 && x - previous <= maxGap) {
+            const QPointF before(previous + 0.5, (h - 3) - mPitch[(size_t) previous] * (h - 6));
+            painter->drawLine(before, point);
+        }
+        previous = x;
     }
+    painter->setRenderHint(QPainter::Antialiasing, false);
 
     // The frame of the main view.
     const double span = sConfig->getViewTimeSpan();
