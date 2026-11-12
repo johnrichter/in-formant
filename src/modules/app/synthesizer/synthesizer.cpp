@@ -71,6 +71,7 @@ void Synthesizer::setGlotTc(double value)
 
 void Synthesizer::setFormants(const rpm::vector<Analysis::FormantData>& value)
 {
+    std::lock_guard<std::mutex> lock(formantsMutex);
     formants = value;
 }
 
@@ -127,12 +128,15 @@ bool Synthesizer::isVoiced() const
 rpm::vector<std::array<double, 6>> Synthesizer::getFilterCopy(double *fs) const
 {
     *fs = resampler.getInputRate();
-    
-    realFilterMutex.lock();
-    auto filterCopy = realFilter;
-    realFilterMutex.unlock();
 
-    return filterCopy;
+    // The plot shows the filter of the target values, so it also works while the audio is off.
+    rpm::vector<Analysis::FormantData> targetFormants;
+    {
+        std::lock_guard<std::mutex> lock(formantsMutex);
+        targetFormants = formants;
+    }
+
+    return Synthesis::frequencyShiftFilter(targetFormants, *fs, filterShift);
 }
 
 rpm::vector<double> Synthesizer::getSourceCopy(double fs, double durationInMs) const
@@ -160,9 +164,9 @@ rpm::vector<double> Synthesizer::getSourceCopy(double fs, double durationInMs) c
     rpm::vector<double> tcs(length);
     
     constexpr double expFact = 0.997;
-    pitches[0] = realGlotPitch;
-    Rds[0] = realGlotRd;
-    tcs[0] = realGlotTc;
+    pitches[0] = glotPitch;
+    Rds[0] = glotRd;
+    tcs[0] = glotTc;
     for (int i = 1; i < length; ++i) {
         pitches[i] = expFact * pitches[i - 1] + (1 - expFact) * (glotPitch * (1 + dis(gen)));
         Rds[i]     = expFact * Rds[i - 1]     + (1 - expFact) * (glotRd + dis(gen));
@@ -185,7 +189,7 @@ rpm::vector<double> Synthesizer::getSourceCopy(double fs, double durationInMs) c
     glot = Analysis::sosfilter(lpsos, glot);
 
     for (int i = 0; i < length; ++i) {
-        source[i] = 0.01 * realNoiseGain * source[i] + realGlotGain * glot[i];
+        source[i] = 0.01 * noiseGain * source[i] + glotGain * glot[i];
     }
     return source;
 }
@@ -302,12 +306,26 @@ void Synthesizer::generateAudio(int requestedLength)
             }
         }
 
+        // The peak of each source decays slowly, and the gain moves in a line from the old value to
+        // the new value over the block.
+        noisePeak = std::max(outputNoiseMax, noisePeak * 0.98);
+        glotPeak = std::max(outputGlotMax, glotPeak * 0.98);
+        if (noiseNorm < 0) noiseNorm = noisePeak;
+        if (glotNorm < 0) glotNorm = glotPeak;
+
+        const double voicedTarget = voiced ? 1.0 : 0.0;
         for (int i = 0; i < inputLength; ++i) {
-            output[i] = realNoiseGain * 0.2 * outputNoise[i] / outputNoiseMax;
-            if (voiced)
-                output[i] += realGlotGain * outputGlot[i] / outputGlotMax;
+            const double t = (double) (i + 1) / (double) inputLength;
+            const double noiseScale = noiseNorm + (noisePeak - noiseNorm) * t;
+            const double glotScale = glotNorm + (glotPeak - glotNorm) * t;
+            voicedGain += 0.003 * (voicedTarget - voicedGain);
+
+            output[i] = realNoiseGain * 0.2 * outputNoise[i] / noiseScale;
+            output[i] += voicedGain * realGlotGain * outputGlot[i] / glotScale;
             output[i] *= 0.8 * realMasterGain;
         }
+        noiseNorm = noisePeak;
+        glotNorm = glotPeak;
     }
 
     output = resampler.process(output);
@@ -327,21 +345,27 @@ void Synthesizer::audioCallback(double *output, int length, void *userdata)
     self->realGlotGain   = 0.1 * self->realGlotGain   + 0.9 * self->glotGain;
     self->realFilterShift = 0.2 * self->realFilterShift + 0.8 * self->filterShift;
 
+    rpm::vector<Analysis::FormantData> targetFormants;
+    {
+        std::lock_guard<std::mutex> lock(self->formantsMutex);
+        targetFormants = self->formants;
+    }
+
     static double formantCount = 0;
 
     if (formantCount == 0) {
-        formantCount = self->formants.size();
+        formantCount = targetFormants.size();
     }
     else {
-        formantCount = 0.4 * formantCount + 0.6 * self->formants.size();
+        formantCount = 0.4 * formantCount + 0.6 * targetFormants.size();
     }
 
     self->realFormants.resize(std::round(formantCount));
 
-    for (int i = 0; i < self->formants.size(); ++i) {
+    for (int i = 0; i < targetFormants.size(); ++i) {
         if (i < std::round(formantCount)) {
-            self->realFormants[i].frequency = 0.9 * self->realFormants[i].frequency + 0.1 * self->formants[i].frequency;
-            self->realFormants[i].bandwidth = 0.2 * self->realFormants[i].bandwidth + 0.8 * self->formants[i].bandwidth;
+            self->realFormants[i].frequency = 0.9 * self->realFormants[i].frequency + 0.1 * targetFormants[i].frequency;
+            self->realFormants[i].bandwidth = 0.2 * self->realFormants[i].bandwidth + 0.8 * targetFormants[i].bandwidth;
         }
     }
 
@@ -351,7 +375,7 @@ void Synthesizer::audioCallback(double *output, int length, void *userdata)
 
     // Generate the audio by chunks of fixed size.
     while (self->surplus.size() < length) {
-        self->generateAudio(4096);
+        self->generateAudio(1024);
     }
 
     // Move the appropriate amount of samples from the surplus bank to the output buffer.

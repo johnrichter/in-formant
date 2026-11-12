@@ -9,6 +9,7 @@
 #include "../../../synthesis/synthesis.h"
 #include "../../audio/audio.h"
 
+#include <atomic>
 #include <mutex>
 #include <QObject>
 
@@ -51,15 +52,19 @@ namespace Module::App
     private:
         Module::Audio::Queue *playbackQueue;
 
-        double masterGain;
-        double noiseGain;
-        double glotGain;
-        double glotPitch;
-        double glotRd;
-        double glotTc;
+        // The parameters from the user and from the follow mode. Other threads write them, and
+        // the audio thread reads them.
+        std::atomic<double> masterGain;
+        std::atomic<double> noiseGain;
+        std::atomic<double> glotGain;
+        std::atomic<double> glotPitch;
+        std::atomic<double> glotRd;
+        std::atomic<double> glotTc;
+        std::atomic<double> filterShift;
+        std::atomic<bool> voiced;
+
         rpm::vector<Analysis::FormantData> formants;
-        double filterShift;
-        bool voiced;
+        mutable std::mutex formantsMutex;
 
         double realMasterGain;
         double realNoiseGain;
@@ -74,6 +79,14 @@ namespace Module::App
 
         rpm::vector<rpm::vector<double>> zfNoise;
         rpm::vector<rpm::vector<double>> zfGlot;
+
+        // The gain of each source follows its peak level, so the loudness does not step between
+        // the blocks of audio. The voice gain rises and falls smoothly.
+        double noiseNorm = -1;
+        double glotNorm = -1;
+        double noisePeak = 1e-13;
+        double glotPeak = 1e-13;
+        double voicedGain = 0;
 
         rpm::vector<double> glotSurplus;
         rpm::vector<double> surplus;
