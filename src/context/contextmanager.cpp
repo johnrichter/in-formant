@@ -72,6 +72,15 @@ ContextManager::ContextManager(
                         mPlaybackQueue.get());
                 openAndStartAudioStreams();
             });
+    QObject::connect(mConfig.get(), &Config::audioCaptureDeviceChanged,
+            [this](QString) {
+                mAudioContext->stopCaptureStream();
+                mAudioContext->closeCaptureStream();
+                mAudioContext->openCaptureStream(findCaptureDevice());
+                if (!mConfig->isPaused()) {
+                    mAudioContext->startCaptureStream();
+                }
+            });
     QObject::connect(mConfig.get(), &Config::pausedChanged,
             [this](bool paused) {
                 if (paused) {
@@ -122,9 +131,37 @@ void ContextManager::loadConfig()
     mAnalysisPitchSampleRate = mConfig->getAnalysisPitchSampleRate();
 }
 
+const Audio::Device *ContextManager::findCaptureDevice()
+{
+    const std::string name = mConfig->getAudioCaptureDevice().toStdString();
+
+    if (!name.empty()) {
+        for (const auto &device : mAudioContext->getCaptureDevices()) {
+            if (device.name == name) {
+                return &device;
+            }
+        }
+        std::cout << "ContextManager] Input device \"" << name << "\" not found, using the default device." << std::endl;
+    }
+
+    // A null pointer selects the default device of the system.
+    return nullptr;
+}
+
+void ContextManager::publishCaptureDevices()
+{
+    QStringList names;
+    for (const auto &device : mAudioContext->getCaptureDevices()) {
+        names.push_back(QString::fromStdString(device.name));
+    }
+    std::cout << "ContextManager] Input devices: " << names.join(" | ").toStdString() << std::endl;
+    mConfig->setAudioCaptureDevices(names);
+}
+
 void ContextManager::openAndStartAudioStreams()
 {
-    mAudioContext->openCaptureStream(nullptr);
+    publishCaptureDevices();
+    mAudioContext->openCaptureStream(findCaptureDevice());
     mAudioContext->startCaptureStream();
 #ifndef WITHOUT_SYNTH
     mAudioContext->openPlaybackStream(nullptr);

@@ -134,6 +134,7 @@ void PortAudio::openCaptureStream(const Device *pDevice)
     checkError();
 
     mPauseCapture = true;
+    std::cout << "Audio::PortAudio] Input device \"" << pDevice->name << "\" at " << pDevice->portaudio.sampleRate << " Hz" << std::endl;
     setCaptureBufferSampleRate((int) std::round(pDevice->portaudio.sampleRate));
 }
 

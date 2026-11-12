@@ -240,6 +240,17 @@ ApplicationWindow {
 
                     MenuSeparator {}
 
+                    Label { text: "Input device:" }
+                    ComboBox {
+                        implicitWidth: parent.width - 10
+                        model: ["System default"].concat(config.audioCaptureDevices)
+                        currentIndex: Math.max(0, model.indexOf(config.audioCaptureDevice))
+                        onActivated: config.audioCaptureDevice = (currentIndex === 0 ? "" : model[currentIndex])
+                        Layout.alignment: Qt.AlignHCenter
+                    }
+
+                    MenuSeparator {}
+
                     Label { text: "View frequency scale:" }
                     ComboBox {
                         implicitWidth: parent.width - 10

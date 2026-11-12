@@ -106,6 +106,7 @@ Config::Config()
     : mTbl(getConfigTable()),
       mPaused(false)
 {
+    initSubTable(mTbl, "audio");
     initSubTable(mTbl, "solvers");
     initSubTable(mTbl, "view");
     initSubTable(mTbl, "ui");
@@ -127,6 +128,28 @@ void Config::setAudioBackend(Module::Audio::Backend b)
 {
     mTbl["audioBackend"].ref<int64_t>() = enumInt(b);
     emit audioBackendChanged(enumInt(b));
+}
+
+QString Config::getAudioCaptureDevice()
+{
+    return QString::fromStdString(valueField<std::string>(mTbl["audio"], "captureDevice", std::string()));
+}
+
+void Config::setAudioCaptureDevice(const QString &name)
+{
+    mTbl["audio"].as_table()->insert_or_assign("captureDevice", name.toStdString());
+    emit audioCaptureDeviceChanged(name);
+}
+
+QStringList Config::getAudioCaptureDevices() const
+{
+    return mAudioCaptureDevices;
+}
+
+void Config::setAudioCaptureDevices(const QStringList &names)
+{
+    mAudioCaptureDevices = names;
+    emit audioCaptureDevicesChanged();
 }
 
 PitchAlgorithm Config::getPitchAlgorithm()
@@ -359,7 +382,7 @@ std::tuple<double, double, double> Config::getViewFormantColor(int i)
 
 bool Config::getViewShowSpectrogram()
 {
-    return boolField(mTbl["view"], "showSpectrogram", false);
+    return boolField(mTbl["view"], "showSpectrogram", true);
 }
 
 void Config::setViewShowSpectrogram(bool b)
@@ -370,7 +393,7 @@ void Config::setViewShowSpectrogram(bool b)
 
 bool Config::getViewShowPitch()
 {
-    return boolField(mTbl["view"], "showPitch", false);
+    return boolField(mTbl["view"], "showPitch", true);
 }
 
 void Config::setViewShowPitch(bool b)
@@ -381,7 +404,7 @@ void Config::setViewShowPitch(bool b)
 
 bool Config::getViewShowFormants()
 {
-    return boolField(mTbl["view"], "showFormants", false);
+    return boolField(mTbl["view"], "showFormants", true);
 }
 
 void Config::setViewShowFormants(bool b)

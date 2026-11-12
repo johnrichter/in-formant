@@ -2,6 +2,8 @@
 #define MAIN_CONTEXT_CONFIG_H
 
 #include <QObject>
+#include <QString>
+#include <QStringList>
 #include "../filesystem.hpp"
 #include <fstream>
 #include <toml++/toml.h>
@@ -32,6 +34,8 @@ namespace Main {
         Q_PROPERTY(bool viewShowPitch       READ getViewShowPitch               WRITE setViewShowPitch          NOTIFY viewShowPitchChanged)
         Q_PROPERTY(bool viewShowFormants    READ getViewShowFormants            WRITE setViewShowFormants       NOTIFY viewShowFormantsChanged)
         Q_PROPERTY(bool paused              READ isPaused                       WRITE setPaused                 NOTIFY pausedChanged)
+        Q_PROPERTY(QString audioCaptureDevice READ getAudioCaptureDevice        WRITE setAudioCaptureDevice     NOTIFY audioCaptureDeviceChanged)
+        Q_PROPERTY(QStringList audioCaptureDevices READ getAudioCaptureDevices  NOTIFY audioCaptureDevicesChanged)
     
     signals:
         void pitchAlgorithmChanged(int);
@@ -50,6 +54,8 @@ namespace Main {
         void viewShowPitchChanged(bool);
         void viewShowFormantsChanged(bool);
         void pausedChanged(bool);
+        void audioCaptureDeviceChanged(QString);
+        void audioCaptureDevicesChanged();
 
     public:
         Config();
@@ -57,6 +63,14 @@ namespace Main {
         
         Module::Audio::Backend getAudioBackend();
         void setAudioBackend(Module::Audio::Backend b);
+
+        // The name of the input device. An empty name selects the default device of the system.
+        QString getAudioCaptureDevice();
+        void setAudioCaptureDevice(const QString &name);
+
+        // The names of the input devices that the audio backend found.
+        QStringList getAudioCaptureDevices() const;
+        void setAudioCaptureDevices(const QStringList &names);
 
         PitchAlgorithm getPitchAlgorithm();
         void setPitchAlgorithm(PitchAlgorithm alg);
@@ -155,6 +169,7 @@ namespace Main {
     
         // WILL NOT BE SERIALIZED
         bool mPaused;
+        QStringList mAudioCaptureDevices;
     };
 
 }

@@ -55,6 +55,8 @@ namespace Main {
         void loadConfig();
         
         void openAndStartAudioStreams();
+        const Audio::Device *findCaptureDevice();
+        void publishCaptureDevices();
 
         void startAnalysisThread();
         void analysisThreadLoop();
