@@ -81,6 +81,14 @@ void QPainterWrapper::drawSpectrogram(const rpm::vector<std::pair<double, Main::
     static std::array<GLint, texWidth> nffts;
     static std::array<GLfloat, texWidth> sampleRates;
 
+    // Each slice covers the time around its stamp. Extend the first and the last slice by half the
+    // slice spacing, so that the picture and the tracks use the same time scale.
+    const double sliceSpacing = slices.size() > 1
+        ? (slices.back().first - slices.front().first) / (double) (slices.size() - 1)
+        : 0.0;
+    const double sliceTimeStart = slices.front().first - 0.5 * sliceSpacing;
+    const double sliceTimeEnd = slices.back().first + 0.5 * sliceSpacing;
+
     // Only render the slices that have not been rendered yet. 
 
     static double lastTimeEnd = -HUGE_VAL; 
@@ -133,12 +141,13 @@ void QPainterWrapper::drawSpectrogram(const rpm::vector<std::pair<double, Main::
             nffts[index] = nfft;
             sampleRates[index] = sampleRate;
 
+            // Each chunk is a separate texture upload, so each chunk has its own row length.
             for (int k = 0; k < nfft; ++k) {
                 if (ioff < sliceCount1) {
-                    data1[k * sliceCount + ioff] = fftData[k];
+                    data1[k * sliceCount1 + ioff] = fftData[k];
                 }
                 else {
-                    data2[k * sliceCount + (ioff - sliceCount1)] = fftData[k];
+                    data2[k * sliceCount2 + (ioff - sliceCount1)] = fftData[k];
                 }
             }
         }
@@ -156,8 +165,8 @@ void QPainterWrapper::drawSpectrogram(const rpm::vector<std::pair<double, Main::
             mMinFrequency, mMaxFrequency,
             mMaxGain,
             cmap,
-            slices.front().first,
-            slices.back().first,
+            sliceTimeStart,
+            sliceTimeEnd,
             mTimeStart,
             mTimeEnd);
         
@@ -179,8 +188,8 @@ void QPainterWrapper::drawSpectrogram(const rpm::vector<std::pair<double, Main::
             mMinFrequency, mMaxFrequency,
             mMaxGain,
             cmap,
-            slices.front().first,
-            slices.back().first,
+            sliceTimeStart,
+            sliceTimeEnd,
             mTimeStart,
             mTimeEnd);
     }

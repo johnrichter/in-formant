@@ -369,9 +369,12 @@ void CanvasRenderer::drawSpectrogram(
     float y2 = h;
     float y1 = 0;
 
-    float texOffX = float(xOffset) / 2048.0f;
-    float texX1 = texOffX - float(totalSize + 1.0f) / 2048.0f;
-    float texX2 = texOffX;
+    // The visible slices end at the column after the newest upload. Before this was added, the
+    // right edge used the column where the new data starts, so the picture jumped back by the
+    // number of new slices in each frame that brought new data.
+    const int xEnd = xOffset + chunkSize1 + chunkSize2;
+    float texX1 = float(xEnd - totalSize) / 2048.0f;
+    float texX2 = float(xEnd) / 2048.0f;
     float texY1 = 0.0f;
     float texY2 = 4095.0f / 4098.0f;
 

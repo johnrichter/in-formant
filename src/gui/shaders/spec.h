@@ -77,6 +77,12 @@ void main()
     int nfft = int(texture(tex, vec2(txl_x, txl_y1)).r);
     float sampleRate = texture(tex, vec2(txl_x, txl_y2)).r;
 
+    // No slice was stored in this column yet.
+    if (nfft <= 0 || sampleRate <= 0.0) {
+        FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+        return;
+    }
+
     float ty = TexCoords.y;
 
     float freq = reverse(transform(minFrequency) + ty * (transform(maxFrequency) - transform(minFrequency)));
