@@ -129,6 +129,14 @@ ApplicationWindow {
                 }
 
                 Button {
+                    text: "Progress"
+                    Material.background: Material.color(Material.BlueGrey, Material.Shade600)
+                    Layout.alignment: Qt.AlignRight
+                    Layout.rightMargin: 10
+                    onPressed: progressWindow.show()
+                }
+
+                Button {
                     text: "Settings"
                     Material.background: Material.color(Material.BlueGrey, Material.Shade600)
                     Layout.alignment: Qt.AlignRight
@@ -387,6 +395,10 @@ ApplicationWindow {
 
     HelpWindow {
         id: helpWindow
+    }
+
+    ProgressWindow {
+        id: progressWindow
     }
 
     // The summary after a practice session, with the comparison to the last session of the same task.

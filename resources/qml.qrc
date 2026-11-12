@@ -8,6 +8,7 @@
         <file alias="OptionSwitch.qml">../src/qml/OptionSwitch.qml</file>
         <file alias="OptionSlider.qml">../src/qml/OptionSlider.qml</file>
         <file alias="RecordSheet.qml">../src/qml/RecordSheet.qml</file>
+        <file alias="ProgressWindow.qml">../src/qml/ProgressWindow.qml</file>
         <file alias="HelpWindow.qml">../src/qml/HelpWindow.qml</file>
         <file alias="help/reading-the-display.md">../docs/reading-the-display.md</file>
         <file alias="help/feminization.md">../docs/feminization.md</file>

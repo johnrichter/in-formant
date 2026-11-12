@@ -57,8 +57,9 @@ namespace Main {
         GuiView *mSelectedView;
 
         std::unique_ptr<QApplication> mApp;
-        std::unique_ptr<QQmlApplicationEngine> mQmlEngine;
+        // The wrapper outlives the engine, so no binding reads it after it is gone.
         std::unique_ptr<PracticeWrapper> mPractice;
+        std::unique_ptr<QQmlApplicationEngine> mQmlEngine;
 
         friend class GuiView;
     };
