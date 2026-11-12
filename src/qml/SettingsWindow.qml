@@ -190,6 +190,24 @@ ApplicationWindow {
 
                 MenuSeparator { Layout.fillWidth: true }
 
+                Label { text: "Pitch zones"; font.bold: true }
+                OptionSwitch { key: "showBands"; text: "Show the pitch zones in the graph" }
+                OptionSwitch { key: "bandsInExport"; text: "Keep the zones in recordings" }
+                Label { text: "Edges of the zones in Hz (four values: low, two inner, high)"; color: "lightgrey" }
+                TextField {
+                    Layout.fillWidth: true
+                    text: config.options.bandEdges
+                    onEditingFinished: config.setOption("bandEdges", text)
+                }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: "lightgrey"
+                    text: "The zones show ranges of pitch that many listeners hear as masculine (blue), androgynous (yellow-green), or feminine (pink). The ranges are a rough stereotype. They differ between languages, voices, and listeners. A zone is not a goal. The recorder grabs the whole window, so the zones on the screen are also in a video unless you turn off the second switch."
+                }
+
+                MenuSeparator { Layout.fillWidth: true }
+
                 Label { text: "Frequency range of the view"; font.bold: true }
                 RowLayout {
                     Layout.fillWidth: true

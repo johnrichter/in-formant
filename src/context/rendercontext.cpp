@@ -1,4 +1,5 @@
 #include "rendercontext.h"
+#include "../gui/bands.h"
 #include "config.h"
 #include "../context/timings.h"
 #include <iostream>
@@ -35,6 +36,10 @@ void RenderContext::render(QPainterWrapper *painter)
     options.timeTickMode = mConfig->optionInt("timeTickMode");
     options.timeTickStep = mConfig->optionDouble("timeTickStep");
     options.hideDebug = mConfig->isRecording();
+    // The recorder grabs the whole window, so the zones on the screen are also in the video.
+    options.showBands = mConfig->optionBool("showBands") && (mConfig->optionBool("bandsInExport") || !mConfig->isRecording());
+    const Gui::BandEdges bandEdges = Gui::parseBandEdges(mConfig->optionString("bandEdges").toStdString());
+    for (int i = 0; i < 4; ++i) options.bandEdges[i] = bandEdges[i];
     options.readoutOrder = mConfig->optionString("readoutOrder").toStdString();
     options.readoutLeft = mConfig->optionString("readoutSide") == "left";
     const char *boxKeys[5] = { "showBoxPitch", "showBoxF1", "showBoxF2", "showBoxF3", "showBoxF4" };

@@ -33,6 +33,10 @@ namespace Gui {
         // Hide the frame timing box. The recorder grabs the whole window, so the box would be in the video.
         bool hideDebug = false;
 
+        // The pitch zones in the graph, and their four edges in Hz.
+        bool showBands = false;
+        double bandEdges[4] = { 60.0, 150.0, 180.0, 300.0 };
+
         // The readout boxes: the keys in their order, the side of the graph, and the box of each track.
         // Index 0 is the pitch. Indexes 1 to 4 are the formants F1 to F4.
         std::string readoutOrder = "legend,pitch,f1,f2,f3,f4";

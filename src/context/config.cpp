@@ -156,6 +156,9 @@ QVariantMap Config::defaultOptions()
     m["showLegend"] = true;
     m["showStats"] = false;
     m["showMiniMap"] = true;
+    m["showBands"] = false;      // show the pitch zones in the graph
+    m["bandsInExport"] = true;   // keep the zones on the screen while a recording runs
+    m["bandEdges"] = QString("60,150,180,300");  // Hz: the edges of the three zones
     m["mapWindow"] = 150.0;      // seconds of the session that the map shows, 150 s is 2.5 minutes
 
     // The readout boxes. The order lists the keys. The side is "bottom" or "left". One switch for each track box.

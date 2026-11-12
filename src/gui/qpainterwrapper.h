@@ -85,6 +85,9 @@ public:
     void drawHud(const std::vector<Gui::HudTrack> &tracks);
 
     double mapTimeToX(double time);
+    // The pitch zones as bands behind the tracks. The bands follow the frequency scale.
+    void drawFrequencyBands();
+
     double mapFrequencyToY(double frequency);
 
     using SliceIterator = TimeTrack<Main::SpectrogramCoefs>::const_iterator;

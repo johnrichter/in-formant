@@ -230,6 +230,8 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
         }
     }
 
+    painter->drawFrequencyBands();
+
     const Gui::RenderOptions &options = painter->options();
     std::vector<Gui::HudTrack> hud;
     const size_t drawLimit = (size_t) std::clamp(painter->viewport().width(), 400, 3000);

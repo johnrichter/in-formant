@@ -303,6 +303,58 @@ void QPainterWrapper::drawTimeAxis()
     }
 }
 
+void QPainterWrapper::drawFrequencyBands()
+{
+    if (!mOptions.showBands) return;
+
+    struct Zone {
+        double low;
+        double high;
+        QColor color;
+        const char *name;
+    };
+    // The middle zone has a yellow-green colour, so it is not on the pink and blue axis.
+    const Zone zones[3] = {
+        { mOptions.bandEdges[0], mOptions.bandEdges[1], QColor(74, 144, 226), "Masculine" },
+        { mOptions.bandEdges[1], mOptions.bandEdges[2], QColor(190, 205, 70), "Androgynous" },
+        { mOptions.bandEdges[2], mOptions.bandEdges[3], QColor(232, 111, 164), "Feminine" },
+    };
+
+    const double dpr = p->devicePixelRatio();
+    const double height = plotHeight();
+    const double width = plotWidth();
+
+    for (const Zone &zone : zones) {
+        const double top = std::clamp(mapFrequencyToY(zone.high), 0.0, height);
+        const double bottom = std::clamp(mapFrequencyToY(zone.low), 0.0, height);
+        if (bottom - top < 1.0) continue;
+
+        QColor fill = zone.color;
+        fill.setAlpha(38);
+        p->drawRoundedRect((float) mPlotLeft, (float) top, (float) width, (float) (bottom - top), 0.0f, fill);
+
+        // The name of the zone and its range, at the left, below the upper edge of the zone.
+        const double digit = p->textBoundsOfSize(2, "0").height();
+        // A thin zone has no label, because the label would touch the label of its neighbour.
+        if (bottom - top < 3.0 * digit) continue;
+        QColor text = zone.color.lighter(150);
+        const std::string label = std::string(zone.name) + " zone, " + std::to_string((int) std::lround(zone.low))
+            + " to " + std::to_string((int) std::lround(zone.high)) + " Hz";
+        p->drawTextRotated(2, mPlotLeft + 8.0 * dpr, top + digit + 4.0 * dpr, 0.0f, text, label, outlineColor);
+    }
+
+    // A thin line at each edge.
+    std::vector<float> lines;
+    for (int i = 0; i < 4; ++i) {
+        const double y = mapFrequencyToY(mOptions.bandEdges[i]);
+        if (y < 0.0 || y > height) continue;
+        lines.insert(lines.end(), { (float) mPlotLeft, (float) y, (float) (mPlotLeft + width), (float) y });
+    }
+    if (!lines.empty()) {
+        p->drawSegments(lines.data(), (int) lines.size() / 4, 1.0f, QColor(255, 255, 255, 70));
+    }
+}
+
 void QPainterWrapper::drawFrequencyScale()
 {
     const double dpr = p->devicePixelRatio();
