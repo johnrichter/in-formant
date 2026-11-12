@@ -9,8 +9,8 @@ ApplicationWindow {
     title: appName
     visible: false
 
-    width: 640
-    height: 480
+    width: 1600
+    height: 900
 
     Material.theme: Material.Dark
     Material.accent: Material.DeepPurple
