@@ -80,20 +80,36 @@ void DataVisWrapper::setGif(const rpm::vector<double>& signal, double fs)
 
 void DataVisWrapper::updateSoundSeries(QXYSeries* series, QValueAxis* xAxis, QValueAxis* yAxis)
 {
-    QMutexLocker lock(&mSoundMutex);
-    QMutexLocker lock2(&mGifMutex);
-    
-    series->replace(mSound);
-    xAxis->setRange(mGifStart, mGifEnd);
+    // Copy the data under the locks, and update the chart after the locks are free. A chart
+    // update can run other event handlers, and those handlers lock the same mutexes again.
+    QVector<QPointF> sound;
+    double gifStart, gifEnd;
+    {
+        QMutexLocker lock(&mSoundMutex);
+        QMutexLocker lock2(&mGifMutex);
+        sound = mSound;
+        gifStart = mGifStart;
+        gifEnd = mGifEnd;
+    }
+
+    series->replace(sound);
+    xAxis->setRange(gifStart, gifEnd);
     yAxis->setRange(-1.5, 1.5);
 }
 
 void DataVisWrapper::updateGifSeries(QXYSeries* series, QValueAxis* xAxis, QValueAxis* yAxis)
 {
-    QMutexLocker lock(&mSoundMutex);
-    QMutexLocker lock2(&mGifMutex);
+    QVector<QPointF> gif;
+    double gifStart, gifEnd;
+    {
+        QMutexLocker lock(&mSoundMutex);
+        QMutexLocker lock2(&mGifMutex);
+        gif = mGif;
+        gifStart = mGifStart;
+        gifEnd = mGifEnd;
+    }
 
-    series->replace(mGif);
-    xAxis->setRange(mGifStart, mGifEnd);
+    series->replace(gif);
+    xAxis->setRange(gifStart, gifEnd);
     yAxis->setRange(-1.5, 1.5);
 }
