@@ -3,37 +3,69 @@
 
 namespace Gui::Shaders {
 
+// The number of glyphs that one draw call can draw. The glyph data is in uniform arrays,
+// because a buffer update for each draw call makes the Apple OpenGL driver submit the
+// command buffer to the GPU every time.
+constexpr int textMaxGlyphs = 64;
+
 constexpr const char *textVertex = R"foo(
 #version 150
+
+#define MAX_GLYPHS 64
+
 out vec2 TexCoords;
+flat out vec3 Color;
 
 uniform mat4 projection;
 
-// The four corners of the quad, as <vec2 pos, vec2 tex>, for a triangle fan.
-// The corners come from a uniform because a buffer update for each draw call makes
-// the Apple OpenGL driver submit the command buffer to the GPU every time.
-uniform vec4 quad[4];
+// For each glyph: <x, y, width, height> in pixels, and <u0, vBottom, u1, vTop> in the atlas.
+uniform vec4 rects[MAX_GLYPHS];
+uniform vec4 uvs[MAX_GLYPHS];
+uniform int glyphCount;
+
+// A draw call draws every glyph one time for each pass. The last pass uses the text
+// colour. The passes before it use the outline colour, and each one has its own offset.
+uniform int passCount;
+uniform vec2 offsets[4];
+uniform vec3 textColor;
+uniform vec3 outlineColor;
+
+const vec2 corners[6] = vec2[6](
+    vec2(0.0, 0.0), vec2(1.0, 0.0), vec2(0.0, 1.0),
+    vec2(0.0, 1.0), vec2(1.0, 0.0), vec2(1.0, 1.0));
 
 void main()
 {
-    vec4 vertex = quad[gl_VertexID];
-    gl_Position = projection * vec4(vertex.xy, 0.0, 1.0);
-    TexCoords = vertex.zw;
+    int perPass = 6 * glyphCount;
+    int pass = gl_VertexID / perPass;
+    int local = gl_VertexID - pass * perPass;
+    int glyph = local / 6;
+    vec2 corner = corners[local - glyph * 6];
+
+    bool isFill = (pass == passCount - 1);
+    vec2 offset = isFill ? vec2(0.0) : offsets[pass];
+
+    vec4 rect = rects[glyph];
+    vec4 uv = uvs[glyph];
+
+    vec2 position = rect.xy + corner * rect.zw + offset;
+    gl_Position = projection * vec4(position, 0.0, 1.0);
+    TexCoords = vec2(mix(uv.x, uv.z, corner.x), mix(uv.y, uv.w, corner.y));
+    Color = isFill ? textColor : outlineColor;
 }
 )foo";
 
 constexpr const char *textFragment = R"foo(
 #version 150
 in vec2 TexCoords;
+flat in vec3 Color;
 out vec4 FragColor;
 
 uniform sampler2D text;
-uniform vec3 textColor;
 
 void main()
 {
-    vec4 sampled = vec4(1.0, 1.0, 1.0, texture(text, TexCoords).r);
-    FragColor = vec4(textColor, 1.0) * sampled;
+    FragColor = vec4(Color, texture(text, TexCoords).r);
 }
 )foo";
 

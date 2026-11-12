@@ -18,6 +18,11 @@ namespace Main {
 
 namespace Gui {
 
+    // The spectrogram texture is a ring with one column for each time slice and one row for each
+    // frequency bin. The size of the texture must match the constants in the spectrogram shader.
+    constexpr int spectrogramColumns = 4096;
+    constexpr int spectrogramRows = 2560;
+
     class CanvasRenderer : protected QOpenGLExtraFunctions {
     public:
         void initialize(Main::RenderContext *renderContext);
@@ -47,13 +52,18 @@ namespace Gui {
         void drawLine(float x1, float y1, float x2, float y2, const QColor &color, float thickness);
 
         void prepareSpectrogramDraw();
+
+        // The filter of the spectrogram. quality 0 is the bilinear filter, and 1 is the cubic filter.
+        // blur is in the range 0 to 1.
+        void setSpectrogramFilter(int quality, float blur);
         void drawSpectrogram(
                 int xOffset,
                 int chunkSize1,
                 int chunkSize2,
+                int uploadRows,
                 int totalSize,
-                const std::array<GLint, 2048>& nffts,
-                const std::array<GLfloat, 2048>& sampleRates,
+                const std::array<GLint, spectrogramColumns>& nffts,
+                const std::array<GLfloat, spectrogramColumns>& sampleRates,
                 const rpm::vector<GLfloat>& chunkData1,
                 const rpm::vector<GLfloat>& chunkData2,
                 FrequencyScale freqScale,
@@ -78,6 +88,9 @@ namespace Gui {
         QOpenGLShaderProgram *createShaderProgram(const char *vertexSource, const char *fragmentSource);
 
         void drawText(Font *font, float x, float y, const QColor &color, const std::string &text);
+        void drawGlyphs(Font *font, float x, float y, const QColor &color, const std::string &text, const QColor *outlineColor);
+        void drawCircles(const rpm::vector<QPointF> &points, float radius, const QColor &color);
+        void setProjections();
         void drawTextOutlined(Font *font, float x, float y, const QColor &color, const std::string &text, const QColor &outlineColor = Qt::black);
         QRect textBounds(Font *font, const std::string &text);
 
@@ -101,7 +114,37 @@ namespace Gui {
         QOpenGLShaderProgram *mCircleProgram;
         GLuint mCircleVao;
 
+        QOpenGLShaderProgram *mLineProgram;
+        GLuint mLineVao;
+
         GLuint mSpecTex;
+        GLuint mHeaderTex;
+
+        int mSpecQuality = 1;
+        float mSpecBlur = 0.33f;
+
+        GLuint mCmapTex;
+        QVector<QRgb> mCmapCache;
+
+        // Uniform locations of the spectrogram program.
+        struct {
+            int projection, frequencyScale, minFrequency, maxFrequency, gainScale, quality, blur, quad;
+        } mSpecLoc;
+
+        // Uniform locations of the text program.
+        struct {
+            int projection, rects, uvs, glyphCount, passCount, offsets, textColor, outlineColor;
+        } mTextLoc;
+
+        // Uniform locations of the circle program.
+        struct {
+            int projection, centers, radius, fillColor;
+        } mCircleLoc;
+
+        // Uniform locations of the line program.
+        struct {
+            int projection, quad, center, radius, fillColor;
+        } mLineLoc;
     };
 
 }

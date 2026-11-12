@@ -4,7 +4,10 @@
 #include "qpainterwrapper.h"
 #include <cstdlib>
 #include <iostream>
+#include <algorithm>
 #include <cmath>
+#include <sstream>
+#include <QMatrix4x4>
 #include <QQuickWindow>
 #include <QScreen>
 #include <QVector2D>
@@ -53,14 +56,31 @@ void CanvasRenderer::initialize(Main::RenderContext *renderContext)
     initFonts();
     initShaders();
 
-    initTexture(mSpecTex, 2048, 4096+2);
-    
+    // The spectrogram data. A value is a 32-bit float, because the power of a slice covers a wide range.
     glActiveTexture(GL_TEXTURE0);
+    glGenTextures(1, &mSpecTex);
     glBindTexture(GL_TEXTURE_2D, mSpecTex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, 2048, 4096+2, 0, GL_RED, GL_FLOAT, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, spectrogramColumns, spectrogramRows, 0, GL_RED, GL_FLOAT, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    // The header of each column: the number of bins, and the sample rate.
+    glGenTextures(1, &mHeaderTex);
+    glBindTexture(GL_TEXTURE_2D, mHeaderTex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, spectrogramColumns, 1, 0, GL_RG, GL_FLOAT, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void CanvasRenderer::setSpectrogramFilter(int quality, float blur)
+{
+    mSpecQuality = quality;
+    mSpecBlur = blur;
 }
 
 void CanvasRenderer::cleanup()
@@ -69,6 +89,8 @@ void CanvasRenderer::cleanup()
     deleteShaders();
 
     glDeleteTextures(1, &mSpecTex);
+    glDeleteTextures(1, &mHeaderTex);
+    glDeleteTextures(1, &mCmapTex);
 }
 
 void CanvasRenderer::synchronize(QQuickFramebufferObject *item)
@@ -102,6 +124,8 @@ void CanvasRenderer::render()
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
     glEnable(GL_MULTISAMPLE);
+
+    setProjections();
 
     QPainterWrapper painter(this);
     mRenderContext->render(&painter);
@@ -191,63 +215,46 @@ QRect CanvasRenderer::textBoundsSmaller(const std::string &text)
 
 void CanvasRenderer::drawScatterWithOutline(const rpm::vector<QPointF> &points, float radius, const QColor &fillColor, const QColor &outlineColor)
 {
-    for (const auto& point : points) {
-        drawPoint(point, radius + 0.6667, outlineColor);
-    }
-    for (const auto& point : points) {
-        drawPoint(point, radius, fillColor);
-    }
+    // All outlines are below all fills.
+    drawCircles(points, radius + 0.6667, outlineColor);
+    drawCircles(points, radius, fillColor);
 }
 
 void CanvasRenderer::drawPoint(const QPointF &point, float radius, const QColor &color)
 {
+    rpm::vector<QPointF> points(1, point);
+    drawCircles(points, radius, color);
+}
+
+void CanvasRenderer::drawCircles(const rpm::vector<QPointF> &points, float radius, const QColor &color)
+{
+    if (points.empty()) {
+        return;
+    }
+
     radius *= mZoomScale * (mDpi * mDevicePixelRatio) / 96;
 
-    /*constexpr int N = 24;
-    float vertices[2*(N+1)];
-    for (int i = 0; i <= N; ++i) {
-        float angle = 2 * M_PI * i / N;
-        float x = cos(angle) * radius;
-        float y = sin(angle) * radius;
-        vertices[2*i] = point.x() + x;
-        vertices[2*i+1] = mHeight - point.y() + y;
-    }*/
-    /*glColor4f(color.redF(), color.greenF(), color.blueF(), color.alphaF());
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glVertexPointer(2, GL_FLOAT, 0, vertices);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, N+1);*/
-
     mCircleProgram->bind();
-
-    float w = mWidth;
-    float h = mHeight;
-
-    QMatrix4x4 projection;
-    projection.ortho(0, w, 0, h, -1, 1);
-    mCircleProgram->setUniformValue("projection", projection);
-
-    mCircleProgram->setUniformValue("resolution", mWidth, mHeight);
-    mCircleProgram->setUniformValue("center", point.x(), point.y());
-    mCircleProgram->setUniformValue("radius", radius);
-    mCircleProgram->setUniformValue("fillColor", color.redF(), color.greenF(), color.blueF());
-    
-    float x1 = point.x() - 1.5 * radius;
-    float x2 = point.x() + 1.5 * radius;
-    float y1 = point.y() - 1.5 * radius;
-    float y2 = point.y() + 1.5 * radius;
+    mCircleProgram->setUniformValue(mCircleLoc.radius, radius);
+    mCircleProgram->setUniformValue(mCircleLoc.fillColor, color.redF(), color.greenF(), color.blueF());
 
     glBindVertexArray(mCircleVao);
 
-    const QVector2D quad[4] = {
-        { x2, y1 },
-        { x2, y2 },
-        { x1, y2 },
-        { x1, y1 },
-    };
+    // One draw call draws a limited number of circles. Draw the points in chunks.
+    constexpr int maxCircles = Shaders::circleMaxCircles;
+    static float centers[2 * maxCircles];
 
-    mCircleProgram->setUniformValueArray("quad", quad, 4);
+    for (size_t first = 0; first < points.size(); first += maxCircles) {
+        const int count = (int) std::min<size_t>(maxCircles, points.size() - first);
 
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+        for (int i = 0; i < count; ++i) {
+            centers[2 * i + 0] = (float) points[first + i].x();
+            centers[2 * i + 1] = (float) points[first + i].y();
+        }
+
+        glUniform2fv(mCircleLoc.centers, count, centers);
+        glDrawArrays(GL_TRIANGLES, 0, 6 * count);
+    }
 
     glBindVertexArray(0);
 
@@ -270,21 +277,13 @@ void CanvasRenderer::drawLine(float x1, float y1, float x2, float y2, const QCol
     float qy1 = y1 - 0.5 * thickness * ny;
     float qy2 = y2 + 0.5 * thickness * ny;
 
-    mCircleProgram->bind();
+    mLineProgram->bind();
 
-    float w = mWidth;
-    float h = mHeight;
+    mLineProgram->setUniformValue(mLineLoc.center, (qx1+qx2)/2, (qy1+qy2)/2);
+    mLineProgram->setUniformValue(mLineLoc.radius, thickness);
+    mLineProgram->setUniformValue(mLineLoc.fillColor, color.redF(), color.greenF(), color.blueF());
 
-    QMatrix4x4 projection;
-    projection.ortho(0, w, 0, h, -1, 1);
-    mCircleProgram->setUniformValue("projection", projection);
-
-    mCircleProgram->setUniformValue("resolution", mWidth, mHeight);
-    mCircleProgram->setUniformValue("center", (qx1+qx2)/2, (qy1+qy2)/2);
-    mCircleProgram->setUniformValue("radius", thickness);
-    mCircleProgram->setUniformValue("fillColor", color.redF(), color.greenF(), color.blueF());
-
-    glBindVertexArray(mCircleVao);
+    glBindVertexArray(mLineVao);
 
     const QVector2D quad[4] = {
         { qx1, qy2 },
@@ -293,22 +292,23 @@ void CanvasRenderer::drawLine(float x1, float y1, float x2, float y2, const QCol
         { qx2, qy2 },
     };
 
-    mCircleProgram->setUniformValueArray("quad", quad, 4);
+    mLineProgram->setUniformValueArray(mLineLoc.quad, quad, 4);
 
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
     glBindVertexArray(0);
 
-    mCircleProgram->release();
+    mLineProgram->release();
 }
 
 void CanvasRenderer::drawSpectrogram(
         int xOffset,
         int chunkSize1,
         int chunkSize2,
+        int uploadRows,
         int totalSize,
-        const std::array<GLint, 2048>& nffts,
-        const std::array<GLfloat, 2048>& sampleRates,
+        const std::array<GLint, spectrogramColumns>& nffts,
+        const std::array<GLfloat, spectrogramColumns>& sampleRates,
         const rpm::vector<GLfloat>& chunkData1,
         const rpm::vector<GLfloat>& chunkData2,
         FrequencyScale freqScale,
@@ -324,21 +324,42 @@ void CanvasRenderer::drawSpectrogram(
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, mSpecTex);
 
+    // Upload only the rows that hold data.
     if (chunkSize1 > 0) {
-        glTexSubImage2D(GL_TEXTURE_2D, 0, xOffset % 2048, 0, chunkSize1, 4096, GL_RED, GL_FLOAT, chunkData1.data());
+        glTexSubImage2D(GL_TEXTURE_2D, 0, xOffset % spectrogramColumns, 0, chunkSize1, uploadRows, GL_RED, GL_FLOAT, chunkData1.data());
     }
     if (chunkSize2 > 0) {
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, chunkSize2, 4096, GL_RED, GL_FLOAT, chunkData2.data());
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, chunkSize2, uploadRows, GL_RED, GL_FLOAT, chunkData2.data());
     }
 
-    std::array<GLfloat, 2048 * 2> extraData;
-    for (int x = 0; x < 2048; ++x) {
-        extraData[0 * 2048 + x] = nffts[x];
-        extraData[1 * 2048 + x] = sampleRates[x];
+    // The header changes only when new slices arrive.
+    if (chunkSize1 + chunkSize2 > 0) {
+        static std::array<GLfloat, 2 * spectrogramColumns> headerData;
+        for (int x = 0; x < spectrogramColumns; ++x) {
+            headerData[2 * x + 0] = nffts[x];
+            headerData[2 * x + 1] = sampleRates[x];
+        }
+        glBindTexture(GL_TEXTURE_2D, mHeaderTex);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, spectrogramColumns, 1, GL_RG, GL_FLOAT, headerData.data());
     }
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 4096, 2048, 2, GL_RED, GL_FLOAT, extraData.data());
 
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    // The colour map changes only when the colour table changes.
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, mCmapTex);
+    if (colorTable != mCmapCache && colorTable.size() == 256) {
+        mCmapCache = colorTable;
+        std::array<unsigned char, 256 * 4> pixels;
+        for (int i = 0; i < 256; ++i) {
+            pixels[4 * i + 0] = qRed(colorTable[i]);
+            pixels[4 * i + 1] = qGreen(colorTable[i]);
+            pixels[4 * i + 2] = qBlue(colorTable[i]);
+            pixels[4 * i + 3] = 255;
+        }
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+    }
+    glActiveTexture(GL_TEXTURE0);
 
     mSpecProgram->bind();
 
@@ -347,19 +368,15 @@ void CanvasRenderer::drawSpectrogram(
 
     QMatrix4x4 projection;
     projection.ortho(0, w, 0, h, -1, 1);
-    mSpecProgram->setUniformValue("projection", projection);
+    mSpecProgram->setUniformValue(mSpecLoc.projection, projection);
 
-    std::array<QVector3D, 256> cmap;
-    for (int i = 0; i < 256; ++i) {
-        QColor color = QColor::fromRgb(colorTable[i]);
-        cmap[i] = QVector3D(color.redF(), color.greenF(), color.blueF());
-    }
-    mSpecProgram->setUniformValueArray("colorMap", cmap.data(), 256);
-
-    mSpecProgram->setUniformValue("frequencyScale", static_cast<int>(freqScale));
-    mSpecProgram->setUniformValue("minFrequency", minFrequency);
-    mSpecProgram->setUniformValue("maxFrequency", maxFrequency);
-    mSpecProgram->setUniformValue("maxGain", maxGain);
+    mSpecProgram->setUniformValue(mSpecLoc.frequencyScale, static_cast<int>(freqScale));
+    mSpecProgram->setUniformValue(mSpecLoc.minFrequency, minFrequency);
+    mSpecProgram->setUniformValue(mSpecLoc.maxFrequency, maxFrequency);
+    // The shader works on the amplitude of the slice. A power of 10^(maxGain/20) gives the top of the colour map.
+    mSpecProgram->setUniformValue(mSpecLoc.gainScale, float(7.0 / std::sqrt(std::pow(10.0, maxGain / 20.0))));
+    mSpecProgram->setUniformValue(mSpecLoc.quality, mSpecQuality);
+    mSpecProgram->setUniformValue(mSpecLoc.blur, mSpecBlur);
 
     glActiveTexture(GL_TEXTURE0);
     glBindVertexArray(mSpecVao);
@@ -372,11 +389,13 @@ void CanvasRenderer::drawSpectrogram(
     // The visible slices end at the column after the newest upload. Before this was added, the
     // right edge used the column where the new data starts, so the picture jumped back by the
     // number of new slices in each frame that brought new data.
-    const int xEnd = xOffset + chunkSize1 + chunkSize2;
-    float texX1 = float(xEnd - totalSize) / 2048.0f;
-    float texX2 = float(xEnd) / 2048.0f;
+    // The column numbers can grow very large, so the end column wraps. Large numbers lose the
+    // precision of a float after some hours.
+    const int xEnd = (xOffset + chunkSize1 + chunkSize2) % spectrogramColumns;
+    float texX1 = float(xEnd - totalSize) / float(spectrogramColumns);
+    float texX2 = float(xEnd) / float(spectrogramColumns);
     float texY1 = 0.0f;
-    float texY2 = 4095.0f / 4098.0f;
+    float texY2 = 1.0f;
 
     const QVector4D quad[4] = {
         { x2, y1, texX2, texY2 },
@@ -385,14 +404,24 @@ void CanvasRenderer::drawSpectrogram(
         { x1, y1, texX1, texY2 },
     };
 
-    mSpecProgram->setUniformValueArray("quad", quad, 4);
+    mSpecProgram->setUniformValueArray(mSpecLoc.quad, quad, 4);
 
     glBindTexture(GL_TEXTURE_2D, mSpecTex);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, mCmapTex);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, mHeaderTex);
+    glActiveTexture(GL_TEXTURE0);
 
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE0);
 
     mSpecProgram->release();
 }
@@ -404,48 +433,82 @@ QRect CanvasRenderer::viewport() const
 
 void CanvasRenderer::drawText(Font *font, float x, float y, const QColor &color, const std::string &text)
 {
+    drawGlyphs(font, x, y, color, text, nullptr);
+}
+
+void CanvasRenderer::drawGlyphs(Font *font, float x, float y, const QColor &color, const std::string &text, const QColor *outlineColor)
+{
+    if (text.empty()) {
+        return;
+    }
+
+    // Start on a whole pixel. A glyph that starts between two pixels gets blurred by the texture filter.
+    x = std::round(x);
+    y = std::round(mHeight - y);
+
+    // One draw call draws a limited number of glyphs. Draw a long text in chunks.
+    constexpr int maxGlyphs = Shaders::textMaxGlyphs;
+    static float rects[4 * maxGlyphs];
+    static float uvs[4 * maxGlyphs];
+
     mTextProgram->bind();
 
-    y = mHeight - y;
-
-    QMatrix4x4 projection;
-    projection.ortho(0, mWidth, mHeight, 0, -1, 1);
-    mTextProgram->setUniformValue("projection", projection);
-    mTextProgram->setUniformValue("textColor", color.redF(), color.greenF(), color.blueF());
+    mTextProgram->setUniformValue(mTextLoc.textColor, color.redF(), color.greenF(), color.blueF());
+    if (outlineColor != nullptr) {
+        // The outline is the same text four times, moved by a little more than half a pixel
+        // in each diagonal direction.
+        const float delta = 0.66667 * mZoomScaleText;
+        const float offsets[8] = { -delta, delta, -delta, -delta, delta, delta, delta, -delta };
+        glUniform2fv(mTextLoc.offsets, 4, offsets);
+        mTextProgram->setUniformValue(mTextLoc.outlineColor, outlineColor->redF(), outlineColor->greenF(), outlineColor->blueF());
+        mTextProgram->setUniformValue(mTextLoc.passCount, 5);
+    }
+    else {
+        mTextProgram->setUniformValue(mTextLoc.passCount, 1);
+    }
 
     glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, font->atlas());
     glBindVertexArray(mTextVao);
 
-    std::string::const_iterator c;
-    for (c = text.begin(); c != text.end(); ++c) {
-        if (*c == '\0') break;
+    int count = 0;
 
-        FontCharacter ch = font->charFor(*c);
+    auto flush = [&]() {
+        if (count > 0) {
+            glUniform4fv(mTextLoc.rects, count, rects);
+            glUniform4fv(mTextLoc.uvs, count, uvs);
+            mTextProgram->setUniformValue(mTextLoc.glyphCount, count);
+            glDrawArrays(GL_TRIANGLES, 0, 6 * count * (outlineColor != nullptr ? 5 : 1));
+            count = 0;
+        }
+    };
 
-        float xpos = x + ch.bearingX;
-        float ypos = y - (ch.height - ch.bearingY);
+    for (char c : text) {
+        if (c == '\0') break;
 
-        float w = ch.width;
-        float h = ch.height;
+        const FontCharacter &ch = font->charFor(c);
 
-        // A glyph with no pixels, such as a space, has an empty texture. Draw nothing for it.
+        // A glyph with no pixels, such as a space, has nothing to draw.
         if (ch.width > 0 && ch.height > 0) {
-            const QVector4D quad[4] = {
-                { xpos + w, ypos,     1.0f, 1.0f },
-                { xpos + w, ypos + h, 1.0f, 0.0f },
-                { xpos,     ypos + h, 0.0f, 0.0f },
-                { xpos,     ypos,     0.0f, 1.0f },
-            };
+            rects[4 * count + 0] = x + ch.bearingX;
+            rects[4 * count + 1] = y - (ch.height - ch.bearingY);
+            rects[4 * count + 2] = ch.width;
+            rects[4 * count + 3] = ch.height;
 
-            glBindTexture(GL_TEXTURE_2D, ch.texture);
-            mTextProgram->setUniformValueArray("quad", quad, 4);
+            uvs[4 * count + 0] = ch.u0;
+            uvs[4 * count + 1] = ch.vBottom;
+            uvs[4 * count + 2] = ch.u1;
+            uvs[4 * count + 3] = ch.vTop;
 
-            // Render quad
-            glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+            if (++count == maxGlyphs) {
+                flush();
+            }
         }
 
         x += (ch.advance >> 6);
     }
+
+    flush();
 
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -455,14 +518,7 @@ void CanvasRenderer::drawText(Font *font, float x, float y, const QColor &color,
 
 void CanvasRenderer::drawTextOutlined(Font *font, float x, float y, const QColor &color, const std::string &text, const QColor &outlineColor)
 {
-    const float delta = 0.66667 * mZoomScaleText;
-
-    for (int dxi = -1; dxi <= 1; dxi += 2) {
-        for (int dyi = -1; dyi <= 1; dyi += 2) {
-            drawText(font, x + delta * dxi, y + delta * dyi, outlineColor, text);
-        }
-    }
-    drawText(font, x, y, color, text);
+    drawGlyphs(font, x, y, color, text, &outlineColor);
 }
 
 QRect CanvasRenderer::textBounds(Font *font, const std::string &text)
@@ -524,17 +580,90 @@ void CanvasRenderer::initShaders()
 {
     mTextProgram = createShaderProgram(Shaders::textVertex, Shaders::textFragment);
 
+    mTextLoc.projection = mTextProgram->uniformLocation("projection");
+    mTextLoc.rects = mTextProgram->uniformLocation("rects");
+    mTextLoc.uvs = mTextProgram->uniformLocation("uvs");
+    mTextLoc.glyphCount = mTextProgram->uniformLocation("glyphCount");
+    mTextLoc.passCount = mTextProgram->uniformLocation("passCount");
+    mTextLoc.offsets = mTextProgram->uniformLocation("offsets");
+    mTextLoc.textColor = mTextProgram->uniformLocation("textColor");
+    mTextLoc.outlineColor = mTextProgram->uniformLocation("outlineColor");
+
+    mTextProgram->bind();
+    mTextProgram->setUniformValue("text", 0);
+    mTextProgram->release();
+
     // The shaders take the corners of each quad from a uniform, so the vertex arrays have no buffers.
     // The core profile still requires a vertex array object for drawing.
     glGenVertexArrays(1, &mTextVao);
 
     mSpecProgram = createShaderProgram(Shaders::specVertex, Shaders::specFragment);
 
+    mSpecLoc.projection = mSpecProgram->uniformLocation("projection");
+    mSpecLoc.frequencyScale = mSpecProgram->uniformLocation("frequencyScale");
+    mSpecLoc.minFrequency = mSpecProgram->uniformLocation("minFrequency");
+    mSpecLoc.maxFrequency = mSpecProgram->uniformLocation("maxFrequency");
+    mSpecLoc.gainScale = mSpecProgram->uniformLocation("gainScale");
+    mSpecLoc.quality = mSpecProgram->uniformLocation("quality");
+    mSpecLoc.blur = mSpecProgram->uniformLocation("blur");
+    mSpecLoc.quad = mSpecProgram->uniformLocation("quad");
+
+    // The spectrogram texture is on unit 0, and the colour map is on unit 1.
+    mSpecProgram->bind();
+    mSpecProgram->setUniformValue("tex", 0);
+    mSpecProgram->setUniformValue("colorMap", 1);
+    mSpecProgram->setUniformValue("header", 2);
+    mSpecProgram->release();
+
+    glGenTextures(1, &mCmapTex);
+    glBindTexture(GL_TEXTURE_2D, mCmapTex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    // The colour map has a linear filter, so the colour changes smoothly between two entries.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
     glGenVertexArrays(1, &mSpecVao);
 
     mCircleProgram = createShaderProgram(Shaders::circleVertex, Shaders::circleFragment);
 
+    mCircleLoc.projection = mCircleProgram->uniformLocation("projection");
+    mCircleLoc.centers = mCircleProgram->uniformLocation("centers");
+    mCircleLoc.radius = mCircleProgram->uniformLocation("radius");
+    mCircleLoc.fillColor = mCircleProgram->uniformLocation("fillColor");
+
     glGenVertexArrays(1, &mCircleVao);
+
+    mLineProgram = createShaderProgram(Shaders::lineVertex, Shaders::lineFragment);
+
+    mLineLoc.projection = mLineProgram->uniformLocation("projection");
+    mLineLoc.quad = mLineProgram->uniformLocation("quad");
+    mLineLoc.center = mLineProgram->uniformLocation("center");
+    mLineLoc.radius = mLineProgram->uniformLocation("radius");
+    mLineLoc.fillColor = mLineProgram->uniformLocation("fillColor");
+
+    glGenVertexArrays(1, &mLineVao);
+}
+
+void CanvasRenderer::setProjections()
+{
+    // The text program draws with the y axis pointing down. The other programs use the y axis pointing up.
+    QMatrix4x4 up;
+    up.ortho(0, mWidth, 0, mHeight, -1, 1);
+    QMatrix4x4 down;
+    down.ortho(0, mWidth, mHeight, 0, -1, 1);
+
+    mTextProgram->bind();
+    mTextProgram->setUniformValue(mTextLoc.projection, down);
+
+    mCircleProgram->bind();
+    mCircleProgram->setUniformValue(mCircleLoc.projection, up);
+
+    mLineProgram->bind();
+    mLineProgram->setUniformValue(mLineLoc.projection, up);
+    mLineProgram->release();
 }
 
 void CanvasRenderer::deleteFonts()
@@ -554,6 +683,9 @@ void CanvasRenderer::deleteShaders()
 
     delete mCircleProgram;
     glDeleteVertexArrays(1, &mCircleVao);
+
+    delete mLineProgram;
+    glDeleteVertexArrays(1, &mLineVao);
 }
 
 void CanvasRenderer::initTexture(GLuint &texture, int width, int height)

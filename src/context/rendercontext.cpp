@@ -21,6 +21,7 @@ void RenderContext::render(QPainterWrapper *painter)
     painter->setMaxFrequency(mConfig->getViewMaxFrequency());
     painter->setFrequencyScale(mConfig->getViewFrequencyScale());
     painter->setMaxGain(mConfig->getViewMaxGain());
+    painter->setSpectrogramFilter(mConfig->getViewSpectrogramQuality(), mConfig->getViewSpectrogramBlur() / 100.0);
 
     if (mSelectedView != nullptr) {
         mSelectedView->render(painter, mConfig, mDataStore);

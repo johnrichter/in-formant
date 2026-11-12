@@ -56,7 +56,8 @@ void Spectrogram::processData(const rpm::vector<double>& overlap, double sampleR
 
     mDataStore->beginWrite();
     
-    mDataStore->getSpectrogram().insert(getCenteredTime() - (fftSamples / 2.0) / fsView, {fftVector, fsView});
+    rpm::vector<float> magnitudes(fftVector.begin(), fftVector.end());
+    mDataStore->getSpectrogram().insert(getCenteredTime() - (fftSamples / 2.0) / fsView, {std::move(magnitudes), fsView});
 
     mDataStore->endWrite();
 }

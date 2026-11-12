@@ -10,7 +10,9 @@ QPainterWrapper::QPainterWrapper(Gui::CanvasRenderer *p)
       mFrequencyScale(FrequencyScale::Mel),
       mMinFrequency(60),
       mMaxFrequency(8000),
-      mMaxGain(0)
+      mMaxGain(0),
+      mSpectrogramQuality(1),
+      mSpectrogramBlur(0.33)
 {
 }
 
@@ -48,6 +50,12 @@ void QPainterWrapper::setMaxFrequency(double maxFrequency)
 void QPainterWrapper::setMaxGain(double maxGain)
 {
     mMaxGain = maxGain;
+}
+
+void QPainterWrapper::setSpectrogramFilter(int quality, double blur)
+{
+    mSpectrogramQuality = quality;
+    mSpectrogramBlur = blur;
 }
 
 double QPainterWrapper::transformFrequency(double frequency)

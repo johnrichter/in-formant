@@ -299,6 +299,38 @@ ApplicationWindow {
 
                     MenuSeparator {}
 
+                    Label { text: "Spectrogram quality:" }
+                    ComboBox {
+                        implicitWidth: parent.width - 10
+                        model: [ "Fast", "Smooth" ]
+                        currentIndex: config.viewSpectrogramQuality
+                        onActivated: config.viewSpectrogramQuality = currentIndex
+                        Layout.alignment: Qt.AlignHCenter
+                    }
+
+                    Label {
+                        text: "Spectrogram blur:"
+                        enabled: config.viewSpectrogramQuality > 0
+                    }
+                    Slider {
+                        from: 0
+                        to: 100
+                        stepSize: 1
+                        enabled: config.viewSpectrogramQuality > 0
+                        value: config.viewSpectrogramBlur
+                        onMoved: config.viewSpectrogramBlur = value
+                        Label {
+                            id: blurHandleLabel
+                            anchors.top: parent.handle.bottom
+                            anchors.topMargin: 5
+                            anchors.horizontalCenter: parent.handle.horizontalCenter
+                            text: config.viewSpectrogramBlur + " %"
+                        }
+                        Layout.bottomMargin: blurHandleLabel.height - 10
+                    }
+
+                    MenuSeparator {}
+
                     Label { text: "Pitch algorithm:" }
                     ComboBox {
                         implicitWidth: parent.width - 10

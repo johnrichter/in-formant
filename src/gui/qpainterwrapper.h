@@ -32,6 +32,9 @@ public:
     void setMaxFrequency(double maxFrequency);
     void setMaxGain(double maxGain);
 
+    // quality 0 is the fast bilinear filter, and 1 is the cubic filter. blur is in the range 0 to 1.
+    void setSpectrogramFilter(int quality, double blur);
+
     void drawTimeAxis();
     void drawFrequencyScale();
 
@@ -50,7 +53,10 @@ public:
     double mapTimeToX(double time);
     double mapFrequencyToY(double frequency);
 
-    void drawSpectrogram(const rpm::vector<std::pair<double, Main::SpectrogramCoefs>>& slices);
+    using SliceIterator = TimeTrack<Main::SpectrogramCoefs>::const_iterator;
+
+    // Draw the slices in the range. The function stores only the slices that are new since the last call.
+    void drawSpectrogram(SliceIterator begin, SliceIterator end);
 
     static double mapTimeToX(double time, int width, double startTime, double endTime);
     static double mapFrequencyToY(double frequency, int height, FrequencyScale scale, double minFrequency, double maxFrequency);
@@ -69,6 +75,8 @@ private:
     double mMinFrequency;
     double mMaxFrequency;
     double mMaxGain;
+    int mSpectrogramQuality;
+    double mSpectrogramBlur;
 
     static double transformFrequency(double frequency, FrequencyScale scale);
     static double inverseFrequency(double value, FrequencyScale scale);

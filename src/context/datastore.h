@@ -19,7 +19,8 @@ enum class FrequencyScale : unsigned int {
 namespace Main {
 
     struct SpectrogramCoefs {
-        rpm::vector<double> magnitudes;
+        // The power of each frequency bin. A float is enough for the picture, and it halves the memory.
+        rpm::vector<float> magnitudes;
         double sampleRate;
     };
 

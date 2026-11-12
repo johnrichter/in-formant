@@ -4,6 +4,7 @@
 #include <rpcxx.h>
 #include <QOpenGLFunctions>
 #include <QSize>
+#include <array>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -11,7 +12,10 @@
 namespace Gui {
 
     struct FontCharacter {
-        GLuint       texture;
+        // The position of the glyph in the atlas texture, as texture coordinates.
+        // The top of the glyph has the coordinate vTop, and the bottom has vBottom.
+        float        u0, u1;
+        float        vTop, vBottom;
         unsigned int width;
         unsigned int height;
         int          bearingX;
@@ -24,13 +28,17 @@ namespace Gui {
         Font(FT_Library ft, const QString &font, int pixelSize);
         Font(FT_Library ft, const QString &font, double pointSize, double dpi);
         ~Font();
-        
-        const FontCharacter &charFor(char c);
+
+        const FontCharacter &charFor(char c) const;
+
+        // All the glyphs of the font are in one texture.
+        GLuint atlas() const;
 
     private:
-        void buildTextures(FT_Face face);
+        void buildAtlas(FT_Face face);
 
-        rpm::map<char, FontCharacter> mCharacters;
+        std::array<FontCharacter, 256> mCharacters;
+        GLuint mAtlas;
     };
 
 }

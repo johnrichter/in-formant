@@ -17,13 +17,25 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
 {
     const double realTimeEnd = dataStore->getRealTime();
 
-    dataStore->beginWrite();
-    constexpr double keepDuration = 50.0;
-    const double keepTimeStart = realTimeEnd - keepDuration;
-    dataStore->getSpectrogram().remove_before(keepTimeStart);
-    dataStore->getSoundTrack().remove_before(keepTimeStart);
-    dataStore->getGifTrack().remove_before(keepTimeStart);
-    dataStore->endWrite();
+    // Remove the old data about once for each second. Removing from the front of a vector moves
+    // every element after it, and the write lock stops the analysis thread while it runs.
+    static double lastTrimTime = -1e9;
+    if (realTimeEnd - lastTrimTime >= 1.0 || realTimeEnd < lastTrimTime) {
+        lastTrimTime = realTimeEnd;
+
+        dataStore->beginWrite();
+        constexpr double keepDuration = 50.0;
+        const double keepTimeStart = realTimeEnd - keepDuration;
+        dataStore->getSpectrogram().remove_before(keepTimeStart);
+        dataStore->getSoundTrack().remove_before(keepTimeStart);
+        dataStore->getGifTrack().remove_before(keepTimeStart);
+        // The pitch and formant tracks grew without limit before.
+        dataStore->getPitchTrack().remove_before(keepTimeStart);
+        for (int i = 0; i < dataStore->getFormantTrackCount(); ++i) {
+            dataStore->getFormantTrack(i).remove_before(keepTimeStart);
+        }
+        dataStore->endWrite();
+    }
 
     dataStore->beginRead();
 
@@ -35,19 +47,12 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
     const double timeEnd = realTimeEnd - timeDelay;
     const double timeStart = timeEnd - viewDuration;
 
-    constexpr double specRtDur = 2.0;
-
-    rpm::vector<double> sound =
-        !dataStore->getSoundTrack().empty() 
-            ? dataStore->getSoundTrack().back()
-            : rpm::vector<double>();
-
     painter->setTimeRange(timeStart, timeEnd);
   
     if (config->getViewShowSpectrogram()) {
-        rpm::vector<std::pair<double, SpectrogramCoefs>> slices(
+        // Pass the range, not a copy. A copy of all visible slices is several megabytes for each frame.
+        painter->drawSpectrogram(
             spectrogram.lower_bound(timeStart), spectrogram.upper_bound(timeEnd));
-        painter->drawSpectrogram(slices);
     }
     
     if (config->getViewShowPitch()) {

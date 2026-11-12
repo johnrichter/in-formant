@@ -296,6 +296,28 @@ void Config::setViewMaxGain(int g)
     emit viewMaxGainChanged(g);
 }
 
+int Config::getViewSpectrogramQuality()
+{
+    return integerField(mTbl["view"], "spectrogramQuality", 1);
+}
+
+void Config::setViewSpectrogramQuality(int quality)
+{
+    mTbl["view"]["spectrogramQuality"].ref<int64_t>() = quality;
+    emit viewSpectrogramQualityChanged(quality);
+}
+
+int Config::getViewSpectrogramBlur()
+{
+    return integerField(mTbl["view"], "spectrogramBlur", 33);
+}
+
+void Config::setViewSpectrogramBlur(int percent)
+{
+    mTbl["view"]["spectrogramBlur"].ref<int64_t>() = percent;
+    emit viewSpectrogramBlurChanged(percent);
+}
+
 double Config::getViewTimeSpan()
 {
     return doubleField(mTbl["view"], "timeSpan", 5.0);
@@ -433,7 +455,7 @@ void Config::setAnalysisGranularity(double ms) {
 }
 
 double Config::getAnalysisGranularity() {
-    return doubleField(mTbl["analysis"], "granularity", 20.0);
+    return doubleField(mTbl["analysis"], "granularity", 10.0);
 }
 
 void Config::setAnalysisSpectrogramWindow(double ms) {

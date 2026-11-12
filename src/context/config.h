@@ -28,6 +28,8 @@ namespace Main {
         Q_PROPERTY(int viewMaxFrequency     READ getViewMaxFrequency            WRITE setViewMaxFrequency       NOTIFY viewMaxFrequencyChanged)
         Q_PROPERTY(int viewFFTSize          READ getViewFFTSize                 WRITE setViewFFTSize            NOTIFY viewFFTSizeChanged)
         Q_PROPERTY(int viewMaxGain          READ getViewMaxGain                 WRITE setViewMaxGain            NOTIFY viewMaxGainChanged)
+        Q_PROPERTY(int viewSpectrogramQuality READ getViewSpectrogramQuality    WRITE setViewSpectrogramQuality NOTIFY viewSpectrogramQualityChanged)
+        Q_PROPERTY(int viewSpectrogramBlur  READ getViewSpectrogramBlur         WRITE setViewSpectrogramBlur    NOTIFY viewSpectrogramBlurChanged)
         Q_PROPERTY(double viewTimeSpan      READ getViewTimeSpan                WRITE setViewTimeSpan           NOTIFY viewTimeSpanChanged)
         Q_PROPERTY(int viewFrequencyScale   READ getViewFrequencyScaleNumeric   WRITE setViewFrequencyScale     NOTIFY viewFrequencyScaleChanged)
         Q_PROPERTY(bool viewShowSpectrogram READ getViewShowSpectrogram         WRITE setViewShowSpectrogram    NOTIFY viewShowSpectrogramChanged)
@@ -48,6 +50,8 @@ namespace Main {
         void viewMaxFrequencyChanged(int);
         void viewFFTSizeChanged(int);
         void viewMaxGainChanged(int);
+        void viewSpectrogramQualityChanged(int);
+        void viewSpectrogramBlurChanged(int);
         void viewTimeSpanChanged(double);
         void viewFrequencyScaleChanged(int);
         void viewShowSpectrogramChanged(bool);
@@ -110,6 +114,14 @@ namespace Main {
 
         int getViewMaxGain();
         void setViewMaxGain(int g);
+
+        // The filter of the spectrogram picture. Quality 0 is fast, and 1 is smooth.
+        int getViewSpectrogramQuality();
+        void setViewSpectrogramQuality(int quality);
+
+        // The blur of the smooth filter in percent. 0 is sharp, and 100 is the softest.
+        int getViewSpectrogramBlur();
+        void setViewSpectrogramBlur(int percent);
 
         double getViewTimeSpan();
         void setViewTimeSpan(double dur);
