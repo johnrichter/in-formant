@@ -87,6 +87,8 @@ namespace Main {
         std::unique_ptr<Audio::Queue> mPlaybackQueue;
 
         std::unique_ptr<DataStore> mDataStore;
+
+        DataVisWrapper mDataVisWrapper;
         
         std::unique_ptr<App::Pipeline> mPipeline;
        
@@ -94,8 +96,6 @@ namespace Main {
         std::unique_ptr<App::Synthesizer> mSynthesizer;
         SynthWrapper mSynthWrapper;
 #endif
-        
-        DataVisWrapper mDataVisWrapper;
 
         std::unique_ptr<AudioContext> mAudioContext;
         std::unique_ptr<RenderContext> mRenderContext;

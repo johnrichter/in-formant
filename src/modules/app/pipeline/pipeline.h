@@ -6,6 +6,7 @@
 #include "../../audio/audio.h"
 #include "../../../context/datastore.h"
 #include "../../../context/config.h"
+#include "../../../context/dataviswrapper.h"
 #include "processors/base.h"
 
 #include <atomic>
@@ -21,6 +22,7 @@ namespace Module::App
     public:
         Pipeline(Module::Audio::Buffer *captureBuffer,
                 Main::DataStore *dataStore, Main::Config *config,
+                Main::DataVisWrapper *dataVis,
                 std::shared_ptr<Analysis::PitchSolver>& pitchSolver,
                 std::shared_ptr<Analysis::LinpredSolver>& linpredSolver,
                 std::shared_ptr<Analysis::FormantSolver>& formantSolver,
@@ -33,6 +35,7 @@ namespace Module::App
         Module::Audio::Buffer *mCaptureBuffer;
         Main::DataStore *mDataStore;
         Main::Config *mConfig;
+        Main::DataVisWrapper *mDataVis;
 
         std::atomic<double> mTime;
         std::atomic_bool mThreadRunning;

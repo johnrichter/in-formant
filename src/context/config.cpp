@@ -116,9 +116,8 @@ Config::Config()
     initSubTable(mTbl, "meta");
 
     // The configuration file stores each default at the first exit, so a new default has no effect
-    // on an existing file. Version 2 applies the new defaults for the time step and the view duration
-    // one time.
-    constexpr int64_t currentVersion = 2;
+    // on an existing file. Each version applies new defaults one time.
+    constexpr int64_t currentVersion = 3;
     const int64_t fileVersion = integerField(mTbl["meta"], "version", 0);
     if (fileVersion < 2) {
         mTbl["analysis"].as_table()->insert_or_assign("granularity", 10.0);
@@ -126,6 +125,10 @@ Config::Config()
         mTbl["analysis"].as_table()->insert_or_assign("pitchSpacing", 20.0);
         mTbl["analysis"].as_table()->insert_or_assign("formantSpacing", 40.0);
         mTbl["view"].as_table()->insert_or_assign("timeSpan", 15.0);
+    }
+    if (fileVersion < 3) {
+        // The glottal flow estimate follows the sound at a high rate.
+        mTbl["analysis"].as_table()->insert_or_assign("oscilloscopeSpacing", 20.0);
     }
     mTbl["meta"].as_table()->insert_or_assign("version", currentVersion);
 
@@ -176,6 +179,10 @@ QVariantMap Config::defaultOptions()
     // Track statistics. Each bit of the mask shows one value.
     m["statsMask"] = 0x1 | 0x2 | 0x8 | 0x40 | 0x80;   // current, min, mean, p95, max
     m["statsWindow"] = 0.0;      // seconds, 0 means the visible window
+
+    // Oscilloscope.
+    m["scopeWindow"] = 30.0;     // milliseconds of sound in the view
+    m["scopeShowGif"] = true;    // show the estimate of the glottal flow
 
     // Colour theme.
     m["theme"] = QString("Magma");
@@ -658,7 +665,7 @@ void Config::setAnalysisOscilloscopeSpacing(double ms) {
 }
 
 double Config::getAnalysisOscilloscopeSpacing() {
-    return doubleField(mTbl["analysis"], "oscilloscopeSpacing", 160.0);
+    return doubleField(mTbl["analysis"], "oscilloscopeSpacing", 20.0);
 }
 
 bool Config::isPaused()

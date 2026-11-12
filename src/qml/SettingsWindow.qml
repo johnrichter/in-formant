@@ -264,7 +264,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     color: "lightgrey"
-                    text: "The theme sets the colours of the spectrogram, the pitch track, and the formant tracks. Every theme works on a dark background. The pride themes use softer versions of the flag colours."
+                    text: "The theme sets the colours of the spectrogram, the pitch track, the formant tracks, and the plots of the oscilloscope and the synthesizer. Every theme works on a dark background. The pride themes use softer versions of the flag colours."
                 }
 
                 MenuSeparator { Layout.fillWidth: true; visible: config.options.theme === "Custom" }

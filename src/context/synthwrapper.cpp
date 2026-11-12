@@ -1,8 +1,9 @@
 #ifndef WITHOUT_SYNTH
 
 #include "synthwrapper.h"
-#include <QSplineSeries>
+#include <algorithm>
 #include <cfloat>
+#include <cmath>
 
 using namespace Main;
 
@@ -15,12 +16,14 @@ SynthWrapper::SynthWrapper()
       mGlotTc(1.0),
       mFilterShift(1.0),
       mVoiced(true),
-      mFollowPitch(true),
+      mFollowPitch(false),
       mFollowFormants(true),
       mFilterResponseDbMin(0),
       mFilterResponseDbMax(0),
       mSourceSpectrumDbMin(DBL_MAX),
-      mSourceSpectrumDbMax(-DBL_MAX)
+      mSourceSpectrumDbMax(-DBL_MAX),
+      mWatchers(0),
+      mVersion(0)
 {
 }
 
@@ -142,14 +145,14 @@ void SynthWrapper::setFilterResponse(const rpm::vector<double>& frequencies, con
     double dBmin = DBL_MAX;
     double dBmax = -DBL_MAX;
     for (int k = 0; k < frequencies.size(); ++k) {
-        const double dB = 20.0 * log10(magnitudes[k]);
+        const double dB = std::max(-200.0, 20.0 * log10(std::max(magnitudes[k], 1e-12)));
         mFilterResponse[k] = QPointF(frequencies[k], dB);
         if (dB < dBmin)
             dBmin = dB;
         if (dB > dBmax)
             dBmax = dB;
     }
-    mFilterResponseDbMin = 10;
+    mFilterResponseDbMin = std::max(dBmin, dBmax - 60.0);
 
     if (mFilterResponseDbMax == 0) {
         mFilterResponseDbMax = dBmax;
@@ -163,7 +166,7 @@ void SynthWrapper::setFilterResponse(const rpm::vector<double>& frequencies, con
         }
     }
 
-    emit filterResponseChanged();
+    ++mVersion;
 }
 
 void SynthWrapper::setSource(const rpm::vector<double>& signal, double fs)
@@ -174,7 +177,7 @@ void SynthWrapper::setSource(const rpm::vector<double>& signal, double fs)
     for (int k = 0; k < signal.size(); ++k) {
         mSource[k] = QPointF((k * 1000) / fs, signal[k]);
     }
-    emit sourceChanged();
+    ++mVersion;
 }
 
 void SynthWrapper::setSourceSpectrum(const rpm::vector<double>& frequencies, const rpm::vector<double>& magnitudes)
@@ -185,7 +188,7 @@ void SynthWrapper::setSourceSpectrum(const rpm::vector<double>& frequencies, con
     double dBmin = DBL_MAX;
     double dBmax = -DBL_MAX;
     for (int k = 0; k < frequencies.size(); ++k) {
-        const double dB = 20.0 * log10(magnitudes[k]);
+        const double dB = std::max(-200.0, 20.0 * log10(std::max(magnitudes[k], 1e-12)));
         mSourceSpectrum[k] = QPointF(frequencies[k], dB);
         if (dB < dBmin)
             dBmin = dB;
@@ -194,39 +197,70 @@ void SynthWrapper::setSourceSpectrum(const rpm::vector<double>& frequencies, con
     }
     mSourceSpectrumDbMin = -60;
     mSourceSpectrumDbMax = std::max(mSourceSpectrumDbMax, dBmax);
-    emit sourceSpectrumChanged();
+    ++mVersion;
 }
 
-void SynthWrapper::updateFilterResponseSeries(QXYSeries* series, QLogValueAxis *xAxis, QValueAxis* yAxis)
+void SynthWrapper::changeWatchers(int, int delta)
 {
-    QMutexLocker lock(&mFilterResponseMutex);
-    
-    series->replace(mFilterResponse);
-    xAxis->setRange(100, mFilterResponse.back().x());
-
-    double roundedMin = std::floor(mFilterResponseDbMin / 10) * 10;
-    yAxis->setRange(roundedMin, mFilterResponseDbMax);
+    mWatchers += delta;
 }
 
-void SynthWrapper::updateSourceSeries(QXYSeries* series, QValueAxis* xAxis, QValueAxis* yAxis)
+bool SynthWrapper::fillPlot(int kind, const Gui::PlotRequest &, Gui::PlotSnapshot &out)
 {
-    QMutexLocker lock(&mSourceMutex);
-    
-    series->replace(mSource);
-    xAxis->setRange(mSource.front().x(), mSource.back().x());
-    yAxis->setRange(-1.5, 1.5);
-}
+    out.series.clear();
+    out.version = mVersion.load();
 
-void SynthWrapper::updateSourceSpectrumSeries(QXYSeries* series, QLogValueAxis *xAxis, QValueAxis* yAxis)
-{
-    QMutexLocker lock(&mSourceSpectrumMutex);
-    
-    series->replace(mSourceSpectrum);
-    xAxis->setRange(100, mSourceSpectrum.back().x());
-    
-    double realMin = std::floor(mSourceSpectrumDbMin / 10) * 10;
-    double realMax = std::ceil(mSourceSpectrumDbMax / 10) * 10;
-    yAxis->setRange(realMin, realMax);
+    Gui::PlotSeries series;
+    series.colorIndex = 0;
+
+    if (kind == Gui::PlotItem::Filter) {
+        QMutexLocker lock(&mFilterResponseMutex);
+        if (mFilterResponse.isEmpty()) return false;
+
+        series.points = mFilterResponse;
+        out.title = "Synthesis filter";
+        out.xUnit = "Hz";
+        out.yUnit = "dB";
+        out.logX = true;
+        out.xMin = 100;
+        out.xMax = mFilterResponse.back().x();
+        out.yMin = std::floor(mFilterResponseDbMin / 10) * 10;
+        out.yMax = std::max(mFilterResponseDbMax, out.yMin + 10);
+    }
+    else if (kind == Gui::PlotItem::Source) {
+        QMutexLocker lock(&mSourceMutex);
+        if (mSource.size() < 2) return false;
+
+        series.points = mSource;
+        out.title = "Synthesized source";
+        out.xUnit = "ms";
+        out.yUnit = "";
+        out.logX = false;
+        out.xMin = mSource.front().x();
+        out.xMax = mSource.back().x();
+        out.yMin = -1.5;
+        out.yMax = 1.5;
+    }
+    else if (kind == Gui::PlotItem::Spectrum) {
+        QMutexLocker lock(&mSourceSpectrumMutex);
+        if (mSourceSpectrum.isEmpty()) return false;
+
+        series.points = mSourceSpectrum;
+        out.title = "Synthesized source spectrum";
+        out.xUnit = "Hz";
+        out.yUnit = "dB";
+        out.logX = true;
+        out.xMin = 100;
+        out.xMax = mSourceSpectrum.back().x();
+        out.yMin = std::floor(mSourceSpectrumDbMin / 10) * 10;
+        out.yMax = std::max(std::ceil(mSourceSpectrumDbMax / 10) * 10, out.yMin + 10);
+    }
+    else {
+        return false;
+    }
+
+    out.series.push_back(std::move(series));
+    return true;
 }
 
 #endif // !WITHOUT_SYNTH

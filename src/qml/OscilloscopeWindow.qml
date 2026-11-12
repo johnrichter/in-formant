@@ -1,71 +1,57 @@
-import QtQuick 
-import QtQuick.Layouts 
-import QtQuick.Controls 
-import QtQuick.Controls.Material 
-import QtCharts 
+import QtQuick
+import QtQuick.Layouts
+import QtQuick.Controls
+import QtQuick.Controls.Material
+import IfCanvas
 
 ApplicationWindow {
-    id: synthWindow
+    id: scopeWindow
     title: appName + " - Oscilloscope"
     visible: false
 
-    width: 400
-    height: 300
+    width: 1100
+    height: 620
+    minimumWidth: 480
+    minimumHeight: 320
 
     Material.theme: Material.Dark
     Material.accent: Material.DeepPurple
-    
-    RowLayout {
+
+    ColumnLayout {
         anchors.fill: parent
+        anchors.margins: 8
+        spacing: 6
 
-        ChartView {
-            title: "Oscilloscope"
-            antialiasing: true 
-
+        IfPlot {
+            kind: 0
             Layout.fillWidth: true
             Layout.fillHeight: true
+        }
 
-            theme: ChartView.ChartThemeDark
-            backgroundColor: Qt.lighter(Material.background, 0.9)
+        RowLayout {
+            Layout.fillWidth: true
 
-            axes: [
-                ValueAxis {
-                    id: oscAxisX
-                    labelFormat: "%d ms"
-                },
-                ValueAxis {
-                    id: oscAxisY
-                    tickCount: 7
-                    labelFormat: "%g"
-                }
-            ]
-
-            SplineSeries {
-                name: "Input sound"
-                id: oscSoundSeries
-                axisX: oscAxisX
-                axisY: oscAxisY
+            Label { text: "Time in the view" }
+            Slider {
+                from: 5
+                to: 100
+                stepSize: 1
+                value: config.options.scopeWindow
+                onMoved: config.setOption("scopeWindow", value)
+                Layout.preferredWidth: 240
+            }
+            Label {
+                text: Math.round(config.options.scopeWindow) + " ms"
+                Layout.minimumWidth: 56
             }
 
-            SplineSeries {
-                name: "Estimated glottal flow"
-                id: oscGifSeries
-                axisX: oscAxisX
-                axisY: oscAxisY
-            }
-        }
-    }
+            Item { Layout.fillWidth: true }
 
-    // Update the charts only while the window is on the screen. A chart that nobody sees
-    // still repaints on the CPU for every update, and this took about a third of the main thread.
-    Connections {
-        target: dataVis
-        enabled: synthWindow.visible
-        function onSoundChanged() {
-            dataVis.updateSoundSeries(oscSoundSeries, oscAxisX, oscAxisY)
-        }
-        function onGifChanged() {
-            dataVis.updateGifSeries(oscGifSeries, oscAxisX, oscAxisY)
+            CheckBox {
+                text: "Glottal flow estimate"
+                checked: config.options.scopeShowGif
+                onToggled: config.setOption("scopeShowGif", checked)
+            }
         }
     }
 }

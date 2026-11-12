@@ -1,4 +1,5 @@
 #include "../gui/canvas.h"
+#include "../gui/plotitem.h"
 #include "contextmanager.h"
 #include "qsgrendererinterface.h"
 #include "qsurfaceformat.h"
@@ -26,6 +27,11 @@ GuiContext::GuiContext(Config *config, RenderContext *renderContext, DataVisWrap
 
     QQuickStyle::setStyle("Material");
     qmlRegisterType<Gui::CanvasItem>("IfCanvas", 1, 0, "IfCanvas");
+    qmlRegisterType<Gui::PlotItem>("IfCanvas", 1, 0, "IfPlot");
+
+    // The plots of the oscilloscope and of the synthesizer read their data from these objects.
+    Gui::PlotItem::setConfig(mConfig);
+    Gui::PlotItem::setProvider(Gui::PlotItem::Scope, dataVisWrapper);
 
     mApp = std::make_unique<QApplication>(argc, argv);
 
@@ -46,6 +52,9 @@ GuiContext::GuiContext(Config *config, RenderContext *renderContext, DataVisWrap
     mQmlEngine->rootContext()->setContextProperty("config", mConfig);
 
 #ifndef WITHOUT_SYNTH
+    Gui::PlotItem::setProvider(Gui::PlotItem::Filter, synthWrapper);
+    Gui::PlotItem::setProvider(Gui::PlotItem::Source, synthWrapper);
+    Gui::PlotItem::setProvider(Gui::PlotItem::Spectrum, synthWrapper);
     mQmlEngine->rootContext()->setContextProperty("synth", synthWrapper);
     mQmlEngine->rootContext()->setContextProperty("HAS_SYNTH", true);
 #else
@@ -57,8 +66,6 @@ GuiContext::GuiContext(Config *config, RenderContext *renderContext, DataVisWrap
 #else
     mQmlEngine->rootContext()->setContextProperty("HAS_TORCH", false);
 #endif
-
-    mQmlEngine->rootContext()->setContextProperty("dataVis", dataVisWrapper);
 
     mQmlEngine->load(QUrl("qrc:/MainWindow.qml"));
    

@@ -17,6 +17,7 @@ using namespace Module::App;
 
 Pipeline::Pipeline(Module::Audio::Buffer *captureBuffer,
                 Main::DataStore *dataStore, Main::Config *config,
+                Main::DataVisWrapper *dataVis,
                 std::shared_ptr<Analysis::PitchSolver>& pitchSolver,
                 std::shared_ptr<Analysis::LinpredSolver>& linpredSolver,
                 std::shared_ptr<Analysis::FormantSolver>& formantSolver,
@@ -24,6 +25,7 @@ Pipeline::Pipeline(Module::Audio::Buffer *captureBuffer,
     : mCaptureBuffer(captureBuffer),
       mDataStore(dataStore),
       mConfig(config),
+      mDataVis(dataVis),
       mTime(0),
       mThreadRunning(false),
       mStopThread(false),
@@ -32,7 +34,7 @@ Pipeline::Pipeline(Module::Audio::Buffer *captureBuffer,
     mProcessors.push_back(std::make_unique<Processors::Spectrogram>(config, dataStore));
     mProcessors.push_back(std::make_unique<Processors::Pitch>(config, dataStore, pitchSolver));
     mProcessors.push_back(std::make_unique<Processors::Formants>(config, dataStore, linpredSolver, formantSolver));
-    mProcessors.push_back(std::make_unique<Processors::Oscilloscope>(config, dataStore, invglotSolver));
+    mProcessors.push_back(std::make_unique<Processors::Oscilloscope>(config, dataVis, invglotSolver));
 }
 
 Pipeline::~Pipeline()
@@ -76,6 +78,8 @@ void Pipeline::callbackProcessing()
 
         // The sliding window ends at the end of the new block.
         time += granularity;
+
+        mDataVis->pushAudio(block.data(), (int) block.size(), mSampleRate);
 
         for (auto& processor : mProcessors) {
             if (processor->canProcess(time)) {

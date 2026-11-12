@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts 
 import QtQuick.Controls 
 import QtQuick.Controls.Material 
-import QtCharts 
+import IfCanvas
 
 ApplicationWindow {
     id: synthWindow
@@ -11,6 +11,16 @@ ApplicationWindow {
 
     width: 400
     height: 300
+
+    // The first time the window opens, it takes the size of its contents.
+    property bool sized: false
+    onVisibleChanged: {
+        if (visible && !sized) {
+            sized = true
+            width = Math.min(contents.implicitWidth + 4, Screen.desktopAvailableWidth * 0.95)
+            height = Math.min(contents.implicitHeight + 4, Screen.desktopAvailableHeight * 0.92)
+        }
+    }
 
     Material.theme: Material.Dark
     Material.accent: Material.DeepPurple
@@ -177,115 +187,34 @@ ApplicationWindow {
                     onToggled: synth.followFormants = checked
                 }
 
-                ChartView {
-                    title: "Synthesis filter"
-                    antialiasing: true
-                    
+                IfPlot {
+                    kind: 1
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-
-                    theme: ChartView.ChartThemeDark
-                    backgroundColor: Qt.lighter(Material.background, 0.9)
-                    legend.visible: false
-
-                    axes: [
-                        LogValueAxis {
-                            id: filterSpectrumAxisX
-                            minorTickCount: 10
-                            labelFormat: "%d Hz"
-                        },
-                        ValueAxis {
-                            id: filterSpectrumAxisY
-                            minorTickCount: 5
-                            labelFormat: "%d dB"
-                        }
-                    ]
-
-                    SplineSeries {
-                        id: filterSpectrumSeries
-                        axisXTop: filterSpectrumAxisX
-                        axisY: filterSpectrumAxisY
-                    }
+                    Layout.preferredWidth: 520
+                    Layout.preferredHeight: 240
+                    Layout.minimumHeight: 140
                 }
 
                 MenuSeparator {}
 
                 RowLayout {
-                    ChartView {
-                        title: "Synthesized source"
-                        antialiasing: true 
-
+                    IfPlot {
+                        kind: 2
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-
-                        theme: ChartView.ChartThemeDark
-                        backgroundColor: Qt.lighter(Material.background, 0.9)
-                        legend.visible: false
-
-                        axes: [
-                            ValueAxis {
-                                id: sourceAxisX
-                                labelFormat: "%d ms"
-                            },
-                            ValueAxis {
-                                id: sourceAxisY
-                                tickCount: 7
-                                labelFormat: "%g"
-                            }
-                        ]
-
-                        LineSeries {
-                            id: sourceSeries
-                            axisX: sourceAxisX
-                            axisY: sourceAxisY
-                        }
+                        Layout.preferredWidth: 255
+                        Layout.preferredHeight: 200
+                        Layout.minimumHeight: 120
                     }
 
-                    ChartView {
-                        title: "Synthesized source spectrum"
-                        antialiasing: true 
-                        
+                    IfPlot {
+                        kind: 3
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-
-                        theme: ChartView.ChartThemeDark
-                        backgroundColor: Qt.lighter(Material.background, 0.9)
-                        legend.visible: false
-                        
-                        axes: [
-                            LogValueAxis {
-                                id: sourceSpectrumAxisX
-                                minorTickCount: 10
-                                labelFormat: "%d Hz"
-                            },
-                            ValueAxis {
-                                id: sourceSpectrumAxisY
-                                minorTickCount: 5
-                                labelFormat: "%d dB"
-                            }
-                        ]
-
-                        SplineSeries {
-                            id: sourceSpectrumSeries
-                            axisXTop: sourceSpectrumAxisX
-                            axisY: sourceSpectrumAxisY
-                        }
-                    }
-                }
-
-                // Update the charts only while the window is on the screen. A chart that nobody sees
-                // still repaints on the CPU for every update, and this took about a third of the main thread.
-                Connections {
-                    target: synth
-                    enabled: synthWindow.visible
-                    function onFilterResponseChanged() {
-                        synth.updateFilterResponseSeries(filterSpectrumSeries, filterSpectrumAxisX, filterSpectrumAxisY)
-                    }
-                    function onSourceChanged() {
-                        synth.updateSourceSeries(sourceSeries, sourceAxisX, sourceAxisY)
-                    }
-                    function onSourceSpectrumChanged() {
-                        synth.updateSourceSpectrumSeries(sourceSpectrumSeries, sourceSpectrumAxisX, sourceSpectrumAxisY);
+                        Layout.preferredWidth: 255
+                        Layout.preferredHeight: 200
+                        Layout.minimumHeight: 120
                     }
                 }
             }

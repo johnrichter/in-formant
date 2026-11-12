@@ -24,6 +24,7 @@ ContextManager::ContextManager(
       mDataStore(std::make_unique<DataStore>()),
       mPipeline(std::make_unique<App::Pipeline>(
                   mCaptureBuffer.get(), mDataStore.get(), mConfig.get(),
+                  &mDataVisWrapper,
                   mPitchSolver, mLinpredSolver,
                   mFormantSolver, mInvglotSolver)),
 #ifndef WITHOUT_SYNTH
@@ -202,16 +203,19 @@ void ContextManager::datavisThreadLoop()
 {
 #ifdef WITHOUT_SYNTH
     while (mAnalysisRunning) {
+        std::this_thread::sleep_for(100ms);
+    }
 #else // WITHOUT_SYNTH
     using Synth = Module::App::Synthesizer;
 
+    // The pitch and the voicing go to the synthesizer from this loop, because it reads the pitch
+    // estimates and the sliders in one place. A signal between threads would arrive late and
+    // could replace a newer value.
     QObject::connect(&mSynthWrapper, &SynthWrapper::noiseGainChanged, mSynthesizer.get(), &Synth::setNoiseGain);
     QObject::connect(&mSynthWrapper, &SynthWrapper::glotGainChanged, mSynthesizer.get(), &Synth::setGlotGain);
-    QObject::connect(&mSynthWrapper, &SynthWrapper::glotPitchChanged, mSynthesizer.get(), &Synth::setGlotPitch);
     QObject::connect(&mSynthWrapper, &SynthWrapper::glotRdChanged, mSynthesizer.get(), &Synth::setGlotRd);
     QObject::connect(&mSynthWrapper, &SynthWrapper::glotTcChanged, mSynthesizer.get(), &Synth::setGlotTc);
     QObject::connect(&mSynthWrapper, &SynthWrapper::filterShiftChanged, mSynthesizer.get(), &Synth::setFilterShift);
-    QObject::connect(&mSynthWrapper, &SynthWrapper::voicedChanged, mSynthesizer.get(), &Synth::setVoiced);
 
     double maxFrequency = 0;
     rpm::vector<double> frequencies(1024);
@@ -225,51 +229,78 @@ void ContextManager::datavisThreadLoop()
         fftFrequencies[k] = maxFrequencySource * (double) (k + 1) / (double) fftFrequencies.size();
     }
 
+    // The state of the follow mode. The pitch is smooth on a logarithmic scale, and a short
+    // gap in the estimates does not switch the voice off.
+    double followLogPitch = 0;
+    bool followActive = false;
+    int unvoicedFrames = 0;
+    auto lastUiUpdate = std::chrono::steady_clock::now();
+
     while (mAnalysisRunning && mSynthesisRunning) {
 #endif // WITHOUT_SYNTH
-        mDataStore->beginRead();
-        
-        if (!mDataStore->getSoundTrack().empty()) {
-            mDataVisWrapper.setSound(mDataStore->getSoundTrack().back(), 8000);
-        }
-        if (!mDataStore->getGifTrack().empty()) {
-            mDataVisWrapper.setGif(mDataStore->getGifTrack().back(), 8000);
-        }
-            
 #ifndef WITHOUT_SYNTH
-        if (mSynthWrapper.followPitch()) {
-            if (!mDataStore->getPitchTrack().empty()) {
-                std::optional<double> p = mDataStore->getPitchTrack().back();
-                if (p.has_value()) {
-                    mSynthWrapper.setVoiced(true);
-                    mSynthWrapper.setGlotPitch(*p);
-                }
-                else {
-                    mSynthWrapper.setVoiced(false);
-                }
-            }
-            else {
-                mSynthWrapper.setVoiced(false);
-            }
-        }
+        const bool followPitch = mSynthWrapper.followPitch();
+        const bool followFormants = mSynthWrapper.followFormants();
 
-        if (mSynthWrapper.followFormants()) {
-            rpm::vector<Analysis::FormantData> formants;
-            for (int i = 0; i < 4; ++i) {
-                if (!mDataStore->getFormantTrack(i).empty()) {
-                    std::optional<double> fi = mDataStore->getFormantTrack(i).back();
-                    if (fi.has_value()) {
-                        formants.push_back({*fi, 100.0});
+        std::optional<double> pitchEstimate;
+        rpm::vector<Analysis::FormantData> formants;
+
+        if (followPitch || followFormants) {
+            mDataStore->beginRead();
+
+            if (followPitch && !mDataStore->getPitchTrack().empty()) {
+                pitchEstimate = mDataStore->getPitchTrack().back();
+            }
+
+            if (followFormants) {
+                for (int i = 0; i < 4; ++i) {
+                    if (!mDataStore->getFormantTrack(i).empty()) {
+                        std::optional<double> fi = mDataStore->getFormantTrack(i).back();
+                        if (fi.has_value()) {
+                            formants.push_back({*fi, 100.0});
+                        }
                     }
                 }
             }
+
+            mDataStore->endRead();
+        }
+
+        if (followFormants) {
             mSynthesizer->setFormants(formants);
         }
-#endif // !WITHOUT_SYNTH
 
-        mDataStore->endRead();
-            
-#ifndef WITHOUT_SYNTH
+        const auto now = std::chrono::steady_clock::now();
+        const bool updateUi = now - lastUiUpdate >= 100ms;
+        if (updateUi) lastUiUpdate = now;
+
+        if (followPitch) {
+            if (pitchEstimate.has_value() && *pitchEstimate > 0) {
+                const double target = std::log(*pitchEstimate);
+                followLogPitch = followActive ? followLogPitch + 0.6 * (target - followLogPitch) : target;
+                followActive = true;
+                unvoicedFrames = 0;
+                mSynthesizer->setGlotPitch(std::exp(followLogPitch));
+                mSynthesizer->setVoiced(true);
+            }
+            else if (++unvoicedFrames >= 4) {
+                followActive = false;
+                mSynthesizer->setVoiced(false);
+            }
+
+            // The sliders show the values that the synthesizer uses.
+            if (updateUi) {
+                if (followActive) mSynthWrapper.setGlotPitch(std::exp(followLogPitch));
+                mSynthWrapper.setVoiced(followActive);
+            }
+        }
+        else {
+            followActive = false;
+            unvoicedFrames = 0;
+            mSynthesizer->setGlotPitch(mSynthWrapper.glotPitch());
+            mSynthesizer->setVoiced(mSynthWrapper.voiced());
+        }
+
         if (mSynthWrapper.enabled()) {
             mSynthesizer->setMasterGain(1.0);
         }
@@ -277,28 +308,31 @@ void ContextManager::datavisThreadLoop()
             mSynthesizer->setMasterGain(0.0);
         }
 
-        double synthSampleRate;
-        auto filter = mSynthesizer->getFilterCopy(&synthSampleRate);
+        // Make the data of the plots only while a plot is on the screen.
+        if (mSynthWrapper.watched()) {
+            double synthSampleRate;
+            auto filter = mSynthesizer->getFilterCopy(&synthSampleRate);
 
-        if (maxFrequency != synthSampleRate / 2) {
-            maxFrequency = synthSampleRate / 2;
-            for (int k = 0; k < frequencies.size(); ++k) {
-                frequencies[k] = maxFrequency * (double) (k + 1) / (double) frequencies.size();
-                wn[k] = std::polar(1.0, 2.0 * M_PI * frequencies[k] / synthSampleRate);
+            if (maxFrequency != synthSampleRate / 2) {
+                maxFrequency = synthSampleRate / 2;
+                for (int k = 0; k < frequencies.size(); ++k) {
+                    frequencies[k] = maxFrequency * (double) (k + 1) / (double) frequencies.size();
+                    wn[k] = std::polar(1.0, 2.0 * M_PI * frequencies[k] / synthSampleRate);
+                }
             }
+
+            mSynthWrapper.setFilterResponse(frequencies, Analysis::sosfreqz(filter, wn));
+
+            auto source = mSynthesizer->getSourceCopy(maxFrequencySource * 2, 25.0);
+            mSynthWrapper.setSource(source, maxFrequencySource * 2);
+
+            auto sourceSpectrum = Analysis::fft_n(&fft, source, fftWindowCache);
+            mSynthWrapper.setSourceSpectrum(fftFrequencies, sourceSpectrum);
         }
-
-        mSynthWrapper.setFilterResponse(frequencies, Analysis::sosfreqz(filter, wn));
-        
-        auto source = mSynthesizer->getSourceCopy(maxFrequencySource * 2, 25.0);
-        mSynthWrapper.setSource(source, maxFrequencySource * 2);
-
-        auto sourceSpectrum = Analysis::fft_n(&fft, source, fftWindowCache);
-        mSynthWrapper.setSourceSpectrum(fftFrequencies, sourceSpectrum);
-#endif // !WITHOUT_SYNTH
 
         std::this_thread::sleep_for(20ms);
     }
+#endif // !WITHOUT_SYNTH
 }
 
 void ContextManager::stopAnalysisThread()

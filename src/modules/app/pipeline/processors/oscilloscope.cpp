@@ -4,14 +4,19 @@
 
 using namespace Module::App::Processors;
 
-Oscilloscope::Oscilloscope(Main::Config *config, Main::DataStore *dataStore,
+Oscilloscope::Oscilloscope(Main::Config *config, Main::DataVisWrapper *dataVis,
             std::shared_ptr<Analysis::InvglotSolver>& invglotSolver)
     : BaseProcessor(config->getAnalysisOscilloscopeSpacing(),
                     config->getAnalysisOscilloscopeWindow()),
       mConfig(config),
-      mDataStore(dataStore),
+      mDataVis(dataVis),
       mInvglotSolver(invglotSolver)
 {
+}
+
+bool Oscilloscope::canProcess(double timeNow) const
+{
+    return mDataVis->watched() && BaseProcessor::canProcess(timeNow);
 }
 
 void Oscilloscope::processData(const rpm::vector<double>& data, double sampleRate)
@@ -23,10 +28,5 @@ void Oscilloscope::processData(const rpm::vector<double>& data, double sampleRat
     auto out = mResampler.process(data);
     auto invglotResult = mInvglotSolver->solve(out.data(), (int) out.size(), fsOsc);
 
-    mDataStore->beginWrite();
-   
-    mDataStore->getSoundTrack().insert(getCenteredTime(), out);
-    mDataStore->getGifTrack().insert(getCenteredTime(), invglotResult.glotSig);
-
-    mDataStore->endWrite();
+    mDataVis->setGif(invglotResult.glotSig, fsOsc);
 }

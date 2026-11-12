@@ -3,14 +3,17 @@
 
 #ifndef WITHOUT_SYNTH
 
+#include <atomic>
+#include <QMutex>
 #include <QObject>
+#include <QPointF>
+#include <QVector>
+#include "../gui/plotitem.h"
 #include "../modules/app/synthesizer/synthesizer.h"
-
-#include <QtCharts>
 
 namespace Main {
    
-    class SynthWrapper : public QObject {
+    class SynthWrapper : public QObject, public Gui::PlotProvider {
         Q_OBJECT
         Q_PROPERTY(bool enabled         READ enabled        WRITE setEnabled        NOTIFY enabledChanged)
         Q_PROPERTY(double noiseGain     READ noiseGain      WRITE setNoiseGain      NOTIFY noiseGainChanged)
@@ -22,9 +25,6 @@ namespace Main {
         Q_PROPERTY(bool voiced          READ voiced         WRITE setVoiced         NOTIFY voicedChanged)
         Q_PROPERTY(bool followPitch     READ followPitch    WRITE setFollowPitch    NOTIFY followPitchChanged)
         Q_PROPERTY(bool followFormants  READ followFormants WRITE setFollowFormants NOTIFY followFormantsChanged)
-        Q_PROPERTY(QVector<QPointF> filterResponse MEMBER mFilterResponse NOTIFY filterResponseChanged)
-        Q_PROPERTY(QVector<QPointF> source         MEMBER mSource         NOTIFY sourceChanged)
-        Q_PROPERTY(QVector<QPointF> sourceSpectrum MEMBER mSourceSpectrum NOTIFY sourceSpectrumChanged)
 
     signals:
         void enabledChanged(bool);
@@ -37,9 +37,6 @@ namespace Main {
         void voicedChanged(double);
         void followPitchChanged(bool);
         void followFormantsChanged(bool);
-        void filterResponseChanged();
-        void sourceChanged();
-        void sourceSpectrumChanged();
 
     public:
         SynthWrapper();
@@ -70,9 +67,11 @@ namespace Main {
         void setSource(const rpm::vector<double>& signal, double fs);
         void setSourceSpectrum(const rpm::vector<double>& frequencies, const rpm::vector<double>& magnitudes);
 
-        Q_INVOKABLE void updateFilterResponseSeries(QXYSeries* series, QLogValueAxis *xAxis, QValueAxis* yAxis);
-        Q_INVOKABLE void updateSourceSeries(QXYSeries* series, QValueAxis *xAxis, QValueAxis* yAxis);
-        Q_INVOKABLE void updateSourceSpectrumSeries(QXYSeries* series, QLogValueAxis *xAxis, QValueAxis* yAxis);
+        // True while a plot of the synthesizer is on the screen.
+        bool watched() const { return mWatchers.load() > 0; }
+
+        bool fillPlot(int kind, const Gui::PlotRequest &request, Gui::PlotSnapshot &out) override;
+        void changeWatchers(int kind, int delta) override;
 
     private:
         void evaluateFilterResponse();
@@ -100,6 +99,9 @@ namespace Main {
         double mSourceSpectrumDbMin;
         double mSourceSpectrumDbMax;
         QMutex mSourceSpectrumMutex;
+
+        std::atomic<int> mWatchers;
+        std::atomic<unsigned long long> mVersion;
     };
 
 }

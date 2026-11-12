@@ -1,115 +1,135 @@
 #include "dataviswrapper.h"
 
-#include <QSplineSeries>
+#include <algorithm>
+#include <cmath>
 
 using namespace Main;
 
 DataVisWrapper::DataVisWrapper()
+    : mTotal(0),
+      mFs(0),
+      mGifFs(0),
+      mGifEnd(0),
+      mGifVersion(0),
+      mWatchers(0)
 {
 }
 
-void DataVisWrapper::setSound(const rpm::vector<double>& signal, double fs)
+void DataVisWrapper::pushAudio(const double *data, int count, double fs)
 {
-    QMutexLocker lock(&mSoundMutex);
-    QMutexLocker lock2(&mGifMutex);
+    if (count <= 0 || !(fs > 0)) return;
 
-    double absMax = 0;
-    for (int k = 0; k < signal.size(); ++k) {
-        if (std::abs(signal[k]) > absMax)
-            absMax = std::abs(signal[k]);
+    std::lock_guard<std::mutex> lock(mMutex);
+
+    if (fs != mFs || mRing.empty()) {
+        mFs = fs;
+        mRing.assign((size_t) std::max(64.0, std::round(fs * 0.4)), 0.0);
+        mTotal = 0;
+        mGif.clear();
     }
 
-    int k1 = mGifStart * fs / 1000;
-    int k2 = mGifEnd * fs / 1000;
-
-    if (k1 < 0 || k2 < 0 || k1 > k2) return;
-
-    mSound.resize(signal.size()); 
-    for (int k = 0; k < signal.size(); ++k) {
-        mSound[k] = QPointF((k * 1000) / fs, (absMax > 0) ? signal[k] / absMax : signal[k]);
+    const size_t size = mRing.size();
+    for (int i = 0; i < count; ++i) {
+        mRing[mTotal % size] = data[i];
+        ++mTotal;
     }
-    emit soundChanged();
 }
 
 void DataVisWrapper::setGif(const rpm::vector<double>& signal, double fs)
 {
-    QMutexLocker lock(&mSoundMutex);
-    QMutexLocker lock2(&mGifMutex);
+    std::lock_guard<std::mutex> lock(mMutex);
 
-    double absMax = 0;
-    for (int k = 0; k < signal.size(); ++k) {
-        if (std::abs(signal[k]) > absMax)
-            absMax = std::abs(signal[k]);
-    }
+    mGif.assign(signal.begin(), signal.end());
+    mGifFs = fs;
+    mGifEnd = mTotal;
+    ++mGifVersion;
+}
 
-    int zcr = (int) signal.size() - 1;
-    
-    for (int i = zcr; i >= 1; --i) {
-        if (signal[i - 1] * signal[i] < 0 && signal[i - 1] > 0) {
-            zcr = i;
-            break;
-        }
-    }
+void DataVisWrapper::changeWatchers(int, int delta)
+{
+    mWatchers += delta;
+}
 
-    mGifEnd = (double) zcr / fs * 1000;
-    
-    constexpr int periods = 7;
-    int periodNum = 0;
+bool DataVisWrapper::fillPlot(int kind, const Gui::PlotRequest &request, Gui::PlotSnapshot &out)
+{
+    if (kind != Gui::PlotItem::Scope) return false;
 
-    for (int i = zcr; i >= 1; --i) {
-        if (signal[i - 1] * signal[i] < 0 && signal[i - 1] > 0) {
-            zcr = i;
-            if (++periodNum >= periods)
+    std::lock_guard<std::mutex> lock(mMutex);
+
+    const size_t size = mRing.size();
+    if (mFs <= 0 || size == 0) return false;
+
+    // The number of samples in the view, and how far back the search for a trigger goes.
+    const long long window = std::clamp<long long>(std::llround(request.scopeWindowMs * mFs / 1000.0), 32, (long long) size / 2);
+    const long long maxBack = std::min<long long>(std::llround(0.025 * mFs), (long long) size - window - 1);
+    const long long total = (long long) mTotal;
+    if (total < window + maxBack + 8) return false;
+
+    auto at = [&](long long index) { return mRing[(size_t) (index % (long long) size)]; };
+
+    // The offset of the sound. The trigger and the view remove it.
+    double dc = 0;
+    for (long long i = total - window - maxBack; i < total; ++i) dc += at(i);
+    dc /= (double) (window + maxBack);
+
+    // The view starts at the last rising zero crossing before the newest window. A periodic sound
+    // then has the same shape in each frame, like the trigger of an oscilloscope.
+    double rough = 0;
+    for (long long i = total - window - maxBack; i < total; ++i) rough = std::max(rough, std::fabs(at(i) - dc));
+    const double threshold = 0.05 * rough;
+
+    long long start = total - window;
+    if (rough > 1e-6) {
+        for (long long c = total - window; c > total - window - maxBack; --c) {
+            if (at(c - 1) - dc < 0 && at(c) - dc >= 0 && at(c + 3) - dc > threshold) {
+                start = c;
                 break;
+            }
         }
     }
 
-    mGifStart = (double) zcr / fs * 1000;
+    double peak = 1e-9;
+    for (long long i = start; i < start + window; ++i) peak = std::max(peak, std::fabs(at(i) - dc));
 
-    int k1 = mGifStart * fs / 1000;
-    int k2 = mGifEnd * fs / 1000;
-
-    if (k1 < 0 || k2 < 0 || k1 > k2) return;
-
-    mGif.resize(k2 - k1 + 1);
-    for (int i = 0, k = k1; k <= k2; ++k, ++i) {
-        mGif[i] = QPointF((k * 1000) / fs, (absMax > 0) ? signal[k] / absMax : signal[k]);
-    }
-    emit gifChanged();
-}
-
-void DataVisWrapper::updateSoundSeries(QXYSeries* series, QValueAxis* xAxis, QValueAxis* yAxis)
-{
-    // Copy the data under the locks, and update the chart after the locks are free. A chart
-    // update can run other event handlers, and those handlers lock the same mutexes again.
-    QVector<QPointF> sound;
-    double gifStart, gifEnd;
-    {
-        QMutexLocker lock(&mSoundMutex);
-        QMutexLocker lock2(&mGifMutex);
-        sound = mSound;
-        gifStart = mGifStart;
-        gifEnd = mGifEnd;
+    Gui::PlotSeries sound;
+    sound.name = "Input sound";
+    sound.colorIndex = 0;
+    sound.points.reserve((int) window);
+    for (long long k = 0; k < window; ++k) {
+        sound.points.append(QPointF(k * 1000.0 / mFs, (at(start + k) - dc) / peak));
     }
 
-    series->replace(sound);
-    xAxis->setRange(gifStart, gifEnd);
-    yAxis->setRange(-1.5, 1.5);
-}
+    out.series.clear();
+    out.series.push_back(std::move(sound));
 
-void DataVisWrapper::updateGifSeries(QXYSeries* series, QValueAxis* xAxis, QValueAxis* yAxis)
-{
-    QVector<QPointF> gif;
-    double gifStart, gifEnd;
-    {
-        QMutexLocker lock(&mSoundMutex);
-        QMutexLocker lock2(&mGifMutex);
-        gif = mGif;
-        gifStart = mGifStart;
-        gifEnd = mGifEnd;
+    if (request.showGif && !mGif.empty() && mGifFs > 0) {
+        // Place each sample of the estimate at its time in the view.
+        const double n = (double) mGif.size();
+        double gifPeak = 1e-9;
+        std::vector<QPointF> points;
+        for (size_t j = 0; j < mGif.size(); ++j) {
+            const double index = (double) mGifEnd - (n - 1.0 - (double) j) * mFs / mGifFs;
+            const double relative = index - (double) start;
+            if (relative < 0 || relative > (double) (window - 1)) continue;
+            points.emplace_back(relative * 1000.0 / mFs, mGif[j]);
+            gifPeak = std::max(gifPeak, std::fabs(mGif[j]));
+        }
+
+        Gui::PlotSeries gif;
+        gif.name = "Glottal flow estimate";
+        gif.colorIndex = 1;
+        for (const QPointF &p : points) gif.points.append(QPointF(p.x(), p.y() / gifPeak));
+        out.series.push_back(std::move(gif));
     }
 
-    series->replace(gif);
-    xAxis->setRange(gifStart, gifEnd);
-    yAxis->setRange(-1.5, 1.5);
+    out.title = "Oscilloscope";
+    out.xUnit = "ms";
+    out.yUnit = "";
+    out.logX = false;
+    out.xMin = 0;
+    out.xMax = (double) (window - 1) * 1000.0 / mFs;
+    out.yMin = -1.2;
+    out.yMax = 1.2;
+    out.version = (unsigned long long) total + (mGifVersion << 40);
+    return true;
 }
