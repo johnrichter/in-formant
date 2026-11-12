@@ -30,6 +30,12 @@ void TimeTrack<T>::insert(double t, const T& o)
 }
 
 template<typename T>
+void TimeTrack<T>::clear()
+{
+    mTrack.clear();
+}
+
+template<typename T>
 void TimeTrack<T>::remove_before(double t)
 {
     mTrack.erase(mTrack.begin(), upper_bound(t));

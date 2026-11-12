@@ -100,3 +100,18 @@ TimeTrack<rpm::vector<double>>& DataStore::getGifTrack()
 }
 
 
+
+
+Session& DataStore::session()
+{
+    return mSession;
+}
+
+void DataStore::clearTracks()
+{
+    mSpectrogram.clear();
+    mPitchTrack.clear();
+    for (auto& track : mFormantTracks) track.clear();
+    mSoundTrack.clear();
+    mGifTrack.clear();
+}

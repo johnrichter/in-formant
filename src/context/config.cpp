@@ -2,6 +2,7 @@
 #include "config.h"
 #include "cfgpath.h"
 #include "../gui/theme.h"
+#include <algorithm>
 #include <iostream>
 
 using namespace Main;
@@ -105,7 +106,10 @@ toml::table Main::getConfigTable()
 
 Config::Config()
     : mTbl(getConfigTable()),
-      mPaused(false)
+      mPaused(false),
+      mViewLive(true),
+      mViewEnd(0.0),
+      mSessionMode(0)
 {
     initSubTable(mTbl, "audio");
     initSubTable(mTbl, "solvers");
@@ -479,8 +483,30 @@ double Config::getViewTimeSpan()
 
 void Config::setViewTimeSpan(double dur)
 {
+    // The span is from half a second to 24 hours.
+    dur = std::clamp(dur, 0.5, 86400.0);
     mTbl["view"]["timeSpan"].ref<double>() = dur;
     emit viewTimeSpanChanged(dur);
+}
+
+void Config::setViewLive(bool live)
+{
+    if (mViewLive == live) return;
+    mViewLive = live;
+    emit viewLiveChanged(live);
+}
+
+void Config::setViewEnd(double seconds)
+{
+    mViewEnd = seconds;
+    emit viewEndChanged(seconds);
+}
+
+void Config::setSessionMode(int mode)
+{
+    if (mSessionMode == mode) return;
+    mSessionMode = mode;
+    emit sessionModeChanged(mode);
 }
 
 FrequencyScale Config::getViewFrequencyScale()

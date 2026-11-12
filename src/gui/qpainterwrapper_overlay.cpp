@@ -522,7 +522,7 @@ void QPainterWrapper::drawHud(const std::vector<HudTrack> &tracks)
                     case StatMax: text = format("%.1f", sorted.back()); break;
                     case StatRange: text = format("%.1f", p95 - p5); break;
                     case StatCV: text = mean > 0 ? format("%.1f%%", 100.0 * sd / mean) : "-"; break;
-                    case StatCount: text = std::to_string(sorted.size()); break;
+                    case StatCount: text = std::to_string(t.count > 0 ? t.count : sorted.size()); break;
                     case StatNote:
                         if (t.isPitch) {
                             double cents = 0;
@@ -535,7 +535,7 @@ void QPainterWrapper::drawHud(const std::vector<HudTrack> &tracks)
                     }
                 }
                 if (active[c]->bit == StatVoiced) {
-                    text = t.frames > 0 ? format("%.0f%%", 100.0 * t.values.size() / t.frames) : "-";
+                    text = t.frames > 0 ? format("%.0f%%", 100.0 * (t.count > 0 ? t.count : t.values.size()) / t.frames) : "-";
                 }
                 cells[r][c] = text;
             }

@@ -59,6 +59,10 @@ namespace Gui {
 
         // The number of frames in the window, with and without a value.
         size_t frames = 0;
+
+        // The number of frames with a value. It is larger than the list of values when a long
+        // window goes through a reduction. A value of zero means that the list is complete.
+        size_t count = 0;
     };
 
 }

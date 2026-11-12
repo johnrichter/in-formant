@@ -79,7 +79,7 @@ void QPainterWrapper::drawSpectrogram(SliceIterator begin, SliceIterator end)
     constexpr int texWidth = Gui::spectrogramColumns;
     constexpr int texHeight = Gui::spectrogramRows;
 
-    static int xOffset = 0;
+    int &xOffset = mSpectrogramOffset;
 
     static std::array<GLint, texWidth> nffts;
     static std::array<GLfloat, texWidth> sampleRates;
@@ -97,7 +97,7 @@ void QPainterWrapper::drawSpectrogram(SliceIterator begin, SliceIterator end)
     const double sliceTimeEnd = lastTime + 0.5 * sliceSpacing;
 
     // Only store the slices that are not in the texture yet.
-    static double lastTimeEnd = -HUGE_VAL; 
+    double &lastTimeEnd = mSpectrogramLastTime;
 
     const auto firstNew = std::upper_bound(begin, end, lastTimeEnd,
             [](double t, const auto& slice) { return t < slice.first; });
@@ -206,5 +206,48 @@ void QPainterWrapper::drawSpectrogram(SliceIterator begin, SliceIterator end)
             sliceTimeEnd,
             mTimeStart,
             mTimeEnd);
+    }
+}
+
+void QPainterWrapper::drawSpectrogramImage(unsigned long long id, const rpm::vector<float> &data, int rows, int columns,
+                                           const std::array<int, Gui::spectrogramColumns> &sliceSizes,
+                                           const std::array<float, Gui::spectrogramColumns> &sampleRates,
+                                           double timeStart, double timeEnd)
+{
+    if (columns <= 0 || rows <= 0) {
+        return;
+    }
+
+    static rpm::vector<GLfloat> emptyData(0);
+    const bool upload = id != mSpectrogramImageId;
+
+    if (upload) {
+        mSpectrogramImageId = id;
+        mSpectrogramOffset = 0;
+        mSpectrogramLastTime = -HUGE_VAL;
+    }
+
+    p->setSpectrogramFilter(mSpectrogramQuality, (float) mSpectrogramBlur);
+    p->drawSpectrogram(
+        mSpectrogramOffset,
+        upload ? columns : 0,
+        0,
+        upload ? rows : 0,
+        columns,
+        sliceSizes,
+        sampleRates,
+        upload ? data : emptyData,
+        emptyData,
+        mFrequencyScale,
+        mMinFrequency, mMaxFrequency,
+        mMaxGain,
+        mOptions.theme.colormap,
+        timeStart,
+        timeEnd,
+        mTimeStart,
+        mTimeEnd);
+
+    if (upload) {
+        mSpectrogramOffset = columns;
     }
 }

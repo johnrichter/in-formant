@@ -206,9 +206,9 @@ ApplicationWindow {
                     Label { text: "View duration:" }
                     Slider {
                         from: 2
-                        to: 30
-                        stepSize: 0.5
-                        value: config.viewTimeSpan
+                        to: 300
+                        stepSize: 1
+                        value: Math.min(config.viewTimeSpan, 300)
                         onMoved: config.viewTimeSpan = value
                         Label {
                             id: timeSpanHandleLabel
@@ -218,6 +218,22 @@ ApplicationWindow {
                             text: config.viewTimeSpan + " s"
                         }
                         Layout.bottomMargin: timeSpanHandleLabel.height - 10
+                    }
+
+                    RowLayout {
+                        Label { text: "Seconds:" }
+                        TextField {
+                            id: timeSpanField
+                            Layout.preferredWidth: 110
+                            inputMethodHints: Qt.ImhFormattedNumbersOnly
+                            validator: DoubleValidator { bottom: 0.5; top: 86400; decimals: 1; notation: DoubleValidator.StandardNotation }
+                            text: String(config.viewTimeSpan)
+                            onEditingFinished: {
+                                const v = parseFloat(text)
+                                if (!isNaN(v)) config.viewTimeSpan = Math.min(Math.max(v, 0.5), 86400)
+                                text = String(config.viewTimeSpan)
+                            }
+                        }
                     }
 
                     MenuSeparator {}

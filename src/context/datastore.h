@@ -4,6 +4,7 @@
 #include "rpcxx.h"
 #include "../timetrack.h"
 #include "../analysis/analysis.h"
+#include "session.h"
 #include <array>
 #include <chrono>
 #include <functional>
@@ -51,6 +52,12 @@ namespace Main {
 
         TimeTrack<rpm::vector<double>>& getSoundTrack();
         TimeTrack<rpm::vector<double>>& getGifTrack();
+
+        // The sound of the session. The tracks above hold the results of the analysis for it.
+        Session& session();
+
+        // Delete all tracks. The caller holds the write lock.
+        void clearTracks();
     
     private:
         int mTrackLength;
@@ -70,6 +77,8 @@ namespace Main {
 
         TimeTrack<rpm::vector<double>> mSoundTrack;
         TimeTrack<rpm::vector<double>> mGifTrack;
+
+        Session mSession;
     };
 
 }

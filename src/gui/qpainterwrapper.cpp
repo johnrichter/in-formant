@@ -12,8 +12,17 @@ QPainterWrapper::QPainterWrapper(Gui::CanvasRenderer *p)
       mMaxFrequency(8000),
       mMaxGain(0),
       mSpectrogramQuality(1),
-      mSpectrogramBlur(0.33)
+      mSpectrogramBlur(0.33),
+      mSpectrogramOffset(0),
+      mSpectrogramLastTime(-HUGE_VAL)
 {
+}
+
+void QPainterWrapper::invalidateSpectrogram()
+{
+    mSpectrogramOffset = 0;
+    mSpectrogramLastTime = -HUGE_VAL;
+    mSpectrogramImageId = 0;
 }
 
 QRect QPainterWrapper::viewport() const

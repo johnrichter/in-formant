@@ -68,6 +68,17 @@ public:
     // Draw the slices in the range. The function stores only the slices that are new since the last call.
     void drawSpectrogram(SliceIterator begin, SliceIterator end);
 
+    // Draw a spectrogram that is already in the layout of the texture. The call uploads the picture
+    // when the number is new, and only draws it for the next calls with the same number.
+    void drawSpectrogramImage(unsigned long long id, const rpm::vector<float> &data, int rows, int columns,
+                              const std::array<int, Gui::spectrogramColumns> &sliceSizes,
+                              const std::array<float, Gui::spectrogramColumns> &sampleRates,
+                              double timeStart, double timeEnd);
+
+    // Forget the slices in the texture. The next call of drawSpectrogram stores all of its slices.
+    // The caller uses this when the slices come from another source or from another time.
+    void invalidateSpectrogram();
+
     static double mapTimeToX(double time, int width, double startTime, double endTime);
     static double mapFrequencyToY(double frequency, int height, FrequencyScale scale, double minFrequency, double maxFrequency);
     static double mapYToFrequency(double y, int height, FrequencyScale scale, double minFrequency, double maxFrequency);
@@ -88,6 +99,11 @@ private:
     Gui::RenderOptions mOptions;
     int mSpectrogramQuality;
     double mSpectrogramBlur;
+
+    // The place of the next slice in the texture, and the time of the newest stored slice.
+    int mSpectrogramOffset;
+    double mSpectrogramLastTime;
+    unsigned long long mSpectrogramImageId = 0;
 
     static double transformFrequency(double frequency, FrequencyScale scale);
     static double inverseFrequency(double value, FrequencyScale scale);

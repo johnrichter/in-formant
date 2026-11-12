@@ -7,6 +7,7 @@
 #include <QVariant>
 #include <QVariantMap>
 #include "../filesystem.hpp"
+#include <atomic>
 #include <fstream>
 #include <toml++/toml.h>
 
@@ -39,6 +40,9 @@ namespace Main {
         Q_PROPERTY(bool viewShowSpectrogram READ getViewShowSpectrogram         WRITE setViewShowSpectrogram    NOTIFY viewShowSpectrogramChanged)
         Q_PROPERTY(bool viewShowPitch       READ getViewShowPitch               WRITE setViewShowPitch          NOTIFY viewShowPitchChanged)
         Q_PROPERTY(bool viewShowFormants    READ getViewShowFormants            WRITE setViewShowFormants       NOTIFY viewShowFormantsChanged)
+        Q_PROPERTY(bool viewLive            READ getViewLive                    WRITE setViewLive               NOTIFY viewLiveChanged)
+        Q_PROPERTY(double viewEnd           READ getViewEnd                     WRITE setViewEnd                NOTIFY viewEndChanged)
+        Q_PROPERTY(int sessionMode          READ getSessionMode                 WRITE setSessionMode            NOTIFY sessionModeChanged)
         Q_PROPERTY(bool paused              READ isPaused                       WRITE setPaused                 NOTIFY pausedChanged)
         Q_PROPERTY(QString audioCaptureDevice READ getAudioCaptureDevice        WRITE setAudioCaptureDevice     NOTIFY audioCaptureDeviceChanged)
         Q_PROPERTY(QStringList audioCaptureDevices READ getAudioCaptureDevices  NOTIFY audioCaptureDevicesChanged)
@@ -63,6 +67,9 @@ namespace Main {
         void viewShowPitchChanged(bool);
         void viewShowFormantsChanged(bool);
         void pausedChanged(bool);
+        void viewLiveChanged(bool);
+        void viewEndChanged(double);
+        void sessionModeChanged(int);
         void audioCaptureDeviceChanged(QString);
         void audioCaptureDevicesChanged();
 
@@ -90,6 +97,17 @@ namespace Main {
         Q_INVOKABLE QStringList themeNames() const;
         Q_INVOKABLE QVariantList themePreview(const QString &name, int count) const;
         
+        // The view follows the live sound when this is true. Otherwise the view ends at viewEnd
+        // seconds of the session. These values are not stored in the configuration file.
+        bool getViewLive() const { return mViewLive; }
+        void setViewLive(bool live);
+        double getViewEnd() const { return mViewEnd; }
+        void setViewEnd(double seconds);
+
+        // 0 is the live sound of the input device. 1 is a loaded audio file.
+        int getSessionMode() const { return mSessionMode; }
+        void setSessionMode(int mode);
+
         Module::Audio::Backend getAudioBackend();
         void setAudioBackend(Module::Audio::Backend b);
 
@@ -207,6 +225,9 @@ namespace Main {
     
         // WILL NOT BE SERIALIZED
         bool mPaused;
+        std::atomic<bool> mViewLive;
+        std::atomic<double> mViewEnd;
+        std::atomic<int> mSessionMode;
         QStringList mAudioCaptureDevices;
     };
 

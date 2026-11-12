@@ -106,6 +106,10 @@ set(SOURCES
     src/context/guicontext.cpp
     src/context/guicontext.h
     src/context/datastore.cpp
+    src/context/session.cpp
+    src/context/session.h
+    src/context/reviewspectrogram.cpp
+    src/context/reviewspectrogram.h
     src/context/datastore.h
     src/context/views/views.h
     src/context/views/spectrogram.cpp

@@ -81,6 +81,11 @@ void Pipeline::callbackProcessing()
 
         mDataVis->pushAudio(block.data(), (int) block.size(), mSampleRate);
 
+        // The session keeps the sound of the input device. A loaded file replaces it.
+        if (mConfig->getSessionMode() == 0) {
+            mDataStore->session().append(block.data(), (int) block.size(), mSampleRate);
+        }
+
         for (auto& processor : mProcessors) {
             if (processor->canProcess(time)) {
                 processor->process(slidingWindow, mSampleRate, time);

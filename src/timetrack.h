@@ -18,6 +18,7 @@ public:
 
     void insert(double t, const T& o);
     void remove_before(double t);
+    void clear();
 
     iterator lower_bound(double t);
     iterator upper_bound(double t);
