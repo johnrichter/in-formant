@@ -147,12 +147,34 @@ ApplicationWindow {
 
                 MenuSeparator { Layout.fillWidth: true }
 
+                Label { text: "Practice"; font.bold: true }
+                Label { text: "Folder of the practice sessions (empty for Documents/InFormant/Practice)"; color: "lightgrey" }
+                TextField {
+                    Layout.fillWidth: true
+                    text: config.options.practiceFolder
+                    placeholderText: practice.folder
+                    onEditingFinished: config.setOption("practiceFolder", text)
+                }
+                OptionSwitch { key: "practiceKeepAudio"; text: "Save the sound of each practice session" }
+                RowLayout {
+                    Button { text: "Open the folder"; onClicked: practice.openFolder() }
+                    Button { text: "Export all sessions"; onClicked: practice.exportAll() }
+                }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: "lightgrey"
+                    text: "Each session has its own folder with the statistics, a report, the marks, and the sound. The statistics always stay. The first write to the Documents folder can show a privacy question of macOS."
+                }
+
+                MenuSeparator { Layout.fillWidth: true }
+
                 Label { text: "Keys"; font.bold: true }
                 Label {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     color: "lightgrey"
-                    text: "Space starts and stops the capture. The key combination for the preferences (Command and comma on a Mac) opens this window."
+                    text: "Space starts and stops the capture. The key combination for the preferences (Command and comma on a Mac) opens this window. The M key sets a mark while a practice session runs."
                 }
                 Label {
                     Layout.fillWidth: true

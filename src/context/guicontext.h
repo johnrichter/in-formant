@@ -19,6 +19,7 @@ namespace Main {
     class Config;
     class DataStore;
     class SessionWrapper;
+    class PracticeWrapper;
     class GuiView;
 
     class GuiContext : public QObject {
@@ -30,6 +31,8 @@ namespace Main {
 #else
         GuiContext(Config *config, RenderContext *renderContext, DataVisWrapper *dataVisWrapper, SessionWrapper *sessionWrapper);
 #endif
+
+        ~GuiContext();
 
         int exec();
     
@@ -55,6 +58,7 @@ namespace Main {
 
         std::unique_ptr<QApplication> mApp;
         std::unique_ptr<QQmlApplicationEngine> mQmlEngine;
+        std::unique_ptr<PracticeWrapper> mPractice;
 
         friend class GuiView;
     };

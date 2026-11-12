@@ -7,8 +7,12 @@
 
 #include "config.h"
 #include "datastore.h"
+#include "summary.h"
 
 namespace Main {
+
+    // The statistics of the values of a track from t0 to t1. The frames are all entries, and the values are the ones that have a value.
+    Summary summarizeTrack(OptionalTimeTrack<double> &track, double t0, double t1);
 
     // The description of a recording as a Markdown text: the settings, the statistics of the pitch and
     // the formants for the whole recording, and the statistics for each part of the recording.

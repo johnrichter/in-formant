@@ -25,6 +25,12 @@ ApplicationWindow {
     }
 
     Shortcut {
+        sequence: "M"
+        enabled: practice.active && !noteField.activeFocus
+        onActivated: practice.mark("")
+    }
+
+    Shortcut {
         sequence: "Space"
         onActivated: config.paused = !config.paused
     }
@@ -248,7 +254,7 @@ ApplicationWindow {
 
                 BarButton {
                     text: sessionControl.recording ? "Stop recording " + sessionControl.recordTime : "Record"
-                    enabled: !sessionControl.fileMode
+                    enabled: !sessionControl.fileMode && !practice.active
                     Material.foreground: sessionControl.recording ? Material.color(Material.Red, Material.Shade300) : undefined
                     onClicked: sessionControl.recording ? sessionControl.toggleRecording() : recordSheet.open()
                 }
@@ -269,6 +275,54 @@ ApplicationWindow {
                     text: "Export all"
                     enabled: !sessionControl.exporting
                     onClicked: sessionControl.exportAll()
+                }
+
+                // The practice session: one click starts it, and one click stops it. The M key and the Mark button save marks.
+                BarButton {
+                    text: practice.active ? "Stop practice " + practice.elapsed : "Practice"
+                    enabled: practice.active || (!sessionControl.recording && !sessionControl.fileMode)
+                    Material.foreground: practice.active ? Material.color(Material.Red, Material.Shade300) : undefined
+                    onClicked: practice.active ? practice.stop() : practice.start()
+                }
+
+                ComboBox {
+                    id: taskBox
+                    Layout.preferredWidth: 118
+                    implicitHeight: 30
+                    font.pixelSize: 12
+                    topInset: 0
+                    bottomInset: 0
+                    model: practice.tags
+                    currentIndex: Math.max(0, practice.tags.indexOf(practice.tag))
+                    onActivated: practice.tag = model[currentIndex]
+                }
+
+                BarButton {
+                    visible: practice.active
+                    text: "Mark (" + practice.markCount + ")"
+                    onClicked: {
+                        practice.mark(noteField.text)
+                        noteField.text = ""
+                    }
+                }
+
+                TextField {
+                    id: noteField
+                    visible: practice.active
+                    Layout.preferredWidth: 110
+                    implicitHeight: 28
+                    font.pixelSize: 12
+                    topPadding: 0
+                    bottomPadding: 0
+                    topInset: 0
+                    bottomInset: 0
+                    verticalAlignment: Text.AlignVCenter
+                    placeholderText: "Note, Enter marks"
+                    onAccepted: {
+                        practice.mark(text)
+                        text = ""
+                        focus = false
+                    }
                 }
 
                 Label {
@@ -333,6 +387,33 @@ ApplicationWindow {
 
     HelpWindow {
         id: helpWindow
+    }
+
+    // The summary after a practice session, with the comparison to the last session of the same task.
+    Dialog {
+        id: practiceDone
+        title: "Practice saved"
+        modal: true
+        anchors.centerIn: Overlay.overlay
+        standardButtons: Dialog.Close
+
+        ColumnLayout {
+            spacing: 10
+            Label {
+                Layout.preferredWidth: 520
+                wrapMode: Text.WordWrap
+                text: practice.summary
+            }
+            Button {
+                text: "Open the folder"
+                onClicked: practice.openFolder()
+            }
+        }
+    }
+
+    Connections {
+        target: practice
+        function onSaved() { practiceDone.open() }
     }
 
     Component.onCompleted: {

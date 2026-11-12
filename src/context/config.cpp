@@ -159,6 +159,9 @@ QVariantMap Config::defaultOptions()
     m["pitchAxisMin"] = 0.0;     // Hz: the low edge of the pitch-only graph
     m["pitchAxisMax"] = 500.0;   // Hz: the high edge of the pitch-only graph
     m["pitchAxisAuto"] = false;  // fit the pitch-only axis to the pitch in view
+    m["practiceTag"] = QString("Free");      // the task of the next practice session
+    m["practiceFolder"] = QString("");       // the folder of the sessions, empty for Documents/InFormant/Practice
+    m["practiceKeepAudio"] = true;           // write the sound of a session into its folder
     m["graphMode"] = QString("full");  // "full" for the spectrogram and all tracks, "pitch" for the pitch track alone
     m["showBands"] = false;      // show the pitch zones in the graph
     m["bandsInExport"] = true;   // keep the zones on the screen while a recording runs

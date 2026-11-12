@@ -8,47 +8,6 @@ using namespace Main;
 
 namespace {
 
-struct Summary {
-    size_t frames = 0;
-    std::vector<double> values;   // sorted
-
-    bool empty() const { return values.empty(); }
-    double mean() const {
-        double sum = 0;
-        for (double v : values) sum += v;
-        return sum / (double) values.size();
-    }
-    // The sample standard deviation, with N - 1 in the divisor. One value has no spread.
-    double sd() const {
-        if (values.size() < 2) return 0.0;
-        const double m = mean();
-        double sum = 0;
-        for (double v : values) sum += (v - m) * (v - m);
-        return std::sqrt(sum / (double) (values.size() - 1));
-    }
-
-    // The value at a fraction of the sorted values, with a linear step between two values.
-    double percentile(double fraction) const {
-        const double position = fraction * (double) (values.size() - 1);
-        const size_t low = (size_t) std::floor(position);
-        const size_t high = std::min(low + 1, values.size() - 1);
-        return values[low] + (position - (double) low) * (values[high] - values[low]);
-    }
-    double median() const { return percentile(0.5); }
-    double share() const { return frames == 0 ? 0.0 : 100.0 * (double) values.size() / (double) frames; }
-};
-
-Summary summarize(OptionalTimeTrack<double> &track, double t0, double t1)
-{
-    Summary s;
-    for (auto it = track.lower_bound(t0); it != track.upper_bound(t1); ++it) {
-        ++s.frames;
-        if (it->second.has_value()) s.values.push_back(*it->second);
-    }
-    std::sort(s.values.begin(), s.values.end());
-    return s;
-}
-
 QString hz(double f) { return QString::number(f, 'f', f < 1000 ? 1 : 0); }
 
 // The musical note of a frequency with the offset in cents, for example "A3 +12 cents".
@@ -70,6 +29,17 @@ QString clock(double seconds)
 
 }
 
+Summary Main::summarizeTrack(OptionalTimeTrack<double> &track, double t0, double t1)
+{
+    Summary s;
+    for (auto it = track.lower_bound(t0); it != track.upper_bound(t1); ++it) {
+        ++s.frames;
+        if (it->second.has_value()) s.values.push_back(*it->second);
+    }
+    std::sort(s.values.begin(), s.values.end());
+    return s;
+}
+
 QString Main::buildRecordingReport(Config &config, DataStore &dataStore, double t0, double t1,
                                    const QDateTime &started, const QStringList &files)
 {
@@ -88,7 +58,7 @@ QString Main::buildRecordingReport(Config &config, DataStore &dataStore, double 
     dataStore.beginRead();
 
     // The whole recording.
-    Summary pitch = summarize(dataStore.getPitchTrack(), t0, t1);
+    Summary pitch = summarizeTrack(dataStore.getPitchTrack(), t0, t1);
     out += "## Pitch\n\n";
     if (pitch.empty()) {
         out += "The recording has no voiced frames.\n\n";
@@ -115,7 +85,7 @@ QString Main::buildRecordingReport(Config &config, DataStore &dataStore, double 
     }
 
     std::vector<Summary> formants;
-    for (int i = 0; i < formantCount; ++i) formants.push_back(summarize(dataStore.getFormantTrack(i), t0, t1));
+    for (int i = 0; i < formantCount; ++i) formants.push_back(summarizeTrack(dataStore.getFormantTrack(i), t0, t1));
 
     out += "## Formants\n\n";
     out += "| Formant | Frames with a value | Mean | Median | SD | 5th | 95th | Min | Max |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n";
@@ -143,11 +113,11 @@ QString Main::buildRecordingReport(Config &config, DataStore &dataStore, double 
     out += "\n";
     for (double a = t0; a < t1; a += step) {
         const double b = std::min(a + step, t1);
-        const Summary p = summarize(dataStore.getPitchTrack(), a, b);
+        const Summary p = summarizeTrack(dataStore.getPitchTrack(), a, b);
         out += "| " + clock(a - t0).mid(3) + " to " + clock(b - t0).mid(3) + " | " + QString::number(p.share(), 'f', 0) + " % | "
             + (p.empty() ? QString("-") : hz(p.median())) + " |";
         for (int i = 0; i < std::min(formantCount, 3); ++i) {
-            const Summary f = summarize(dataStore.getFormantTrack(i), a, b);
+            const Summary f = summarizeTrack(dataStore.getFormantTrack(i), a, b);
             out += " " + (f.empty() ? QString("-") : hz(f.median())) + " |";
         }
         out += "\n";

@@ -119,6 +119,11 @@ set(SOURCES
     src/context/recorder.cpp
     src/context/recorder.h
     src/context/recordstats.cpp
+    src/context/practicelib.cpp
+    src/context/practicelib.h
+    src/context/practicewrapper.cpp
+    src/context/practicewrapper.h
+    src/context/summary.h
     src/context/recordstats.h
     src/context/session.cpp
     src/context/videowriter.h
@@ -403,6 +408,9 @@ if(INFORMANT_BUILD_TESTS)
     add_test(NAME bands COMMAND bands_test)
     add_executable(pitch_axis_test tests/pitch_axis_test.cpp)
     add_test(NAME pitch_axis COMMAND pitch_axis_test)
+    add_executable(practice_test tests/practice_test.cpp src/context/practicelib.cpp)
+    target_link_libraries(practice_test PRIVATE Qt6::Core)
+    add_test(NAME practice COMMAND practice_test)
 
     # The offline test of the synthesizer voice. It needs the filter code and the allocator only.
     add_executable(voice_test tests/voice_test.cpp

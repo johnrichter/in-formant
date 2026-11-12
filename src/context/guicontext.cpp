@@ -2,6 +2,7 @@
 #include "../gui/overviewitem.h"
 #include "../gui/plotitem.h"
 #include "contextmanager.h"
+#include "practicewrapper.h"
 #include "qsgrendererinterface.h"
 #include "qsurfaceformat.h"
 #include "rendercontext.h"
@@ -54,6 +55,8 @@ GuiContext::GuiContext(Config *config, RenderContext *renderContext, DataVisWrap
 
     mQmlEngine->rootContext()->setContextProperty("config", mConfig);
     mQmlEngine->rootContext()->setContextProperty("sessionControl", sessionWrapper);
+    mPractice = std::make_unique<PracticeWrapper>(mConfig, sessionWrapper);
+    mQmlEngine->rootContext()->setContextProperty("practice", mPractice.get());
 
 #ifndef WITHOUT_SYNTH
     Gui::PlotItem::setProvider(Gui::PlotItem::Filter, synthWrapper);
@@ -84,6 +87,8 @@ GuiContext::GuiContext(Config *config, RenderContext *renderContext, DataVisWrap
 
     window->show();
 }
+
+GuiContext::~GuiContext() = default;
 
 int GuiContext::exec()
 {
