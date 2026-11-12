@@ -111,6 +111,14 @@ ApplicationWindow {
                 spacing: 1
 
                 Button {
+                    text: "Help"
+                    Material.background: Material.color(Material.BlueGrey, Material.Shade600)
+                    Layout.alignment: Qt.AlignRight
+                    Layout.rightMargin: 10
+                    onPressed: helpWindow.show()
+                }
+
+                Button {
                     text: "Settings"
                     Material.background: Material.color(Material.BlueGrey, Material.Shade600)
                     Layout.alignment: Qt.AlignRight
@@ -552,6 +560,10 @@ ApplicationWindow {
 
     SettingsWindow {
         id: settingsWindow
+    }
+
+    HelpWindow {
+        id: helpWindow
     }
 
     Component.onCompleted: {

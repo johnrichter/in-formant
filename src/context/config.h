@@ -94,6 +94,8 @@ namespace Main {
 
         // The colours of the selected theme for the QML windows.
         QVariantMap themeColors() const;
+        // The text of a help page. The pages are Markdown files in the resources of the program.
+        Q_INVOKABLE QString helpPage(const QString &name) const;
         Q_INVOKABLE QStringList themeNames() const;
         Q_INVOKABLE QVariantList themePreview(const QString &name, int count) const;
         

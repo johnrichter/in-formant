@@ -5,5 +5,11 @@
         <file alias="SynthWindow.qml">../src/qml/SynthWindow.qml</file>
         <file alias="SettingsWindow.qml">../src/qml/SettingsWindow.qml</file>
         <file alias="OscilloscopeWindow.qml">../src/qml/OscilloscopeWindow.qml</file>
+        <file alias="HelpWindow.qml">../src/qml/HelpWindow.qml</file>
+        <file alias="help/reading-the-display.md">../docs/reading-the-display.md</file>
+        <file alias="help/feminization.md">../docs/feminization.md</file>
+        <file alias="help/masculinization.md">../docs/masculinization.md</file>
+        <file alias="help/singing.md">../docs/singing.md</file>
+        <file alias="help/the-math.md">../docs/the-math.md</file>
     </qresource>
 </RCC>

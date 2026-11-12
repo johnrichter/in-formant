@@ -1,5 +1,6 @@
 #include "contextmanager.h"
 #include "config.h"
+#include <QFile>
 #include <cmath>
 #include "cfgpath.h"
 #include "../gui/theme.h"
@@ -510,6 +511,13 @@ void Config::setViewEnd(double seconds)
 {
     mViewEnd = seconds;
     emit viewEndChanged(seconds);
+}
+
+QString Config::helpPage(const QString &name) const
+{
+    QFile file(":/help/" + name + ".md");
+    if (!file.open(QIODevice::ReadOnly)) return QString();
+    return QString::fromUtf8(file.readAll());
 }
 
 void Config::pickMoment(double fractionX, double fractionY)
