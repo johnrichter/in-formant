@@ -55,21 +55,20 @@ void Synthesis::lfEpsAlpha(LF_State& state)
     state.alpha = a;
 }
 
-rpm::vector<double> Synthesis::lfGenFrame(double f0, double Fs, double Rd, double tc)
-{ 
-    const double Ee = 1.0;
-    
-    LF_State state;
+void Synthesis::lfSetup(LF_State& state, double f0, double Rd, double tc)
+{
     state.Rd = Rd;
     state.T0 = 1.0 / f0;
     state.Tc = tc * state.T0;
 
     lfRd2tetpta(state);
     lfEpsAlpha(state);
+}
 
-    const int period = std::round(Fs / f0);
+double Synthesis::lfValue(const LF_State& state, double t)
+{
+    const double Ee = 1.0;
 
-    const double T0 = state.T0;
     const double Tc = state.Tc;
     const double Te = state.te * Tc;
     const double Tp = state.tp * Tc;
@@ -77,20 +76,25 @@ rpm::vector<double> Synthesis::lfGenFrame(double f0, double Fs, double Rd, doubl
     const double a = state.alpha;
     const double e = state.eps;
 
+    if (t <= Te) {
+        return (-Ee * expf(a * (t - Te)) * sinf(M_PI * t / Tp)) / sinf(M_PI * Te / Tp);
+    }
+    if (t <= Tc) {
+        return -Ee / (e * Ta) * (expf(-e * (t - Te)) - expf(-e * (Tc - Te)));
+    }
+    return 0.0;
+}
+
+rpm::vector<double> Synthesis::lfGenFrame(double f0, double Fs, double Rd, double tc)
+{
+    LF_State state;
+    lfSetup(state, f0, Rd, tc);
+
+    const int period = std::round(Fs / f0);
+
     rpm::vector<double> glot(period);
-
     for (int i = 0; i < period; ++i) {
-        double t = (i * T0) / period;
-
-        if (t <= Te) {
-            glot[i] = (-Ee * expf(a * (t - Te)) * sinf(M_PI * t / Tp)) / sinf(M_PI * Te / Tp);
-        }
-        else if (t <= Tc) {
-            glot[i] = -Ee / (e * Ta) * (expf(-e * (t - Te)) - expf(-e * (Tc - Te)));
-        }
-        else {
-            glot[i] = 0.0;
-        }
+        glot[i] = lfValue(state, (i * state.T0) / period);
     }
 
     return glot;

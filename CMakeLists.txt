@@ -239,6 +239,7 @@ set(SOURCES
     src/analysis/util/util.h
     src/analysis/analysis.h
     src/synthesis/noise.cpp
+    src/synthesis/voice.cpp
     src/synthesis/filter.cpp
     src/synthesis/sosfilter.cpp
     src/synthesis/glotLf.cpp
@@ -396,6 +397,18 @@ if(INFORMANT_BUILD_TESTS)
     add_test(NAME readout_layout COMMAND readout_layout_test)
     add_executable(map_layout_test tests/map_layout_test.cpp)
     add_test(NAME map_layout COMMAND map_layout_test)
+
+    # The offline test of the synthesizer voice. It needs the filter code and the allocator only.
+    add_executable(voice_test tests/voice_test.cpp
+        src/synthesis/noise.cpp src/synthesis/filter.cpp src/synthesis/sosfilter.cpp
+        src/synthesis/glotLf.cpp src/synthesis/shiftFilter.cpp src/synthesis/polyFromRoots.cpp
+        src/synthesis/voice.cpp
+        src/analysis/filter/butterworth.cpp src/analysis/filter/zpk2sos.cpp
+        src/analysis/filter/sosfilter.cpp src/analysis/filter/filter.cpp
+        src/analysis/freqz/sosfreqz.cpp src/analysis/util/eval_polynomial.cpp)
+    target_include_directories(voice_test SYSTEM PRIVATE ${ARMADILLO_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS} external/libsamplerate/src)
+    target_link_libraries(voice_test PRIVATE Eigen3::Eigen rpcxx_only Qt6::Core)
+    add_test(NAME voice COMMAND voice_test)
 endif()
 
 target_include_directories(in-formant SYSTEM PRIVATE ${ARMADILLO_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS} ${TOMLPP_INCLUDE_DIR})

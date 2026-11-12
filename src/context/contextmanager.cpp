@@ -339,6 +339,7 @@ void ContextManager::datavisThreadLoop()
     QObject::connect(&mSynthWrapper, &SynthWrapper::glotRdChanged, mSynthesizer.get(), &Synth::setGlotRd);
     QObject::connect(&mSynthWrapper, &SynthWrapper::glotTcChanged, mSynthesizer.get(), &Synth::setGlotTc);
     QObject::connect(&mSynthWrapper, &SynthWrapper::filterShiftChanged, mSynthesizer.get(), &Synth::setFilterShift);
+    QObject::connect(&mSynthWrapper, &SynthWrapper::jitterChanged, mSynthesizer.get(), &Synth::setJitter);
 
     double maxFrequency = 0;
     rpm::vector<double> frequencies(1024);
@@ -357,6 +358,16 @@ void ContextManager::datavisThreadLoop()
     double followLogPitch = 0;
     bool followActive = false;
     int unvoicedFrames = 0;
+
+    // The follow formants mode keeps four stable slots. A slot holds its last value for a short
+    // time. After that, the slot returns to the manual value. The count of formants stays at four,
+    // so the filter does not jump.
+    constexpr int slotCount = SynthWrapper::formantCount;
+    constexpr auto slotHold = 300ms;
+    double slotLogFrequency[slotCount] = {};
+    std::chrono::steady_clock::time_point slotSeen[slotCount] = {};
+    bool slotActive[slotCount] = {};
+
     auto lastUiUpdate = std::chrono::steady_clock::now();
 
     while (mAnalysisRunning && mSynthesisRunning) {
@@ -366,7 +377,7 @@ void ContextManager::datavisThreadLoop()
         const bool followFormants = mSynthWrapper.followFormants();
 
         std::optional<double> pitchEstimate;
-        rpm::vector<Analysis::FormantData> formants;
+        std::optional<double> formantEstimate[slotCount];
 
         if (followPitch || followFormants) {
             mDataStore->beginRead();
@@ -376,12 +387,9 @@ void ContextManager::datavisThreadLoop()
             }
 
             if (followFormants) {
-                for (int i = 0; i < 4; ++i) {
+                for (int i = 0; i < slotCount; ++i) {
                     if (!mDataStore->getFormantTrack(i).empty()) {
-                        std::optional<double> fi = mDataStore->getFormantTrack(i).back();
-                        if (fi.has_value()) {
-                            formants.push_back({*fi, 100.0});
-                        }
+                        formantEstimate[i] = mDataStore->getFormantTrack(i).back();
                     }
                 }
             }
@@ -389,11 +397,29 @@ void ContextManager::datavisThreadLoop()
             mDataStore->endRead();
         }
 
-        if (followFormants) {
+        const auto now = std::chrono::steady_clock::now();
+
+        // The manual values set the formants. In follow mode, an estimate replaces the manual
+        // value of its slot, and the estimate is smooth on a logarithmic scale.
+        {
+            rpm::vector<Analysis::FormantData> formants;
+            for (int i = 0; i < slotCount; ++i) {
+                if (followFormants && formantEstimate[i].has_value() && *formantEstimate[i] > 0) {
+                    const double target = std::log(*formantEstimate[i]);
+                    slotLogFrequency[i] = slotActive[i] ? slotLogFrequency[i] + 0.4 * (target - slotLogFrequency[i]) : target;
+                    slotActive[i] = true;
+                    slotSeen[i] = now;
+                }
+                else if (!followFormants || now - slotSeen[i] > slotHold) {
+                    slotActive[i] = false;
+                }
+
+                const double frequency = slotActive[i] ? std::exp(slotLogFrequency[i]) : mSynthWrapper.formantFrequency(i);
+                formants.push_back({frequency, mSynthWrapper.formantBandwidth(i)});
+            }
             mSynthesizer->setFormants(formants);
         }
 
-        const auto now = std::chrono::steady_clock::now();
         const bool updateUi = now - lastUiUpdate >= 100ms;
         if (updateUi) lastUiUpdate = now;
 

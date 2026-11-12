@@ -17,7 +17,8 @@ SynthWrapper::SynthWrapper()
       mFilterShift(1.0),
       mVoiced(true),
       mFollowPitch(false),
-      mFollowFormants(true),
+      mFollowFormants(false),
+      mJitter(0.0),
       mFilterResponseDbMin(0),
       mFilterResponseDbMax(0),
       mSourceSpectrumDbMin(DBL_MAX),
@@ -25,6 +26,13 @@ SynthWrapper::SynthWrapper()
       mWatchers(0),
       mVersion(0)
 {
+    // The first four formants of a neutral voice.
+    static const double frequencies[formantCount] = { 500, 1500, 2500, 3500 };
+    static const double bandwidths[formantCount] = { 60, 90, 120, 150 };
+    for (int i = 0; i < formantCount; ++i) {
+        mFormantFrequency[i] = frequencies[i];
+        mFormantBandwidth[i] = bandwidths[i];
+    }
 }
 
 bool SynthWrapper::enabled() const
@@ -75,6 +83,55 @@ bool SynthWrapper::followPitch() const
 bool SynthWrapper::followFormants() const
 {
     return mFollowFormants;
+}
+
+double SynthWrapper::jitter() const
+{
+    return mJitter;
+}
+
+double SynthWrapper::formantFrequency(int index) const
+{
+    return mFormantFrequency[std::clamp(index, 0, formantCount - 1)];
+}
+
+double SynthWrapper::formantBandwidth(int index) const
+{
+    return mFormantBandwidth[std::clamp(index, 0, formantCount - 1)];
+}
+
+QVariantList SynthWrapper::formantFrequencies() const
+{
+    QVariantList list;
+    for (int i = 0; i < formantCount; ++i) list.append(mFormantFrequency[i].load());
+    return list;
+}
+
+QVariantList SynthWrapper::formantBandwidths() const
+{
+    QVariantList list;
+    for (int i = 0; i < formantCount; ++i) list.append(mFormantBandwidth[i].load());
+    return list;
+}
+
+void SynthWrapper::setFormantFrequency(int index, double hz)
+{
+    if (index < 0 || index >= formantCount) return;
+    mFormantFrequency[index] = std::clamp(hz, 100.0, 7000.0);
+    emit formantsChanged();
+}
+
+void SynthWrapper::setFormantBandwidth(int index, double hz)
+{
+    if (index < 0 || index >= formantCount) return;
+    mFormantBandwidth[index] = std::clamp(hz, 20.0, 500.0);
+    emit formantsChanged();
+}
+
+void SynthWrapper::setJitter(double j)
+{
+    mJitter = std::clamp(j, 0.0, 1.0);
+    emit jitterChanged(mJitter);
 }
 
 void SynthWrapper::setEnabled(bool b) 

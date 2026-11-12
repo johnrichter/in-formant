@@ -7,6 +7,7 @@
 
 #include "../../../analysis/analysis.h"
 #include "../../../synthesis/synthesis.h"
+#include "../../../synthesis/voice.h"
 #include "../../audio/audio.h"
 
 #include <atomic>
@@ -28,6 +29,7 @@ namespace Module::App
         void setGlotPitch(double);
         void setGlotRd(double);
         void setGlotTc(double);
+        void setJitter(double);
         void setFormants(const rpm::vector<Analysis::FormantData>&);
         void setFilterShift(double);
         void setVoiced(bool);
@@ -39,6 +41,7 @@ namespace Module::App
         double getGlotPitch() const;
         double getGlotRd() const;
         double getGlotTc() const;
+        double getJitter() const;
         double getFilterShift() const;
         bool isVoiced() const;
         
@@ -60,6 +63,7 @@ namespace Module::App
         std::atomic<double> glotPitch;
         std::atomic<double> glotRd;
         std::atomic<double> glotTc;
+        std::atomic<double> jitter;
         std::atomic<double> filterShift;
         std::atomic<bool> voiced;
 
@@ -69,26 +73,15 @@ namespace Module::App
         double realMasterGain;
         double realNoiseGain;
         double realGlotGain;
-        double realGlotPitch;
-        double realGlotRd;
-        double realGlotTc;
         rpm::vector<Analysis::FormantData> realFormants;
         rpm::vector<std::array<double, 6>> realFilter;
         double realFilterShift;
         mutable std::mutex realFilterMutex;
 
-        rpm::vector<rpm::vector<double>> zfNoise;
-        rpm::vector<rpm::vector<double>> zfGlot;
+        // The voice makes the sound from the parameters. Its level follows the filter and not the
+        // sound, so the loudness stays the same for the same parameters.
+        Synthesis::Voice voice;
 
-        // The gain of each source follows its peak level, so the loudness does not step between
-        // the blocks of audio. The voice gain rises and falls smoothly.
-        double noiseNorm = -1;
-        double glotNorm = -1;
-        double noisePeak = 1e-13;
-        double glotPeak = 1e-13;
-        double voicedGain = 0;
-
-        rpm::vector<double> glotSurplus;
         rpm::vector<double> surplus;
 
         Module::Audio::Resampler resampler;

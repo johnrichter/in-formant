@@ -3,10 +3,12 @@
 
 #ifndef WITHOUT_SYNTH
 
+#include <array>
 #include <atomic>
 #include <QMutex>
 #include <QObject>
 #include <QPointF>
+#include <QVariantList>
 #include <QVector>
 #include "../gui/plotitem.h"
 #include "../modules/app/synthesizer/synthesizer.h"
@@ -25,6 +27,9 @@ namespace Main {
         Q_PROPERTY(bool voiced          READ voiced         WRITE setVoiced         NOTIFY voicedChanged)
         Q_PROPERTY(bool followPitch     READ followPitch    WRITE setFollowPitch    NOTIFY followPitchChanged)
         Q_PROPERTY(bool followFormants  READ followFormants WRITE setFollowFormants NOTIFY followFormantsChanged)
+        Q_PROPERTY(double jitter        READ jitter         WRITE setJitter         NOTIFY jitterChanged)
+        Q_PROPERTY(QVariantList formantFrequencies READ formantFrequencies NOTIFY formantsChanged)
+        Q_PROPERTY(QVariantList formantBandwidths  READ formantBandwidths  NOTIFY formantsChanged)
 
     signals:
         void enabledChanged(bool);
@@ -37,6 +42,8 @@ namespace Main {
         void voicedChanged(double);
         void followPitchChanged(bool);
         void followFormantsChanged(bool);
+        void jitterChanged(double);
+        void formantsChanged();
 
     public:
         SynthWrapper();
@@ -51,6 +58,16 @@ namespace Main {
         bool voiced() const;
         bool followPitch() const;
         bool followFormants() const;
+        double jitter() const;
+        QVariantList formantFrequencies() const;
+        QVariantList formantBandwidths() const;
+
+        // The manual formants. The synthesizer uses them while follow formants is off.
+        static constexpr int formantCount = 4;
+        double formantFrequency(int index) const;
+        double formantBandwidth(int index) const;
+        Q_INVOKABLE void setFormantFrequency(int index, double hz);
+        Q_INVOKABLE void setFormantBandwidth(int index, double hz);
 
         void setEnabled(bool);
         void setNoiseGain(double);
@@ -62,7 +79,8 @@ namespace Main {
         void setVoiced(bool);
         void setFollowPitch(bool);
         void setFollowFormants(bool);
-        
+        void setJitter(double);
+
         void setFilterResponse(const rpm::vector<double>& frequencies, const rpm::vector<double>& magnitudes);
         void setSource(const rpm::vector<double>& signal, double fs);
         void setSourceSpectrum(const rpm::vector<double>& frequencies, const rpm::vector<double>& magnitudes);
@@ -86,6 +104,9 @@ namespace Main {
         bool mVoiced;
         bool mFollowPitch;
         bool mFollowFormants;
+        double mJitter;
+        std::array<std::atomic<double>, formantCount> mFormantFrequency;
+        std::array<std::atomic<double>, formantCount> mFormantBandwidth;
 
         QVector<QPointF> mFilterResponse;
         double mFilterResponseDbMin;

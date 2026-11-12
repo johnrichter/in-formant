@@ -168,6 +168,23 @@ ApplicationWindow {
                     checked: synth.voiced
                     onToggled: synth.voiced = checked
                 }
+
+                MenuSeparator {}
+
+                Label { text: "Pitch jitter" }
+                Slider {
+                    from: 0
+                    to: 1
+                    value: synth.jitter
+                    onMoved: synth.jitter = value
+                    Layout.topMargin: -10
+                    Label {
+                        anchors.top: parent.handle.bottom
+                        anchors.topMargin: 5
+                        anchors.horizontalCenter: parent.handle.horizontalCenter
+                        text: Math.round(100 * synth.jitter) + "%"
+                    }
+                }
             }
 
             ToolSeparator {
@@ -185,6 +202,91 @@ ApplicationWindow {
                     text: "Follow formant estimates"
                     checked: synth.followFormants
                     onToggled: synth.followFormants = checked
+                }
+
+                // The microphone hears the speaker in a follow mode. The estimates then follow the
+                // sound of the synthesizer, and the sound changes by itself.
+                Label {
+                    visible: synth.enabled && (synth.followPitch || synth.followFormants)
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 520
+                    wrapMode: Text.WordWrap
+                    color: Material.color(Material.Orange, Material.Shade300)
+                    text: "A follow mode is on. Use headphones. Without headphones, the microphone hears the synthesizer and the sound changes by itself."
+                }
+
+                Label {
+                    text: "Formants (used when follow formants is off)"
+                    color: "lightgrey"
+                }
+
+                GridLayout {
+                    columns: 5
+                    columnSpacing: 8
+                    rowSpacing: 0
+
+                    Repeater {
+                        model: 4
+
+                        Label {
+                            Layout.row: index
+                            Layout.column: 0
+                            text: "F" + (index + 1)
+                        }
+                    }
+
+                    Repeater {
+                        model: 4
+
+                        Slider {
+                            Layout.row: index
+                            Layout.column: 1
+                            Layout.fillWidth: true
+                            from: mel(150)
+                            to: mel(5500)
+                            value: mel(synth.formantFrequencies[index])
+                            onMoved: synth.setFormantFrequency(index, hz(value))
+                            enabled: !synth.followFormants
+                        }
+                    }
+
+                    Repeater {
+                        model: 4
+
+                        Label {
+                            Layout.row: index
+                            Layout.column: 2
+                            Layout.preferredWidth: 60
+                            horizontalAlignment: Text.AlignRight
+                            text: Math.round(synth.formantFrequencies[index]) + " Hz"
+                        }
+                    }
+
+                    Repeater {
+                        model: 4
+
+                        Slider {
+                            Layout.row: index
+                            Layout.column: 3
+                            Layout.preferredWidth: 120
+                            from: 20
+                            to: 300
+                            value: synth.formantBandwidths[index]
+                            onMoved: synth.setFormantBandwidth(index, value)
+                        }
+                    }
+
+                    Repeater {
+                        model: 4
+
+                        Label {
+                            Layout.row: index
+                            Layout.column: 4
+                            Layout.preferredWidth: 90
+                            horizontalAlignment: Text.AlignRight
+                            text: "bw " + Math.round(synth.formantBandwidths[index]) + " Hz"
+                        }
+                    }
                 }
 
                 IfPlot {
