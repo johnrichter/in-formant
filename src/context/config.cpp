@@ -208,6 +208,7 @@ QVariantMap Config::defaultOptions()
     m["customColors"] = QString("#000004,#3b0f70,#b73779,#fc8961,#fcfdbf");
     m["customPitch"] = QString("#00e5ff");
     m["customFormants"] = QString("#00ff00,#91ee91,#ff0000,#ff99ff,#ffcc00");
+    m["colorSaturation"] = 1.0;  // the chroma of the colour map, from 0.5 to 1.5 times
     return m;
 }
 
@@ -219,7 +220,8 @@ QVariantMap Config::options() const
 QVariantMap Config::themeColors() const
 {
     const Gui::Theme theme = Gui::resolveTheme(optionString("theme"), optionString("customColors"),
-                                               optionString("customPitch"), optionString("customFormants"));
+                                               optionString("customPitch"), optionString("customFormants"),
+                                               optionDouble("colorSaturation"));
     return Gui::themeColorMap(theme);
 }
 
@@ -232,14 +234,14 @@ QVariantList Config::themePreview(const QString &name, int count) const
 {
     if (name == "Custom") {
         const Gui::Theme t = Gui::resolveTheme(name, optionString("customColors"), optionString("customPitch"),
-                                               optionString("customFormants"));
+                                               optionString("customFormants"), optionDouble("colorSaturation"));
         QVariantList list;
         for (int i = 0; i < count; ++i) {
             list << QColor::fromRgb(t.colormap[count > 1 ? (i * 255) / (count - 1) : 0]);
         }
         return list;
     }
-    return Gui::themePreview(name, count);
+    return Gui::themePreview(name, count, optionDouble("colorSaturation"));
 }
 
 QVariant Config::option(const QString &name) const

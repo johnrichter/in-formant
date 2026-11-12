@@ -549,6 +549,14 @@ ApplicationWindow {
                     }
                 }
 
+                ConfigSlider {
+                    title: "Saturation"
+                    valueText: Math.round(100 * config.options.colorSaturation) + "%"
+                    from: 0.5; to: 1.5; stepSize: 0.05
+                    value: config.options.colorSaturation
+                    onMoved: (v) => config.setOption("colorSaturation", Math.round(v * 20) / 20)
+                }
+
                 // The colours of the tracks.
                 RowLayout {
                     Label { text: "Pitch"; color: "lightgrey" }
@@ -564,7 +572,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     color: "lightgrey"
-                    text: "The theme sets the colours of the spectrogram, the pitch track, the formant tracks, and the plots of the oscilloscope and the synthesizer. Every theme works on a dark background. The pride themes use softer versions of the flag colours."
+                    text: "The theme sets the colours of the spectrogram, the pitch track, the formant tracks, and the plots of the oscilloscope and the synthesizer. Every theme works on a dark background. The pride themes use the flag colours at full strength, from dark to light. The brightness of the spectrogram has its own slider (Gain normalization) in the Display tab."
                 }
 
                 MenuSeparator { Layout.fillWidth: true; visible: config.options.theme === "Custom" }

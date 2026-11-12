@@ -391,7 +391,10 @@ void CanvasRenderer::drawSpectrogram(
     mSpecProgram->setUniformValue(mSpecLoc.minFrequency, minFrequency);
     mSpecProgram->setUniformValue(mSpecLoc.maxFrequency, maxFrequency);
     // The shader works on the amplitude of the slice. A power of 10^(maxGain/20) gives the top of the colour map.
-    mSpecProgram->setUniformValue(mSpecLoc.gainScale, float(7.0 / std::sqrt(std::pow(10.0, maxGain / 20.0))));
+    // The headroom keeps the loud harmonics of speech below the top of the map. Without it, half of the
+    // voiced area takes the last colour of the map, and the theme shows one flat colour there.
+    constexpr double headroomDb = 16.0;
+    mSpecProgram->setUniformValue(mSpecLoc.gainScale, float(7.0 / std::sqrt(std::pow(10.0, (maxGain + headroomDb) / 20.0))));
     mSpecProgram->setUniformValue(mSpecLoc.quality, mSpecQuality);
     mSpecProgram->setUniformValue(mSpecLoc.blur, mSpecBlur);
 

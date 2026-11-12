@@ -49,11 +49,12 @@ void RenderContext::render(QPainterWrapper *painter)
     options.statsMask = mConfig->optionInt("statsMask");
 
     const QString themeKey = mConfig->optionString("theme") + "|" + mConfig->optionString("customColors")
-        + "|" + mConfig->optionString("customPitch") + "|" + mConfig->optionString("customFormants");
+        + "|" + mConfig->optionString("customPitch") + "|" + mConfig->optionString("customFormants") + "|" + mConfig->optionString("colorSaturation");
     if (themeKey != mThemeKey) {
         mThemeKey = themeKey;
         mTheme = Gui::resolveTheme(mConfig->optionString("theme"), mConfig->optionString("customColors"),
-                                   mConfig->optionString("customPitch"), mConfig->optionString("customFormants"));
+                                   mConfig->optionString("customPitch"), mConfig->optionString("customFormants"),
+                                   mConfig->optionDouble("colorSaturation"));
     }
     options.theme = mTheme;
 

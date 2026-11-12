@@ -1,6 +1,8 @@
 #include "theme.h"
+#include "oklab.h"
 #include "qpainterwrapper.h"
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 using namespace Gui;
@@ -17,10 +19,16 @@ QColor hex(unsigned int rgb)
     return QColor((rgb >> 16) & 0xff, (rgb >> 8) & 0xff, rgb & 0xff);
 }
 
-// Make 256 colours from the stops. The colours change in a straight line between the stops.
-QVector<QRgb> buildColormap(const std::vector<Stop> &stops)
+// Make 256 colours from the stops. The colours change in OKLab, so a gradient has no grey patch.
+// The saturation scales the chroma of each colour. A value of 1 leaves the colours as they are.
+QVector<QRgb> buildColormap(const std::vector<Stop> &stops, double saturation = 1.0)
 {
-    QVector<QRgb> map(256);
+    std::vector<Lch> lch;
+    for (const Stop &stop : stops) {
+        lch.push_back(labToLch(rgbToLab(stop.rgb)));
+    }
+
+    std::vector<Lch> wanted(256);
     for (int i = 0; i < 256; ++i) {
         const double t = i / 255.0;
 
@@ -29,20 +37,65 @@ QVector<QRgb> buildColormap(const std::vector<Stop> &stops)
             ++k;
         }
 
-        const Stop &a = stops[k - 1];
-        const Stop &b = stops[k];
-        const double span = std::max(b.position - a.position, 1e-9);
-        const double u = std::clamp((t - a.position) / span, 0.0, 1.0);
+        const double span = std::max(stops[k].position - stops[k - 1].position, 1e-9);
+        const double u = std::clamp((t - stops[k - 1].position) / span, 0.0, 1.0);
 
-        auto channel = [&](int shift) {
-            const double ca = (a.rgb >> shift) & 0xff;
-            const double cb = (b.rgb >> shift) & 0xff;
-            return (int) std::lround(ca + (cb - ca) * u);
-        };
+        wanted[i] = mixLch(lch[k - 1], lch[k], u);
+        wanted[i].C *= saturation;
+    }
 
-        map[i] = qRgb(channel(16), channel(8), channel(0));
+    // A colour that is outside the gamut loses chroma, and the loss changes with the hue. A stop
+    // that fits keeps all its chroma, and the colours next to it do not. The stop then shows as a
+    // thin line that is too vivid. The chroma of the map must change smoothly, so a stop never has
+    // more chroma than the average of its neighbours.
+    std::vector<double> feasible(256);
+    for (int i = 0; i < 256; ++i) {
+        feasible[i] = labToLch(rgbToLab(labToRgb(lchToLab(wanted[i])))).C;
+    }
+
+    constexpr int reach = 8;
+    QVector<QRgb> map(256);
+    for (int i = 0; i < 256; ++i) {
+        double sum = 0.0;
+        int count = 0;
+        for (int j = std::max(0, i - reach); j <= std::min(255, i + reach); ++j) {
+            sum += feasible[j];
+            ++count;
+        }
+        Lch c = wanted[i];
+        c.C = std::min(c.C, sum / count);
+        map[i] = 0xff000000u | labToRgb(lchToLab(c));
     }
     return map;
+}
+
+// Make the colours of a table that is not in OKLab, for example the first theme, more or less saturated.
+void saturate(QVector<QRgb> &map, double saturation)
+{
+    if (std::fabs(saturation - 1.0) < 1e-6) return;
+    for (QRgb &c : map) {
+        Lch lch = labToLch(rgbToLab(c & 0xffffff));
+        lch.C *= saturation;
+        c = 0xff000000u | labToRgb(lchToLab(lch));
+    }
+}
+
+// A theme of seven stops. The lightness goes up from 7 percent to 86 percent in fixed steps. It rises fast at first, because most of a voice sound is in the lower half of the map. Each
+// stop sets the chroma and the hue. The top stop keeps a hue, and no stop is white.
+struct Tone {
+    double chroma;
+    double hue;
+};
+
+std::vector<Stop> ramp(const std::array<Tone, 7> &tones)
+{
+    static const double positions[7] = { 0.00, 0.18, 0.38, 0.58, 0.76, 0.90, 1.00 };
+    static const double lightness[7] = { 0.07, 0.28, 0.48, 0.64, 0.75, 0.82, 0.86 };
+    std::vector<Stop> stops;
+    for (int i = 0; i < 7; ++i) {
+        stops.push_back({ positions[i], labToRgb(lchToLab(lightness[i], tones[i].chroma, tones[i].hue)) });
+    }
+    return stops;
 }
 
 struct Definition {
@@ -54,8 +107,8 @@ struct Definition {
     unsigned int accent;
 };
 
-// The colours of the pride themes are darker than the flag colours. A flag colour at full brightness
-// is too bright for a dark window, so each theme keeps the hue and lowers the brightness.
+// The pride themes use the flag colours at full chroma. The lightness goes up in steps from near black
+// to a light tint, and no stop is white. A loud sound then keeps a hue, and a quiet sound is dark.
 const std::vector<Definition> &definitions()
 {
     static const std::vector<Definition> defs = {
@@ -82,64 +135,62 @@ const std::vector<Definition> &definitions()
               {0.92, 0xffe08a}, {1.00, 0xfff8e0} },
             0x4dd0e1, { 0x7cff9a, 0x82b1ff, 0xffffff, 0xe1a8ff, 0xb0ff7c }, 0xd94a00 },
 
-        // Pride themes.
-        { "Trans (Dark)", "Pride",
-            { {0.00, 0x05070d}, {0.22, 0x102a45}, {0.42, 0x2f6a93}, {0.62, 0xb36e8c}, {0.80, 0xdcaebf}, {1.00, 0xefe9ec} },
-            0xd889a6, { 0x5aa5c8, 0xd889a6, 0xd9d2d6, 0x7f9fb8, 0xb87a95 }, 0x5aa5c8 },
-        { "Transfeminine (Dark)", "Pride",
-            { {0.00, 0x0a0609}, {0.25, 0x4a1a38}, {0.50, 0xa85a82}, {0.75, 0xd8a0b8}, {1.00, 0xf6eaf0} },
-            0xd889a6, { 0xe0a0b8, 0xc8789a, 0xf0d0dc, 0xa85a82, 0xe8b8c8 }, 0xc8789a },
-        { "Transmasculine (Dark)", "Pride",
-            { {0.00, 0x05070d}, {0.25, 0x0e3a66}, {0.50, 0x3f86ab}, {0.75, 0x9cc8de}, {1.00, 0xeef4f6} },
-            0x5aa5c8, { 0x7fb0d0, 0xc8dde8, 0x3f86ab, 0xa0c0d8, 0xe0eef4 }, 0x3f86ab },
-        { "Rainbow (Dark)", "Pride",
-            { {0.00, 0x06060c}, {0.15, 0x3b1d5a}, {0.33, 0x2f4f9c}, {0.50, 0x2f8f5a}, {0.66, 0xc9b23a},
-              {0.83, 0xd8742e}, {1.00, 0xf0e6dc} },
-            0xe05a5a, { 0xe8873a, 0xd6c34a, 0x4fae6e, 0x5a7fd0, 0x9a6bc0 }, 0x9a6bc0 },
-        { "Progress Pride (Dark)", "Pride",
-            { {0.00, 0x060509}, {0.14, 0x4e3322}, {0.30, 0x3f86ab}, {0.46, 0xbf7592}, {0.62, 0xd8cfd3},
-              {0.78, 0xc9b23a}, {1.00, 0xf4efe0} },
-            0xe05a5a, { 0x5aa5c8, 0xd889a6, 0xe8873a, 0x4fae6e, 0x9a6bc0 }, 0xd889a6 },
-        { "Bisexual (Dark)", "Pride",
-            { {0.00, 0x070510}, {0.22, 0x1c2a6e}, {0.45, 0x5b3d8e}, {0.68, 0xb0306f}, {0.85, 0xd98ab4}, {1.00, 0xf2e6ee} },
-            0xd9609a, { 0x4f78d0, 0x9a6bc0, 0xd9609a, 0x7aa0e0, 0xc58ad0 }, 0x9a6bc0 },
-        { "Pansexual (Dark)", "Pride",
-            { {0.00, 0x05080e}, {0.22, 0x164a78}, {0.45, 0x3a8fc4}, {0.68, 0xc93c80}, {0.85, 0xd9b04a}, {1.00, 0xf6eed2} },
-            0xe0508f, { 0x3a9fd4, 0xd9b04a, 0xe0508f, 0x6ac0e8, 0xe8c870 }, 0xc93c80 },
-        { "Lesbian (Dark)", "Pride",
-            { {0.00, 0x0a0508}, {0.20, 0x6e1d12}, {0.38, 0xb24a1c}, {0.55, 0xd98a5a}, {0.72, 0xd8c6c0},
-              {0.86, 0xb8639a}, {1.00, 0xf0e4ec} },
-            0xe0905a, { 0xc0507e, 0xd8c6c0, 0xb24a1c, 0xa0457e, 0xe8a070 }, 0xb24a1c },
-        { "Gay MLM (Dark)", "Pride",
-            { {0.00, 0x04070a}, {0.20, 0x0a4a44}, {0.40, 0x1f9a80}, {0.58, 0x7ac4a8}, {0.75, 0x8fb4d8},
-              {0.90, 0x5a56b8}, {1.00, 0xeef2f4} },
-            0x3fbf9f, { 0x7aaad8, 0x8a7ad8, 0xcfe8dc, 0x5fd0b0, 0x6a62c8 }, 0x1f9a80 },
-        { "Non-binary (Dark)", "Pride",
-            { {0.00, 0x050505}, {0.20, 0x2a1a44}, {0.42, 0x7a4aa8}, {0.62, 0xb8a0d0}, {0.80, 0xcfc84a}, {1.00, 0xf4f2d8} },
-            0xd6cc3a, { 0xa070d0, 0xe0e0e0, 0x8a8a8a, 0xc8b0e0, 0xe8e070 }, 0x7a4aa8 },
-        { "Asexual (Dark)", "Pride",
-            { {0.00, 0x040404}, {0.25, 0x2a2a2a}, {0.45, 0x5a2a6a}, {0.65, 0x8a8a8a}, {0.85, 0xbbb0c4}, {1.00, 0xf2f0f4} },
-            0xb070c0, { 0xa0a0a0, 0x7a3a8a, 0xd0d0d0, 0xc090d0, 0x707070 }, 0x5a2a6a },
-        { "Aromantic (Dark)", "Pride",
-            { {0.00, 0x040604}, {0.22, 0x1c4a22}, {0.42, 0x3d8a44}, {0.62, 0x98c070}, {0.80, 0xb8b8b8}, {1.00, 0xf2f4ee} },
-            0x5fb860, { 0xa7d379, 0xcfcfcf, 0x3d8a44, 0x8aa070, 0xe0e8d8 }, 0x3d8a44 },
-        { "Genderfluid (Dark)", "Pride",
-            { {0.00, 0x040408}, {0.20, 0x1c2268}, {0.40, 0x6a2a8a}, {0.60, 0xc95a80}, {0.80, 0xd8b8c8}, {1.00, 0xf4eef2} },
-            0xd06a92, { 0x6a72d0, 0xb050c0, 0xe0d0d8, 0x8a2a9a, 0x4a52b0 }, 0x6a2a8a },
-        { "Genderqueer (Dark)", "Pride",
-            { {0.00, 0x05060a}, {0.20, 0x264012}, {0.42, 0x3f7020}, {0.62, 0x9a78c0}, {0.82, 0xd0c4e0}, {1.00, 0xf4f2f6} },
-            0xa888d0, { 0x5a9a38, 0xe0d8e8, 0x7a5aa0, 0x8fbf6a, 0xc0a8e0 }, 0x7a5aa0 },
-        { "Agender (Dark)", "Pride",
-            { {0.00, 0x040404}, {0.20, 0x2a2a2a}, {0.40, 0x6a6a6a}, {0.60, 0x7ab060}, {0.80, 0xd0d0d0}, {1.00, 0xf2f2f2} },
-            0x7ab060, { 0xb0b0b0, 0x5a8a48, 0xe0e0e0, 0x8a8a8a, 0xa0d080 }, 0x5a8a48 },
-        { "Intersex (Dark)", "Pride",
-            { {0.00, 0x05030a}, {0.25, 0x3a0f66}, {0.50, 0x7a2aa8}, {0.72, 0xc9a42a}, {0.88, 0xe8d060}, {1.00, 0xf8f0d0} },
-            0xd9b030, { 0x9a50c8, 0xe8d060, 0x6a2a98, 0xc8a8e0, 0xf0e0a0 }, 0x7a2aa8 },
+        // Pride themes. A pitch colour of 0 means that the tracks take their colours from the table.
+        { "Trans (Dark)", "Pride", ramp({ { {0.03, 260}, {0.09, 255}, {0.14, 245}, {0.11, 225}, {0.1, 5}, {0.06, 5}, {0.03, 350} } }), 0, { 0, 0, 0, 0, 0 }, 0 },
+        { "Transfeminine (Dark)", "Pride", ramp({ { {0.03, 340}, {0.09, 340}, {0.15, 350}, {0.14, 358}, {0.1, 5}, {0.06, 10}, {0.03, 350} } }), 0, { 0, 0, 0, 0, 0 }, 0 },
+        { "Transmasculine (Dark)", "Pride", ramp({ { {0.03, 260}, {0.1, 262}, {0.15, 255}, {0.12, 240}, {0.09, 225}, {0.05, 225}, {0.03, 230} } }), 0, { 0, 0, 0, 0, 0 }, 0 },
+        { "Rainbow (Dark)", "Pride", ramp({ { {0.03, 300}, {0.1, 305}, {0.12, 265}, {0.13, 150}, {0.15, 100}, {0.12, 60}, {0.04, 60} } }), 0, { 0, 0, 0, 0, 0 }, 0 },
+        { "Progress Pride (Dark)", "Pride", ramp({ { {0.02, 40}, {0.06, 45}, {0.12, 255}, {0.13, 355}, {0.14, 95}, {0.1, 60}, {0.03, 80} } }), 0, { 0, 0, 0, 0, 0 }, 0 },
+        { "Bisexual (Dark)", "Pride", ramp({ { {0.03, 275}, {0.12, 275}, {0.17, 300}, {0.17, 350}, {0.12, 350}, {0.07, 340}, {0.03, 340} } }), 0, { 0, 0, 0, 0, 0 }, 0 },
+        { "Pansexual (Dark)", "Pride", ramp({ { {0.03, 250}, {0.1, 250}, {0.14, 235}, {0.17, 355}, {0.15, 95}, {0.09, 95}, {0.03, 95} } }), 0, { 0, 0, 0, 0, 0 }, 0 },
+        { "Lesbian (Dark)", "Pride", ramp({ { {0.03, 30}, {0.1, 30}, {0.15, 40}, {0.14, 55}, {0.05, 40}, {0.11, 350}, {0.04, 350} } }), 0, { 0, 0, 0, 0, 0 }, 0 },
+        { "Gay MLM (Dark)", "Pride", ramp({ { {0.03, 200}, {0.07, 195}, {0.1, 190}, {0.12, 170}, {0.1, 230}, {0.08, 265}, {0.03, 265} } }), 0, { 0, 0, 0, 0, 0 }, 0 },
+        { "Non-binary (Dark)", "Pride", ramp({ { {0.01, 300}, {0.07, 300}, {0.14, 305}, {0.07, 300}, {0.03, 300}, {0.12, 100}, {0.05, 100} } }), 0, { 0, 0, 0, 0, 0 }, 0 },
+        { "Asexual (Dark)", "Pride", ramp({ { {0.0, 0}, {0.0, 0}, {0.0, 0}, {0.13, 310}, {0.14, 310}, {0.08, 310}, {0.04, 310} } }), 0, { 0, 0, 0, 0, 0 }, 0 },
+        { "Aromantic (Dark)", "Pride", ramp({ { {0.02, 150}, {0.07, 150}, {0.13, 145}, {0.15, 140}, {0.12, 130}, {0.05, 130}, {0.03, 130} } }), 0, { 0, 0, 0, 0, 0 }, 0 },
+        { "Genderfluid (Dark)", "Pride", ramp({ { {0.03, 265}, {0.1, 265}, {0.16, 285}, {0.15, 330}, {0.13, 355}, {0.07, 355}, {0.03, 355} } }), 0, { 0, 0, 0, 0, 0 }, 0 },
+        { "Genderqueer (Dark)", "Pride", ramp({ { {0.03, 145}, {0.08, 145}, {0.12, 145}, {0.14, 140}, {0.1, 305}, {0.06, 305}, {0.02, 305} } }), 0, { 0, 0, 0, 0, 0 }, 0 },
+        { "Agender (Dark)", "Pride", ramp({ { {0.0, 140}, {0.02, 140}, {0.05, 140}, {0.14, 145}, {0.14, 140}, {0.08, 140}, {0.03, 140} } }), 0, { 0, 0, 0, 0, 0 }, 0 },
+        { "Intersex (Dark)", "Pride", ramp({ { {0.03, 300}, {0.1, 305}, {0.17, 305}, {0.14, 300}, {0.15, 100}, {0.11, 100}, {0.04, 100} } }), 0, { 0, 0, 0, 0, 0 }, 0 },
     };
     return defs;
 }
 
-Theme fromDefinition(const Definition &d)
+// The colours of the tracks for a table with no hand-picked colours. The pitch has the hue that is
+// opposite to the loud part of the table. The five formants have hues that differ from the pitch
+// and from the loud part, and the lightness alternates, so that neighbours differ in two ways.
+void autoTracks(Theme &t)
+{
+    double a = 0.0;
+    double b = 0.0;
+    for (int i = 150; i < 235; ++i) {
+        const Lab lab = rgbToLab(t.colormap[i] & 0xffffff);
+        a += lab.a;
+        b += lab.b;
+    }
+    double hue = 250.0;
+    if (std::hypot(a, b) / 85.0 > 0.015) {
+        hue = std::atan2(b, a) * 180.0 / M_PI;
+    }
+
+    const double pitchHue = hue + 180.0;
+    const double offsets[5] = { 120.0, -120.0, 60.0, -60.0, 150.0 };
+    const double lightness[5] = { 0.80, 0.86, 0.76, 0.84, 0.78 };
+
+    auto color = [](double L, double C, double h) {
+        const Lab lab = lchToLab(L, C, h);
+        const unsigned int rgb = labToRgb(lab);
+        return QColor((rgb >> 16) & 0xff, (rgb >> 8) & 0xff, rgb & 0xff);
+    };
+
+    t.pitch = color(0.88, 0.14, pitchHue);
+    for (int i = 0; i < 5; ++i) {
+        t.formants[i] = color(lightness[i], 0.17, pitchHue + offsets[i]);
+    }
+    t.accent = QColor::fromRgb(t.colormap[100]);
+}
+
+Theme fromDefinition(const Definition &d, double saturation)
 {
     Theme t;
     t.name = d.name;
@@ -147,16 +198,22 @@ Theme fromDefinition(const Definition &d)
 
     if (d.stops.empty()) {
         t.colormap = QPainterWrapper::defaultColorMap();
+        saturate(t.colormap, saturation);
     }
     else {
-        t.colormap = buildColormap(d.stops);
+        t.colormap = buildColormap(d.stops, saturation);
     }
 
-    t.pitch = hex(d.pitch);
-    for (int i = 0; i < 5; ++i) {
-        t.formants[i] = hex(d.formants[i]);
+    if (d.pitch == 0) {
+        autoTracks(t);
     }
-    t.accent = hex(d.accent);
+    else {
+        t.pitch = hex(d.pitch);
+        for (int i = 0; i < 5; ++i) {
+            t.formants[i] = hex(d.formants[i]);
+        }
+        t.accent = hex(d.accent);
+    }
 
     // The oscilloscope and the synthesizer use the pitch colour and the first formant colour, so that
     // each window matches the spectrogram.
@@ -203,11 +260,11 @@ QString Gui::themeGroup(const QString &name)
 }
 
 Theme Gui::resolveTheme(const QString &name, const QString &customColors,
-                        const QString &customPitch, const QString &customFormants)
+                        const QString &customPitch, const QString &customFormants, double saturation)
 {
     if (name == "Custom") {
         // The base is the default theme. Each custom value that is valid replaces the default value.
-        Theme t = fromDefinition(definitions().front());
+        Theme t = fromDefinition(definitions().front(), saturation);
         t.name = "Custom";
         t.group = "Custom";
 
@@ -217,7 +274,7 @@ Theme Gui::resolveTheme(const QString &name, const QString &customColors,
             for (int i = 0; i < colors.size(); ++i) {
                 stops.push_back({ i / double(colors.size() - 1), (unsigned) (colors[i].rgb() & 0xffffff) });
             }
-            t.colormap = buildColormap(stops);
+            t.colormap = buildColormap(stops, saturation);
         }
 
         const QColor pitch(customPitch.trimmed());
@@ -237,15 +294,15 @@ Theme Gui::resolveTheme(const QString &name, const QString &customColors,
 
     for (const auto &d : definitions()) {
         if (name == d.name) {
-            return fromDefinition(d);
+            return fromDefinition(d, saturation);
         }
     }
-    return fromDefinition(definitions().front());
+    return fromDefinition(definitions().front(), saturation);
 }
 
-QVariantList Gui::themePreview(const QString &name, int count)
+QVariantList Gui::themePreview(const QString &name, int count, double saturation)
 {
-    const Theme t = resolveTheme(name);
+    const Theme t = resolveTheme(name, QString(), QString(), QString(), saturation);
     QVariantList list;
     for (int i = 0; i < count; ++i) {
         const int index = count > 1 ? (i * 255) / (count - 1) : 0;

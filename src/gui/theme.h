@@ -40,13 +40,15 @@ namespace Gui {
     // The theme with this name. An unknown name gives the default theme. The custom theme uses the
     // three strings: the colours of the spectrogram from low to high, the colour of the pitch track,
     // and the colours of the formant tracks. A colour has the form #rrggbb. Commas separate colours.
+    // The saturation scales the chroma of the colour map. A value of 1 leaves the colours as they are.
     Theme resolveTheme(const QString &name,
                        const QString &customColors = QString(),
                        const QString &customPitch = QString(),
-                       const QString &customFormants = QString());
+                       const QString &customFormants = QString(),
+                       double saturation = 1.0);
 
     // Some evenly spaced colours of the colour map, for a preview.
-    QVariantList themePreview(const QString &name, int count);
+    QVariantList themePreview(const QString &name, int count, double saturation = 1.0);
 
     // The colours of the theme for the QML windows.
     QVariantMap themeColorMap(const Theme &theme);
