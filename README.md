@@ -13,6 +13,8 @@ The repository left the GitHub fork network, for two reasons:
 
 The move to Git LFS rewrote the history of this repository. Its commit IDs differ from the commit IDs of upstream. The content of each file is the same. The `upstream` remote still works for `git fetch`, but a merge or a rebase on upstream needs more care than before. To give a change to upstream, send a patch (`git format-patch`) or a branch that has no LFS files. Submodules keep their own files and are not in Git LFS.
 
+Before you clone this repository, install Git LFS (for example with `brew install git-lfs`) and run `git lfs install` one time. Without Git LFS, the binary files are small text pointers, and the build fails. To get the real files in an existing clone, run `git lfs pull`.
+
 ## Table of Contents
 
 * [Prebuilt binaries](#prebuilt-binaries)
@@ -81,6 +83,7 @@ These changes live in the `johnrichter/in-formant` fork. The `in-formant/in-form
 * An Apple silicon Mac with macOS 27 or newer.
 * Xcode, or the Xcode command line tools, with the macOS 27 SDK.
 * Python 3.
+* Git LFS, which fetches the fonts, the icons, and the model file.
 * `pkg-config`. For example, install it with `brew install pkgconf`.
 * An internet connection and 10 GB of free disk space for the first build.
 
