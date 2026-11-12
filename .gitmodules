@@ -12,9 +12,6 @@
 [submodule "docker/windeployqt"]
 	path = docker/windeployqt
 	url = https://github.com/clo-yunhee/windeployqt
-[submodule "docker/macdeployqt"]
-	path = docker/macdeployqt
-	url = https://github.com/clo-yunhee/macdeployqt
 [submodule "external/rpmalloc"]
 	path = external/rpmalloc
 	url = https://github.com/mjansson/rpmalloc

@@ -4,7 +4,12 @@ cmake_policy(SET CMP0075 NEW)
 cmake_policy(SET CMP0077 NEW)
 cmake_policy(SET CMP0071 NEW)
 
-set(CMAKE_OSX_DEPLOYMENT_TARGET $ENV{MACOSX_DEPLOYMENT_TARGET})
+if(NOT "x$ENV{MACOSX_DEPLOYMENT_TARGET}" STREQUAL "x")
+    set(CMAKE_OSX_DEPLOYMENT_TARGET $ENV{MACOSX_DEPLOYMENT_TARGET})
+elseif(NOT CMAKE_OSX_DEPLOYMENT_TARGET)
+    # The oldest macOS version that the application supports.
+    set(CMAKE_OSX_DEPLOYMENT_TARGET 27.0)
+endif()
 
 if("x${CUR_VERSION}" STREQUAL "x")
     set(CUR_VERSION "3.1.2")
@@ -263,6 +268,12 @@ else()
 endif()
 
 find_package(Eigen3 REQUIRED NO_MODULE)
+
+# The finder of Qt for OpenGL also links the AGL framework, and the macOS SDK 27 has no AGL. The
+# finder skips its search when this value exists, so give it a framework that exists.
+if(APPLE)
+    set(WrapOpenGL_AGL "-framework OpenGL" CACHE STRING "Replacement for the AGL framework" FORCE)
+endif()
 
 find_package(Qt6 COMPONENTS Quick QuickControls2 QuickTemplates2 Qml Widgets OpenGL Svg Gui Core REQUIRED)
 foreach(c Quick QuickControls2 QuickTemplates2 Qml Widgets OpenGL Svg Gui Core)

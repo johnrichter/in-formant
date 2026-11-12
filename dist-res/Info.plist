@@ -20,6 +20,8 @@
         <string>in-formant.icns</string>
         <key>CFBundleExecutable</key>
         <string>InFormant</string>
+        <key>LSMinimumSystemVersion</key>
+        <string>27.0</string>
         <key>NSHighResolutionCapable</key>
         <true/>
         <key>NSMicrophoneUsageDescription</key>
