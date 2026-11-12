@@ -142,6 +142,11 @@ Application:
 * **Black spectrogram:** The patch of upstream pull request 40 moves the shaders from GLSL 120 to GLSL 150. It requests an OpenGL 3.2 Core profile with 4x multisampling. It anchors the canvas to the top of the window.
 * **Toolbar icons:** The CMake file links the Qt SVG module. The `macdeployqt` tool then deploys `libqsvg.dylib`. Without this plugin, Qt prints `Unsupported image format` and the icons stay invisible.
 * **Retina resolution:** `NSHighResolutionCapable` is `true` in `dist-res/Info.plist`. The application renders at the full resolution of the display.
+* **Frame rate:** The renderer built all fonts again at each frame, and it updated a vertex buffer for each glyph, line, and point. On Apple, each buffer update sends the command buffer to the GPU. The frame rate was about 7 frames per second. The renderer now builds the fonts one time, and the shaders take the corners of each quad from a uniform. The frame rate follows the display refresh rate.
+* **Exit crash:** `BaseProcessor` and `FormantSolver` had no virtual destructor, and the pipeline deleted derived objects through them. Clang compiled this undefined behavior to a trap. `main` also destroys the context manager before the static destructors run. Also, the configuration is saved at exit, so the settings were never saved before.
+* **Logger process:** The logger child process did not stop at the end of the pipe, so each launch from a terminal left one process alive. It now stops.
+* **Input device:** The drawer has an "Input device" list. The setting `captureDevice` in the `[audio]` table of the configuration file stores the name. An empty name selects the default input device of macOS. Before this change, the application always used the default device. This device can be a webcam microphone with a low sample rate.
+* **First launch:** The spectrogram, the pitch track, and the formant tracks are on by default. Before this change, a new installation showed a black window.
 
 ### Troubleshooting
 
@@ -156,16 +161,14 @@ Application:
 * **The application closes at once, and the shell shows `Killed: 9` or exit code 137.** The signature of the bundle is invalid. Keep the `rcodesign` step in `docker/deploy-macos.sh`.
 * **macOS says that the application does not run on this version of macOS.** The application is x86_64 only. Build with the default `TARGET_ARCH=arm64`.
 * **The toolbar has no icons.** Check that the bundle has `Contents/PlugIns/imageformats/libqsvg.dylib`.
-* **The spectrogram area is black.** The setting `showSpectrogram` is off by default. Also, the area stays black when the microphone sends no sound.
+* **The spectrogram area is black.** The area stays black when the microphone sends no sound. Make sure that macOS gives microphone access to InFormant. To ask again, run `tccutil reset Microphone fr.cloyunhee.InFormant`, and then start the application. Choose the input device in the drawer.
 * **Docker prints `requested image's platform (linux/amd64) does not match the detected host platform`.** This warning is expected on arm64. Ignore it, because Rosetta runs the image.
 
 ### Known limits
 
-* The checks launched the application, saved a picture of the window, and confirmed the toolbar, the axes, and the text. A synthetic signal confirmed that the spectrogram draws with color.
-* The checks did not use a real microphone. A live signal is not confirmed.
+* The checks launched the application, saved a picture of the window, and confirmed the toolbar, the axes, and the text. Speech from a loudspeaker, picked up by the microphone, drew the spectrogram, the pitch track, and the formant tracks.
+* The checks used the built-in input path of one Mac with a USB webcam microphone. Other input devices are not tested.
 * The application has an ad hoc signature and no notarization.
-* Apple prints `UNSUPPORTED (log once): POSSIBLE ISSUE: unit 0 GLD_TEXTURE_INDEX_2D is unloadable` in the log. The picture shows no visible defect, and the cause is not proven.
-* The application crashes with a segmentation fault when it exits. The crash happens in the window destructor, after the static destructors started. macOS can show a crash report at each exit. The cause is in the upstream code, and this fork does not fix it.
 * The application reads its configuration from `~/Library/Application/informant.conf`.
 * The `hfsplus` tool copies each symlink as a full file. The application bundle uses 143 MB in the image, instead of 60 MB.
 * The build runs as root in the container. On a Linux host, the files in `build` and `dist` belong to root.
