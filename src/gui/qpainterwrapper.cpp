@@ -80,12 +80,12 @@ double QPainterWrapper::inverseFrequency(double value)
 
 double QPainterWrapper::mapTimeToX(double time)
 {
-    return mapTimeToX(time, p->viewport().width(), mTimeStart, mTimeEnd);
+    return mPlotLeft + mapTimeToX(time, plotWidth(), mTimeStart, mTimeEnd);
 }
 
 double QPainterWrapper::mapFrequencyToY(double frequency)
 {
-    return mapFrequencyToY(frequency, p->viewport().height(), mFrequencyScale, mMinFrequency, mMaxFrequency);
+    return mapFrequencyToY(frequency, plotHeight(), mFrequencyScale, mMinFrequency, mMaxFrequency);
 }
 
 const QVector<QRgb>& QPainterWrapper::defaultColorMap()

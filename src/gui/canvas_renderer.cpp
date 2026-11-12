@@ -376,8 +376,10 @@ void CanvasRenderer::drawSpectrogram(
 
     mSpecProgram->bind();
 
-    float w = mWidth;
-    float h = mHeight;
+    // The picture fills the graph, which is the canvas without the margins of the axes.
+    float w = mWidth - mPlotLeft;
+    float h = mHeight - mPlotBottom;
+    glViewport(mPlotLeft, mPlotBottom, (GLsizei) w, (GLsizei) h);
 
     QMatrix4x4 projection;
     projection.ortho(0, w, 0, h, -1, 1);
@@ -427,6 +429,7 @@ void CanvasRenderer::drawSpectrogram(
     glActiveTexture(GL_TEXTURE0);
 
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    glViewport(0, 0, mWidth, mHeight);
 
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -442,6 +445,17 @@ void CanvasRenderer::drawSpectrogram(
 QRect CanvasRenderer::viewport() const
 {
     return QRect(0, 0, mWidth, mHeight);
+}
+
+void CanvasRenderer::setClip(int x, int y, int width, int height)
+{
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(x, mHeight - (y + height), std::max(width, 0), std::max(height, 0));
+}
+
+void CanvasRenderer::clearClip()
+{
+    glDisable(GL_SCISSOR_TEST);
 }
 
 void CanvasRenderer::drawText(Font *font, float x, float y, const QColor &color, const std::string &text)

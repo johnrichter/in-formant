@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <memory>
+#include <vector>
 
 #include "../reviewspectrogram.h"
 #include "views.h"
@@ -25,6 +26,10 @@ namespace Main::View {
         ReviewRequest mLastRequest;
         bool mHasRequest = false;
         std::chrono::steady_clock::time_point mLastRequestTime;
+
+        // The newest values of the statistics, and the time that they were computed.
+        std::vector<Gui::HudTrack> mHudCache;
+        std::chrono::steady_clock::time_point mHudTime;
 
         // The source of the slices in the texture: 0 for the live slices, or the number of a result.
         unsigned long long mTextureSource = 0;

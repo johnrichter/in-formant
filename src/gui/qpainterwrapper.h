@@ -36,6 +36,14 @@ public:
     // quality 0 is the fast bilinear filter, and 1 is the cubic filter. blur is in the range 0 to 1.
     void setSpectrogramFilter(int quality, double blur);
 
+    // Compute the margins for the axes from the options and the fonts. The call comes before
+    // any drawing of a frame. The graph is the canvas without the margins at the left and at the bottom.
+    void updateLayout();
+
+    // Limit the drawing to the graph, so that tracks do not cross into the margins of the axes.
+    void beginPlot();
+    void endPlot();
+
     void drawTimeAxis();
     void drawFrequencyScale();
 
@@ -91,6 +99,15 @@ private:
 
     double mTimeStart;
     double mTimeEnd;
+
+    // The margins of the axes, in pixels.
+    int mPlotLeft = 0;
+    int mPlotBottom = 0;
+    // The width of the column at the far left that holds the readout boxes. It lies left of the
+    // frequency axis, and the graph does not cover it.
+    int mReadoutWidth = 0;
+    int plotWidth() const { return viewport().width() - mPlotLeft; }
+    int plotHeight() const { return viewport().height() - mPlotBottom; }
 
     FrequencyScale mFrequencyScale;
     double mMinFrequency;

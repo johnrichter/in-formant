@@ -104,6 +104,14 @@ namespace Gui {
 
         QRect viewport() const;
 
+        // The margins at the left and at the bottom that hold the axes. The spectrogram fills the
+        // rest of the canvas, which is the area of the graph.
+        void setPlotMargins(int left, int bottom) { mPlotLeft = left; mPlotBottom = bottom; }
+
+        // Limit the drawing to a rectangle, in pixels from the top left corner, or remove the limit.
+        void setClip(int x, int y, int width, int height);
+        void clearClip();
+
         // Which slices the spectrogram texture holds. The texture lives as long as the renderer, so
         // this state lives as long as the renderer too. The painter of one frame reads and writes it.
         struct SpectrogramStored {
@@ -115,6 +123,8 @@ namespace Gui {
 
     private:
         SpectrogramStored mSpectrogramStored;
+        int mPlotLeft = 0;
+        int mPlotBottom = 0;
 
         void initFonts();
         void initShaders();

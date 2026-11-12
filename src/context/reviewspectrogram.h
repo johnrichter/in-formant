@@ -22,8 +22,14 @@ namespace Main {
         int sampleRate = 11000;
         int fftSamples = 1024;
 
+        // The version of the sound, when the span reaches the end of the sound. The sound near its
+        // end can still change, so a change of the version asks for a new picture. A span far from the
+        // end has the version zero.
+        unsigned long long version = 0;
+
         bool operator==(const ReviewRequest &o) const {
-            return t0 == o.t0 && t1 == o.t1 && columns == o.columns && sampleRate == o.sampleRate && fftSamples == o.fftSamples;
+            return t0 == o.t0 && t1 == o.t1 && columns == o.columns && sampleRate == o.sampleRate && fftSamples == o.fftSamples
+                && version == o.version;
         }
     };
 
