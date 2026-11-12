@@ -93,13 +93,13 @@ namespace Gui {
         Font *mFontSmaller;
 
         QOpenGLShaderProgram *mTextProgram;
-        GLuint mTextVao, mTextVbo;
+        GLuint mTextVao;
 
         QOpenGLShaderProgram *mSpecProgram;
-        GLuint mSpecVao, mSpecVbo;
+        GLuint mSpecVao;
 
         QOpenGLShaderProgram *mCircleProgram;
-        GLuint mCircleVao, mCircleVbo;
+        GLuint mCircleVao;
 
         GLuint mSpecTex;
     };

@@ -7,6 +7,8 @@
 #include <cmath>
 #include <QQuickWindow>
 #include <QScreen>
+#include <QVector2D>
+#include <QVector4D>
 
 #ifdef _WIN32
 /**
@@ -46,6 +48,7 @@ void CanvasRenderer::initialize(Main::RenderContext *renderContext)
     mDpi = 96.0;
 
     mZoomScale = 1.0;
+    mZoomScaleText = 1.0;
 
     initFonts();
     initShaders();
@@ -70,16 +73,21 @@ void CanvasRenderer::cleanup()
 
 void CanvasRenderer::synchronize(QQuickFramebufferObject *item)
 {
-    mDevicePixelRatio = item->window()->devicePixelRatio();
-    mWidth = item->width() * mDevicePixelRatio;
-    mHeight = item->height() * mDevicePixelRatio;
-    mDpi = item->window()->screen()->logicalDotsPerInch();
+    const double devicePixelRatio = item->window()->devicePixelRatio();
+    const double dpi = item->window()->screen()->logicalDotsPerInch();
 
-    mZoomScale = 1.0;
-    mZoomScaleText = 1.0;
+    mWidth = item->width() * devicePixelRatio;
+    mHeight = item->height() * devicePixelRatio;
 
-    deleteFonts();
-    initFonts();
+    // This function runs for every frame. Building the fonts creates hundreds of textures,
+    // so build them again only when the glyph size changes.
+    if (devicePixelRatio != mDevicePixelRatio || dpi != mDpi) {
+        mDevicePixelRatio = devicePixelRatio;
+        mDpi = dpi;
+
+        deleteFonts();
+        initFonts();
+    }
 }
 
 void CanvasRenderer::render()
@@ -230,16 +238,14 @@ void CanvasRenderer::drawPoint(const QPointF &point, float radius, const QColor 
 
     glBindVertexArray(mCircleVao);
 
-    float vertices[4][2] = {
+    const QVector2D quad[4] = {
         { x2, y1 },
         { x2, y2 },
         { x1, y2 },
         { x1, y1 },
     };
 
-    glBindBuffer(GL_ARRAY_BUFFER, mCircleVbo);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    mCircleProgram->setUniformValueArray("quad", quad, 4);
 
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
@@ -280,16 +286,14 @@ void CanvasRenderer::drawLine(float x1, float y1, float x2, float y2, const QCol
 
     glBindVertexArray(mCircleVao);
 
-    float vertices[4][2] = {
+    const QVector2D quad[4] = {
         { qx1, qy2 },
         { qx1, qy1 },
         { qx2, qy1 },
         { qx2, qy2 },
     };
 
-    glBindBuffer(GL_ARRAY_BUFFER, mCircleVbo);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    mCircleProgram->setUniformValueArray("quad", quad, 4);
 
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
@@ -371,18 +375,16 @@ void CanvasRenderer::drawSpectrogram(
     float texY1 = 0.0f;
     float texY2 = 4095.0f / 4098.0f;
 
-    float vertices[4][4] = {
+    const QVector4D quad[4] = {
         { x2, y1, texX2, texY2 },
         { x2, y2, texX2, texY1 },
         { x1, y2, texX1, texY1 },
         { x1, y1, texX1, texY2 },
     };
 
-    glBindTexture(GL_TEXTURE_2D, mSpecTex);
+    mSpecProgram->setUniformValueArray("quad", quad, 4);
 
-    glBindBuffer(GL_ARRAY_BUFFER, mSpecVbo);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, mSpecTex);
 
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
@@ -423,22 +425,21 @@ void CanvasRenderer::drawText(Font *font, float x, float y, const QColor &color,
         float w = ch.width;
         float h = ch.height;
 
-        float vertices[4][4] = {
-            { xpos + w, ypos,     1.0f, 1.0f },
-            { xpos + w, ypos + h, 1.0f, 0.0f },
-            { xpos,     ypos + h, 0.0f, 0.0f },
-            { xpos,     ypos,     0.0f, 1.0f },
-        };
+        // A glyph with no pixels, such as a space, has an empty texture. Draw nothing for it.
+        if (ch.width > 0 && ch.height > 0) {
+            const QVector4D quad[4] = {
+                { xpos + w, ypos,     1.0f, 1.0f },
+                { xpos + w, ypos + h, 1.0f, 0.0f },
+                { xpos,     ypos + h, 0.0f, 0.0f },
+                { xpos,     ypos,     0.0f, 1.0f },
+            };
 
-        glBindTexture(GL_TEXTURE_2D, ch.texture);
-        
-        // Update content of VBO memory
-        glBindBuffer(GL_ARRAY_BUFFER, mTextVbo);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
+            glBindTexture(GL_TEXTURE_2D, ch.texture);
+            mTextProgram->setUniformValueArray("quad", quad, 4);
 
-        // Render quad
-        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+            // Render quad
+            glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+        }
 
         x += (ch.advance >> 6);
     }
@@ -520,39 +521,17 @@ void CanvasRenderer::initShaders()
 {
     mTextProgram = createShaderProgram(Shaders::textVertex, Shaders::textFragment);
 
+    // The shaders take the corners of each quad from a uniform, so the vertex arrays have no buffers.
+    // The core profile still requires a vertex array object for drawing.
     glGenVertexArrays(1, &mTextVao);
-    glGenBuffers(1, &mTextVbo);
-    glBindVertexArray(mTextVao);
-    glBindBuffer(GL_ARRAY_BUFFER, mTextVbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 4 * 4, nullptr, GL_DYNAMIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
 
     mSpecProgram = createShaderProgram(Shaders::specVertex, Shaders::specFragment);
 
     glGenVertexArrays(1, &mSpecVao);
-    glGenBuffers(1, &mSpecVbo);
-    glBindVertexArray(mSpecVao);
-    glBindBuffer(GL_ARRAY_BUFFER, mSpecVbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 4 * 4, nullptr, GL_DYNAMIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
 
     mCircleProgram = createShaderProgram(Shaders::circleVertex, Shaders::circleFragment);
 
     glGenVertexArrays(1, &mCircleVao);
-    glGenBuffers(1, &mCircleVbo);
-    glBindVertexArray(mCircleVao);
-    glBindBuffer(GL_ARRAY_BUFFER, mCircleVbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 2 * 4, nullptr, GL_DYNAMIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), 0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
 }
 
 void CanvasRenderer::deleteFonts()
@@ -566,11 +545,12 @@ void CanvasRenderer::deleteShaders()
 {
     delete mTextProgram;
     glDeleteVertexArrays(1, &mTextVao);
-    glDeleteBuffers(1, &mTextVbo);
 
     delete mSpecProgram; 
     glDeleteVertexArrays(1, &mSpecVao);
-    glDeleteBuffers(1, &mSpecVbo);
+
+    delete mCircleProgram;
+    glDeleteVertexArrays(1, &mCircleVao);
 }
 
 void CanvasRenderer::initTexture(GLuint &texture, int width, int height)

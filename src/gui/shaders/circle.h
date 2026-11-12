@@ -5,13 +5,14 @@ namespace Gui::Shaders {
 
 constexpr const char *circleVertex = R"foo(
 #version 150
-in vec4 vertex;
-
 uniform mat4 projection;
+
+// The four corners of the quad, for a triangle fan.
+uniform vec2 quad[4];
 
 void main()
 {
-    gl_Position = projection * vec4(vertex.xy, 0.0, 1.0);
+    gl_Position = projection * vec4(quad[gl_VertexID], 0.0, 1.0);
 }
 )foo";
 

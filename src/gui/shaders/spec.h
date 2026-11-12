@@ -6,13 +6,16 @@ namespace Gui::Shaders {
 constexpr const char *specVertex = R"foo(
 #version 150
 
-in vec4 vertex; // <vec2 pos, vec2 tex>
 out vec2 TexCoords;
 
 uniform mat4 projection;
 
+// The four corners of the quad, as <vec2 pos, vec2 tex>, for a triangle fan.
+uniform vec4 quad[4];
+
 void main()
 {
+    vec4 vertex = quad[gl_VertexID];
     gl_Position = projection * vec4(vertex.xy, 0.0, 1.0);
     TexCoords = vertex.zw;
 }
