@@ -37,18 +37,35 @@ RUN git clone https://github.com/tpoechtrager/osxcross && \
         cd osxcross && \
         UNATTENDED=1 ./build.sh
 
-ENV HOST x86_64-apple-darwin20.4
+# Build for Apple silicon by default. Use --build-arg TARGET_ARCH=x86_64 for an Intel build.
+# Qt 6.2 is the first release with universal (x86_64 and arm64) macOS binaries.
+ARG TARGET_ARCH=arm64
+ENV TARGET_ARCH=$TARGET_ARCH
+ENV HOST=$TARGET_ARCH-apple-darwin20.4
+ENV QT_VERSION=6.2.4
 
 # Install qt
 RUN pip install aqtinstall==1.2.2
 COPY aqtinstall-patch/updater.py /usr/local/lib/python3.8/dist-packages/aqt
-RUN aqt install 6.1.2 mac desktop -m addons.qtcharts --outputdir /opt/Qt
+RUN aqt install $QT_VERSION mac desktop -m addons.qtcharts --outputdir /opt/Qt
 
 # Replace mac binaries with linux Binaries
-RUN aqt install 6.1.2 linux desktop --noarchives -m qtbase qtdeclarative icu --outputdir /opt/Qt && \
-	rm -r /opt/Qt/6.1.2/macos/bin /opt/Qt/6.1.2/macos/libexec && \
-	ln -s /opt/Qt/6.1.2/gcc_64/bin /opt/Qt/6.1.2/macos/bin && \
-	ln -s /opt/Qt/6.1.2/gcc_64/libexec /opt/Qt/6.1.2/macos/libexec
+RUN aqt install $QT_VERSION linux desktop --noarchives -m qtbase qtdeclarative icu --outputdir /opt/Qt && \
+	rm -r /opt/Qt/$QT_VERSION/macos/bin /opt/Qt/$QT_VERSION/macos/libexec && \
+	ln -s /opt/Qt/$QT_VERSION/gcc_64/bin /opt/Qt/$QT_VERSION/macos/bin && \
+	ln -s /opt/Qt/$QT_VERSION/gcc_64/libexec /opt/Qt/$QT_VERSION/macos/libexec
+
+# Qt 6.2 moved qmlimportscanner to libexec, but macdeployqt looks for it in bin.
+RUN ln -s /opt/Qt/$QT_VERSION/gcc_64/libexec/qmlimportscanner /opt/Qt/$QT_VERSION/gcc_64/bin/qmlimportscanner
+
+# The macOS binaries from Qt 6.2 are universal (x86_64 and arm64). macdeployqt cannot parse the otool output
+# of a universal file, so reduce every Qt binary to the target architecture. This also halves the bundle size.
+RUN cd /opt/Qt/$QT_VERSION/macos && \
+	find lib plugins qml -type f | while read f; do \
+	    if /osxcross/target/bin/$HOST-lipo -info "$f" 2>/dev/null | grep -q "Architectures in the fat file"; then \
+	        /osxcross/target/bin/$HOST-lipo -thin $TARGET_ARCH "$f" -output "$f.thin" && mv "$f.thin" "$f" && chmod 755 "$f"; \
+	    fi; \
+	done
 
 ENV PATH /osxcross/target/bin:$PATH
 ENV CC /osxcross/target/bin/$HOST-clang
@@ -65,8 +82,8 @@ RUN cd portaudio && \
         autoconf && \
         mkdir objs && \
         cd objs && \
-        CFLAGS="-arch x86_64 -Wno-implicit-int-float-conversion" \
-        ../configure --host=$HOST --prefix=/osxcross/target/$HOST --enable-shared --disable-static --disable-mac-universal --disable-dependency-tracking && \
+        CFLAGS="-arch $TARGET_ARCH -Wno-implicit-int-float-conversion" \
+        ../configure --host=$(echo $HOST | sed 's/^arm64/aarch64/') --prefix=/osxcross/target/$HOST --enable-shared --disable-static --disable-mac-universal --disable-dependency-tracking && \
         make -j$(nproc) && \
         make install
 
@@ -77,8 +94,8 @@ RUN wget http://www.fftw.org/fftw-$ver.tar.gz && \
 RUN cd fftw-$ver && \
         mkdir build && \
         cd build && \
-        CFLAGS="-arch x86_64" \
-        ../configure --host=$HOST --prefix=/osxcross/target/$HOST --enable-shared --disable-static --disable-mac-universal --disable-dependency-tracking && \
+        CFLAGS="-arch $TARGET_ARCH" \
+        ../configure --host=$(echo $HOST | sed 's/^arm64/aarch64/') --prefix=/osxcross/target/$HOST --enable-shared --disable-static --disable-mac-universal --disable-dependency-tracking && \
         make -j$(nproc) && \
         make install
 
@@ -105,13 +122,15 @@ RUN cd libdmg-hfsplus && \
         make -j$(nproc) && \
         make install
 
+# Apple silicon refuses to run an arm64 file with an invalid signature, and install_name_tool breaks the signature.
+# rcodesign signs the bundle again (ad hoc) after macdeployqt. The archive checksum comes from the release page.
+RUN wget -q https://github.com/indygreg/apple-platform-rs/releases/download/apple-codesign/0.29.0/apple-codesign-0.29.0-x86_64-unknown-linux-musl.tar.gz && \
+        echo "dbe85cedd8ee4217b64e9a0e4c2aef92ab8bcaaa41f20bde99781ff02e600002  apple-codesign-0.29.0-x86_64-unknown-linux-musl.tar.gz" | sha256sum -c - && \
+        tar -xzf apple-codesign-0.29.0-x86_64-unknown-linux-musl.tar.gz --strip-components=1 -C /usr/local/bin apple-codesign-0.29.0-x86_64-unknown-linux-musl/rcodesign
+
 COPY macdeployqt macdeployqt
-# macdeployqt sizes the .dmg as the bundle size plus 32 MB, which is too small for this app (hfsplus fails with "error: allocate").
-# Raise the margin to 256 MB. The unused space compresses to almost nothing in the final .dmg.
 RUN cd macdeployqt && \
-        sed -i 's/Q_INT64_C(32) \* Q_INT64_C(1048576)/Q_INT64_C(256) * Q_INT64_C(1048576)/' shared.cpp && \
-        grep -q 'Q_INT64_C(256)' shared.cpp && \
-        /opt/Qt/6.1.2/macos/bin/qmake && \
+        /opt/Qt/$QT_VERSION/macos/bin/qmake && \
         make -j$(nproc) && \
         cp macdeployqt /osxcross/target/bin
 
@@ -130,16 +149,16 @@ RUN groupadd -g 1000 swu && useradd -m -u 1000 -g swu swu
 
 CMD cd /build && \
         export version=`cat /src/version` && \
-        export QT_DIR=/opt/Qt/6.1.2/macos && \
-        export MACOSX_DEPLOYMENT_TARGET=10.14 && \
+        export QT_DIR=/opt/Qt/$QT_VERSION/macos && \
+        if [ "$TARGET_ARCH" = arm64 ]; then export MACOSX_DEPLOYMENT_TARGET=11.0; else export MACOSX_DEPLOYMENT_TARGET=10.14; fi && \
         $HOST-cmake \
             -DCUR_VERSION=$version \
             -DCMAKE_TOOLCHAIN_FILE=/usr/macos-toolchain.cmake \
             -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
-            -DCMAKE_PREFIX_PATH="/opt/Qt/6.1.2/macos;/osxcross/target/$HOST;/usr/libtorch" \
+            -DCMAKE_PREFIX_PATH="/opt/Qt/$QT_VERSION/macos;/osxcross/target/$HOST;/usr/libtorch" \
             -DENABLE_TORCH=$ENABLE_TORCH \
             /src && \
         make -j$(nproc) && \
-        DIST_SUFFIX=macos-x86_64 \
+        DIST_SUFFIX=macos-$TARGET_ARCH \
         /src/docker/deploy-macos.sh
 
