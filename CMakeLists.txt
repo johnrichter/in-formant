@@ -233,8 +233,8 @@ endif()
 
 find_package(Eigen3 REQUIRED NO_MODULE)
 
-find_package(Qt6 COMPONENTS Charts Quick QuickControls2 QuickTemplates2 Qml Widgets OpenGL Gui Core REQUIRED)
-foreach(c Charts Quick QuickControls2 QuickTemplates2 Qml Widgets OpenGL Gui Core)
+find_package(Qt6 COMPONENTS Charts Quick QuickControls2 QuickTemplates2 Qml Widgets OpenGL Svg Gui Core REQUIRED)
+foreach(c Charts Quick QuickControls2 QuickTemplates2 Qml Widgets OpenGL Svg Gui Core)
     if(${Qt6${c}_FOUND})
         get_target_property(Qt6${c}_LIBRARY_FILE ${Qt6${c}_LIBRARIES} LOCATION)
         message(STATUS "Found Qt6${c}: ${Qt6${c}_LIBRARY_FILE}")
@@ -331,7 +331,7 @@ else()
 endif()
 
 target_include_directories(in-formant SYSTEM PRIVATE ${ARMADILLO_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS} ${TOMLPP_INCLUDE_DIR})
-target_link_libraries(in-formant PRIVATE Eigen3::Eigen ${FFTW_LIBRARIES} Qt6::Charts Qt6::Quick Qt6::QuickControls2 Qt6::QuickTemplates2 Qt6::Qml Qt6::Widgets Qt6::OpenGL Qt6::Gui Qt6::Core)
+target_link_libraries(in-formant PRIVATE Eigen3::Eigen ${FFTW_LIBRARIES} Qt6::Charts Qt6::Quick Qt6::QuickControls2 Qt6::QuickTemplates2 Qt6::Qml Qt6::Widgets Qt6::OpenGL Qt6::Svg Qt6::Gui Qt6::Core)
 target_link_directories(in-formant PRIVATE ${FFTW_LIBRARY_DIRS})
 
 set(BUILD_SHARED_LIBS TRUE)
