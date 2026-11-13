@@ -58,6 +58,8 @@ namespace Gui {
         // The length of the session, and the part of it that the map shows. A drag keeps the part
         // that the map showed at the press, so the map does not move under the pointer.
         double total() const;
+        // The end of the frame of the main view, in the time of the map.
+        double frameEnd() const;
         MapView currentView();
         double timeAt(double x) const;
         double xAt(double time) const;

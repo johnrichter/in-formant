@@ -170,8 +170,10 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-MAP-22** (Perf, P2). Measure the time of one drawing of the map on a session of 24 hours. Expect less than 4 ms.
 - **TP-MAP-23** (Qt, P3). In file mode, drag the frame with a long file and count the drawings of the main graph. The main graph had stalls of 50 to 66 ms during a drag, and the cause is not known.
 - **TP-MAP-24** (Manual, P3). Start the app with the render loop `threaded` (the variable `QSG_RENDER_LOOP`). The app stopped with a trap. Find the cause before a change to the render loop.
-- **TP-RGR-10** (Qt, P2). Find the button "Reset graph" in the top bar next to the play button. Expect an icon of the same size, a tip on a hover, and a disabled state during a recording and a practice session.
-- **TP-RGR-11** (Image, P3). Compare the reset icon with the play icon at a scale of 100 and 200 percent. Expect the same size and the same weight.
+- **TP-MAP-25** (Qt, P1). During a live capture, record the left and right edge of the frame in each drawing. Expect an edge that never moves back and a left edge that stays still while the map scrolls. The run had no step back after the fix.
+- **TP-MAP-26** (Unit, P2). The length of the map never goes back while the capture runs. It can go back after a reset of the graph or after a pause. Check the function with a fake clock.
+- **TP-RGR-10** (Qt, P2). Find the button "Reset graph" in the top bar next to the play button. Expect a trash icon of the same visual size as the play icon and a tip on a hover. Expect a disabled state during a recording and a practice session.
+- **TP-RGR-11** (Image, P3). Compare the trash icon with the play icon and the stop icon at a scale of 100 and 200 percent. Expect the same visual size and the same weight. Check that the red is muted on the bar.
 
 ## 6. The right edge and the live spectrogram
 

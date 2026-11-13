@@ -77,6 +77,7 @@ double OverviewItem::shownDuration()
 
     const double duration = sDataStore->session().duration();
     const auto now = std::chrono::steady_clock::now();
+    const bool restarted = duration < mLastDuration;
     if (duration != mLastDuration) {
         mLastDuration = duration;
         mDurationStamp = now;
@@ -87,9 +88,19 @@ double OverviewItem::shownDuration()
     if (running) {
         // The sound arrives in blocks. Between two blocks, the length grows with the clock, up to a short limit.
         shown += std::min(std::chrono::duration<double>(now - mDurationStamp).count(), 0.25);
+        // The length never goes back while the capture runs. A late block of sound would else move the map back.
+        if (!restarted) shown = std::max(shown, mShownDuration);
     }
     mShownDuration = std::max(shown, 1.0);
     return mShownDuration;
+}
+
+double OverviewItem::frameEnd() const
+{
+    // While the view follows the live sound, the frame ends where the map ends. Both use the smooth
+    // length. The length of the session grows in steps, and the frame would jump against the map.
+    if (sConfig->getSessionMode() == 0 && sConfig->getViewLive()) return mShownDuration;
+    return sSession->windowEnd();
 }
 
 double OverviewItem::total() const
@@ -102,8 +113,9 @@ MapView OverviewItem::currentView()
     if (mDrag == Drag::Move || mDrag == Drag::LeftEdge || mDrag == Drag::RightEdge) return mDragView;
 
     const bool live = sConfig->getSessionMode() == 0 && sConfig->getViewLive();
-    mView = updateMapView(mState, shownDuration(), sConfig->optionDouble("mapWindow"),
-                          sConfig->getViewTimeSpan(), sSession->windowEnd(), live);
+    const double duration = shownDuration();
+    mView = updateMapView(mState, duration, sConfig->optionDouble("mapWindow"),
+                          sConfig->getViewTimeSpan(), frameEnd(), live);
     return mView;
 }
 
@@ -129,7 +141,7 @@ double OverviewItem::xAt(double time) const
 void OverviewItem::frameEdges(double &left, double &right) const
 {
     const double w = width();
-    const double end = sSession->windowEnd();
+    const double end = frameEnd();
     const double span = sConfig->getViewTimeSpan();
     left = std::clamp(xAt(end - span), 0.0, w - 3.0);
     right = std::clamp(std::max(left + 3.0, xAt(end)), 0.0, w);
@@ -138,7 +150,7 @@ void OverviewItem::frameEdges(double &left, double &right) const
 bool OverviewItem::frameVisible() const
 {
     const MapView &view = (mDrag == Drag::None || mDrag == Drag::Scrollbar) ? mView : mDragView;
-    const double end = sSession->windowEnd();
+    const double end = frameEnd();
     return end > view.start && end - sConfig->getViewTimeSpan() < view.start + view.span;
 }
 
@@ -164,7 +176,7 @@ void OverviewItem::refresh()
     key.height = (int) height();
     key.start = view.start;
     key.span = view.span;
-    key.windowEnd = sSession->windowEnd();
+    key.windowEnd = frameEnd();
     key.viewSpan = sConfig->getViewTimeSpan();
     key.duration = mShownDuration;
     key.live = sConfig->getViewLive();
@@ -434,7 +446,7 @@ void OverviewItem::mousePressEvent(QMouseEvent *event)
     mDrag = hitTest(x, event->position().y());
 
     const double span = sConfig->getViewTimeSpan();
-    const double end = sSession->windowEnd();
+    const double end = frameEnd();
 
     switch (mDrag) {
     case Drag::Scrollbar: {

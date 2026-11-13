@@ -93,6 +93,7 @@ ApplicationWindow {
                 }
 
                 AppToolButton {
+                    id: playButton
                     icon.source: config.paused ? "qrc:/icons/play_arrow.svg" : "qrc:/icons/stop.svg"
                     checked: config.paused 
                     onPressed: config.paused = !config.paused 
@@ -103,10 +104,15 @@ ApplicationWindow {
                     }
                 }
 
-                // Clears the sound and the tracks of the graph. It sits next to the play button and has the same size.
+                // Clears the sound and the tracks of the graph. It sits next to the play button. The trash icon fills
+                // more of its box than the play and stop icons, so the icon is smaller and has the same visual size.
                 AppToolButton {
                     objectName: "resetGraphButton"
-                    icon.source: "qrc:/icons/restart.svg"
+                    implicitWidth: playButton.implicitWidth
+                    implicitHeight: playButton.implicitHeight
+                    icon.source: "qrc:/icons/delete.svg"
+                    // A muted red that fits the blue-grey bar.
+                    Material.foreground: Material.color(Material.Red, Material.Shade200)
                     enabled: !sessionControl.recording && !practice.active
                     Accessible.name: "Reset graph"
                     ToolTip.visible: hovered
@@ -119,8 +125,8 @@ ApplicationWindow {
                     }
 
                     Component.onCompleted: {
-                        icon.width = 2 * icon.width
-                        icon.height = 2 * icon.height
+                        icon.width = 34
+                        icon.height = 34
                     }
                 }
             }
