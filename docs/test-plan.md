@@ -211,6 +211,8 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-EDGE-02** (Image, P2). Repeat in review mode past the end of the session.
 - **TP-EDGE-03** (Image, P2). Repeat with a session shorter than the view.
 - **TP-EDGE-04** (Image, P2). Repeat while the canvas width changes.
+- **TP-EDGE-05** (Unit, P1). Give a picture that is older than the view by 0.1 seconds. Expect the newest column to fill the span up to the view. Give a lag of more than 0.25 seconds, a newer picture, and a past view. Expect no hold.
+- **TP-EDGE-06** (Image, P1). Capture a live view with a span of 60 seconds. Expect no empty strip between the axis and the newest sound, in 10 frames that follow each other.
 
 ## 6b. Time direction, grid lines, and track switches
 
@@ -275,6 +277,7 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-AXT-07** (Qt, P2). Change "Number of labels" (Few, Normal, Many). Expect the graph to follow at once, and expect the grid lines to follow the same ticks.
 - **TP-AXT-08** (Image, P2). Check that the label text of the frequency axis has one size in the custom, the note, and the octave modes.
 - **TP-AXT-09** (Unit, P1). Check a logarithmic axis of less than two octaves, for example 95 to 235 Hz. Expect equal steps of 1, 2, or 5 times a power of ten. Expect three labels or more, for a ratio up to 3 and an axis of 300 pixels or more. Expect no overlap and no label outside the range, for 245 combinations of range and height. Expect a range of two octaves or more to keep the powers of ten.
+- **TP-AXT-10** (Unit, P2). Give a label size of 0 to the linear axis and to the logarithmic axis. Expect the call to end with a short list of ticks.
 - **TP-GRD-10** (Image, P1). Check the grid lines on every theme at strengths of 10, 60, and 100 percent. Expect lines that show, and expect no line to hide the loud sound.
 - **TP-GRD-11** (Unit, P2). Check the grid color for a dark quiet color and a light quiet color. Expect a light tint for the first and a dark tint for the second.
 - **TP-QUI-01** (Unit, P1). Lift the quiet end of a map that starts at black. Expect a lightness of 0.22 to 0.32 at the first entry. Expect the same colors above 45 percent of the map, and no fall of the lightness. The unit test `oklab` has this.
@@ -633,6 +636,7 @@ Some cases need a small change in the code. Do these changes first, because they
 - **TP-LOG-03** (Unit, P2). Each line gets one stamp. A line can span two chunks of text, and an open line waits for its end.
 - **TP-LOG-04** (Unit, P2). A line longer than 4096 bytes breaks into two lines and loses no byte.
 - **TP-LOG-05** (App, P1). Start the app with the root folder as the working folder, as Finder does. Expect new lines with stamps in `~/Library/Logs/InFormant/InFormant.log`. Expect no file in the folder `/`.
+- **TP-LOG-06** (Unit, P2). Give the log writer text that ends with no end of line. Expect the finish call to write the text as one line with one stamp, and a second call to write nothing.
 
 ## 25. The oscilloscope
 
@@ -672,3 +676,14 @@ Each entry names the case, the bug, the version of the fix, and the test that gu
 - **The line of the pitch track broke into pieces in the pitch-only graph (3.4.0).** A line joins two frames only when their jump is below a limit. The limit was a tenth of the height of the graph. The pitch-only axis spans about 12 semitones, so a normal glide of 3 semitones in one frame was above the limit. The track then showed dots only, whatever the style said. Now the limit is the larger of a tenth of the height and the height of 8 semitones. A jump of an octave still breaks the line. TP-PITCH-07.
 - **The automatic axis of the pitch-only graph had only two labels (3.4.1).** The logarithmic axis labels powers of ten with the digits 1, 2, 3, and 5. A range under two octaves, for example 95 to 235 Hz, has only the values 100 and 200 in view. Now such a range uses equal steps of 1, 2, or 5 times a power of ten at the positions of the log axis. A wider range keeps the old labels. TP-AXT-09.
 - **The libraries are new (3.4.1).** FreeType is 2.15.0 (was 2.10.4), libsamplerate is 0.2.2 (was 0.1.9), Eigen is 5.0.1 (was 3.4.0), and toml++ is 3.4.0 (was 2.x). The build script now downloads each one with a pinned checksum, and the source tree holds no copy. TP-REL-09.
+- **The picture of a long live view lagged behind the sound next to the axis (3.4.2).** A view of more than about 35 seconds draws a picture that a thread makes. The program asked for a new picture every 400 milliseconds, so the picture ended up to 0.34 seconds before the newest sound. In a view of 60 seconds, that was an empty strip of up to 8 pixels. Now the program asks every 100 milliseconds, and the newest column fills a lag of up to 0.25 seconds. A view of a shorter span had a smaller gap of up to 0.03 seconds. It now uses the same rule. TP-EDGE-05, TP-EDGE-06.
+- **The timeline of a practice session could have a thirteenth part of no length (3.4.2).** The loop added the step to a start time with a fraction, and the rounding error gave one more part. Now each part starts at a multiple of the step. TP-PRA-21.
+- **Export all copied nothing for a session that the person renamed (3.4.2).** The export built the folder from the date and the id, and not from the folder that the list found. Now it copies the listed folder. TP-PRA-11.
+- **Delete accepted a folder such as backup/11/13/id (3.4.2).** The check counted four parts of the path only. Now the year has four digits, and the month and the day have two digits. TP-PRG-14.
+- **The script for the build did not build FFTW or PortAudio again after a change of version (3.4.2).** It looked for the library file only. Now each of the six libraries has a stamp with its version. TP-REL-09.
+- **The log lost its last text in some cases (3.4.2).** The process of the log stopped at an interrupted read, and it dropped a last line with no end of line. Now it reads again after an interrupt, and it writes the last line. TP-LOG-06.
+- **A label size of 0 could make the linear axis loop for ever (3.4.2).** Now a label has at least one pixel. TP-AXT-10.
+- **The answer to the microphone question used a guarded pointer on a thread of the system (3.4.2).** Now the call posts the work to the application object, and the Qt thread reads the pointer. No test can reach this code. The change has a review only.
+- **A full disk could replace the settings file with a cut file (3.4.2).** The program checked the stream before the close, and the close writes the rest of the buffer. Now it checks after the close. No test can reach this code. The change has a review only.
+- **FFTW is 3.3.11 (3.4.2).** The version was 3.3.10. The checksum of the new file matches the checksum in the data of Homebrew. The file `.gitmodules` is gone, because the program has no submodule. TP-REL-09.
+- **A cached download stopped the build after a change of version (3.4.2).** The cache file had no version in its name, so the old file met the new checksum and failed. Now each cache file has the version in its name. TP-REL-09.

@@ -95,7 +95,7 @@ def case_start(app):
     with Running(app) as run:
         time.sleep(8)
         if not run.alive():
-            return "the application ended by itself"
+            return "the application ended by itself with the exit status %s" % run.process.poll()
         lines = new_log_lines(run.start)
         took = run.quit()
         if took is None:
@@ -131,7 +131,7 @@ def case_idle(app):
     with Running(app) as run:
         time.sleep(10)
         if not run.alive():
-            return "the application ended by itself"
+            return "the application ended by itself with the exit status %s" % run.process.poll()
         first = cpu_seconds(run.process.pid)
         began = time.time()
         time.sleep(20)

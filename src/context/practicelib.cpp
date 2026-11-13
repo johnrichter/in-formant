@@ -450,8 +450,12 @@ std::vector<TimelinePart> Main::timelineParts(double t0, double t1)
     std::vector<TimelinePart> parts;
     if (!(t1 > t0)) return parts;
     const double step = std::max(5.0, std::ceil((t1 - t0) / 12.0));
-    for (double a = t0; a < t1; a += step) {
-        parts.push_back({ a, std::min(a + step, t1) });
+    // The count comes from one division, and each part starts at a multiple of the step. A sum of the step in a
+    // loop gathers rounding errors, and a start just below the end then gives a thirteenth part of no length.
+    const long count = std::max(1L, (long) std::ceil((t1 - t0) / step - 1e-9));
+    for (long i = 0; i < count; ++i) {
+        const double a = t0 + (double) i * step;
+        parts.push_back({ a, i + 1 == count ? t1 : std::min(a + step, t1) });
     }
     return parts;
 }
@@ -499,9 +503,11 @@ PracticeExport Main::exportPracticeLibrary(const PracticeLibrary &library, const
     }
 
     for (const PracticeRecord &r : records) {
-        const QString source = library.sessionFolder(r);
+        // The folder that the list found is the real one. The folder that the date and the id give is only a guess, and it
+        // can be empty when the person moved the session.
+        const QString source = r.folder.isEmpty() ? library.sessionFolder(r) : r.folder;
         const QString dest = QDir(result.folder).filePath(QDir(library.root()).relativeFilePath(source));
-        bool ok = QDir().mkpath(dest);
+        bool ok = QDir(source).exists() && QDir().mkpath(dest);
         for (const QString &name : QDir(source).entryList(QDir::Files)) {
             QFile::remove(QDir(dest).filePath(name));
             ok = QFile::copy(QDir(source).filePath(name), QDir(dest).filePath(name)) && ok;
@@ -549,7 +555,17 @@ bool PracticeLibrary::remove(const PracticeRecord &r) const
     if (!folder.startsWith(root + "/")) return false;
 
     // The folder must be a session folder at the depth root/YYYY/MM/DD/<id>, with the id as its name.
-    if (QDir(root).relativeFilePath(folder).split('/').size() != 4) return false;
+    const QStringList parts = QDir(root).relativeFilePath(folder).split('/');
+    if (parts.size() != 4) return false;
+    // The year, the month, and the day are digits. A folder such as backup/11/13/<id> is not a session of the library.
+    const auto digits = [](const QString &text, int length) {
+        if (text.size() != length) return false;
+        for (const QChar c : text) {
+            if (!c.isDigit() || c.unicode() > '9') return false;
+        }
+        return true;
+    };
+    if (!digits(parts[0], 4) || !digits(parts[1], 2) || !digits(parts[2], 2)) return false;
     if (QFileInfo(folder).fileName() != r.id) return false;
     if (!QFile::exists(QDir(folder).filePath("session.json"))) return false;
 

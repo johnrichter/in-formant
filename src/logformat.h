@@ -55,6 +55,17 @@ namespace LogFormat {
         // True when a line is open, with no end yet.
         bool open() const { return !mLine.empty(); }
 
+        // Write an open line with an end, for the moment when no more text comes. The last line of a program that
+        // stops with no new line at the end then stays in the log.
+        template <typename Sink>
+        void finish(Sink sink)
+        {
+            if (mLine.empty()) return;
+            mLine.push_back('\n');
+            sink(mLine);
+            mLine.clear();
+        }
+
     private:
         std::string mLine;
     };

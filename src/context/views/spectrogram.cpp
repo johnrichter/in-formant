@@ -244,7 +244,9 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
                 && mLastRequest.sampleRate == request.sampleRate
                 && mLastRequest.fftSamples == request.fftSamples
                 && mLastRequest.t1 - mLastRequest.t0 == request.t1 - request.t0;
-            const auto interval = live ? std::chrono::milliseconds(400) : std::chrono::milliseconds(120);
+            // A live view asks often, because the picture lags behind the sound by as much as the delay
+            // between two requests. That lag shows as a gap at the edge of the newest sound.
+            const auto interval = live ? std::chrono::milliseconds(100) : std::chrono::milliseconds(120);
             if (!mHasRequest || !(request == mLastRequest)) {
                 if (!sameSettings || now - mLastRequestTime >= interval) {
                     mReview->request(request);

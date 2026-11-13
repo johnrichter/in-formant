@@ -398,8 +398,9 @@ void Config::save()
     {
         std::ofstream stream(temporary);
         stream << mTbl;
+        // The close writes the rest of the buffer. An error of a full disk can show only here, so check after it.
+        stream.close();
         if (!stream) {
-            stream.close();
             fs::remove(temporary, ec);
             return;
         }

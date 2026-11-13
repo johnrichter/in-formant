@@ -233,7 +233,8 @@ std::vector<Tick> Gui::makeFrequencyTicks(FrequencyTickMode mode, double step,
         // A sparse axis needs more room for each label than a dense axis.
         static const double room[3] = { 2.0, 1.4, 1.0 };
         const double pixelsPerUnit = (pHigh - pLow) / (hi - lo);
-        const double needed = (labelSize + labelGap) * room[(int) density] / std::max(pixelsPerUnit, 1e-9);
+        // A label has at least one pixel. A size of 0, from a font that did not load, gives no label step and an endless loop.
+        const double needed = std::max(1.0, labelSize + labelGap) * room[(int) density] / std::max(pixelsPerUnit, 1e-9);
         const double base = std::pow(10.0, std::floor(std::log10(needed)));
         double labelStep = 10.0 * base;
         for (double m : { 1.0, 2.0, 5.0, 10.0 }) {

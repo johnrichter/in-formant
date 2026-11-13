@@ -25,7 +25,7 @@ BUILD_TYPE=${BUILD_TYPE:-Release}
 SIGN_IDENTITY=${SIGN_IDENTITY:-}
 NOTARY_PROFILE=${NOTARY_PROFILE:-}
 QT_VERSION=${QT_VERSION:-6.12.0}
-FFTW_VERSION=3.3.10
+FFTW_VERSION=3.3.11
 PORTAUDIO_URL=https://files.portaudio.com/archives/pa_stable_v190700_20210406.tgz
 EIGEN_VERSION=5.0.1
 FREETYPE_VERSION=2.15.0
@@ -34,7 +34,7 @@ TOMLPP_VERSION=3.4.0
 
 # Each download has a pinned SHA-256 checksum. A file with another checksum stops the build. To change a
 # version, change the version, the address, and the checksum together.
-FFTW_SHA256=56c932549852cddcfafdab3820b0200c7742675be92179e59e6215b340e26467
+FFTW_SHA256=5630c24cdeb33b131612f7eb4b1a9934234754f9f388ff8617458d0be6f239a1
 PORTAUDIO_SHA256=47efbf42c77c19a05d22e627d42873e991ec0c1357219c0d74ce6a2948cb2def
 EIGEN_SHA256=e9c326dc8c05cd1e044c71f30f1b2e34a6161a3b6ecf445d56b53ff1669e3dec
 FREETYPE_SHA256=93cd47eb719c325107f2d3cf087d06299e944c3b48a40b55537302304dea1dd5
@@ -138,11 +138,17 @@ fetch() {
 src=$work/src
 mkdir -p "$src"
 
-if [ ! -f "$prefix/lib/libfftw3.dylib" ]; then
+# Each download has the version in its file name, so a download of an old version never meets a new checksum.
+# A stamp file in the prefix records each library that has a version. A change of the version makes a new stamp
+# name, so the script builds the library again.
+stamps=$prefix/stamps
+mkdir -p "$stamps"
+
+if [ ! -f "$stamps/fftw-$FFTW_VERSION" ]; then
     step "Build FFTW $FFTW_VERSION"
-    fetch "https://www.fftw.org/fftw-$FFTW_VERSION.tar.gz" "$src/fftw.tar.gz" "$FFTW_SHA256"
+    fetch "https://www.fftw.org/fftw-$FFTW_VERSION.tar.gz" "$src/fftw-$FFTW_VERSION.tar.gz" "$FFTW_SHA256"
     rm -rf "$src/fftw" && mkdir "$src/fftw"
-    tar -xzf "$src/fftw.tar.gz" -C "$src/fftw" --strip-components=1
+    tar -xzf "$src/fftw-$FFTW_VERSION.tar.gz" -C "$src/fftw" --strip-components=1
     (
         cd "$src/fftw"
         CFLAGS="-arch arm64 -O3" ./configure --prefix="$prefix" --enable-shared --disable-static \
@@ -150,31 +156,28 @@ if [ ! -f "$prefix/lib/libfftw3.dylib" ]; then
         make -j"$jobs"
         make install
     )
+    touch "$stamps/fftw-$FFTW_VERSION"
 fi
 
-if [ ! -f "$prefix/lib/libportaudio.dylib" ]; then
+if [ ! -f "$stamps/portaudio-${PORTAUDIO_SHA256:0:12}" ]; then
     step "Build PortAudio"
-    fetch "$PORTAUDIO_URL" "$src/portaudio.tgz" "$PORTAUDIO_SHA256"
+    fetch "$PORTAUDIO_URL" "$src/portaudio-${PORTAUDIO_SHA256:0:12}.tgz" "$PORTAUDIO_SHA256"
     rm -rf "$src/portaudio" && mkdir "$src/portaudio"
-    tar -xzf "$src/portaudio.tgz" -C "$src/portaudio" --strip-components=1
+    tar -xzf "$src/portaudio-${PORTAUDIO_SHA256:0:12}.tgz" -C "$src/portaudio" --strip-components=1
     cmake -S "$src/portaudio" -B "$src/portaudio/build" -G Ninja \
         -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" \
         -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET="$MIN_MACOS" \
         -DBUILD_SHARED_LIBS=ON -DPA_BUILD_SHARED=ON -DPA_BUILD_STATIC=OFF
     cmake --build "$src/portaudio/build" --parallel "$jobs"
     cmake --install "$src/portaudio/build"
+    touch "$stamps/portaudio-${PORTAUDIO_SHA256:0:12}"
 fi
-
-# A stamp file in the prefix records each library that has a version. A change of the version makes a new stamp
-# name, so the script builds the library again.
-stamps=$prefix/stamps
-mkdir -p "$stamps"
 
 if [ ! -f "$stamps/eigen-$EIGEN_VERSION" ]; then
     step "Install Eigen $EIGEN_VERSION"
-    fetch "https://gitlab.com/libeigen/eigen/-/archive/$EIGEN_VERSION/eigen-$EIGEN_VERSION.tar.gz" "$src/eigen.tar.gz" "$EIGEN_SHA256"
+    fetch "https://gitlab.com/libeigen/eigen/-/archive/$EIGEN_VERSION/eigen-$EIGEN_VERSION.tar.gz" "$src/eigen-$EIGEN_VERSION.tar.gz" "$EIGEN_SHA256"
     rm -rf "$src/eigen" && mkdir "$src/eigen"
-    tar -xzf "$src/eigen.tar.gz" -C "$src/eigen" --strip-components=1
+    tar -xzf "$src/eigen-$EIGEN_VERSION.tar.gz" -C "$src/eigen" --strip-components=1
     # An old version leaves headers that the new version does not own, so delete the old install first.
     rm -rf "$prefix/include/eigen3" "$prefix/share/eigen3"
     cmake -S "$src/eigen" -B "$src/eigen/build" -G Ninja -DCMAKE_INSTALL_PREFIX="$prefix" \
@@ -187,9 +190,9 @@ fi
 # FreeType draws the text of the graph. The program needs no PNG, zlib, bzip2, Brotli, or HarfBuzz support.
 if [ ! -f "$stamps/freetype-$FREETYPE_VERSION" ]; then
     step "Build FreeType $FREETYPE_VERSION"
-    fetch "https://download.savannah.gnu.org/releases/freetype/freetype-$FREETYPE_VERSION.tar.xz" "$src/freetype.tar.xz" "$FREETYPE_SHA256"
+    fetch "https://download.savannah.gnu.org/releases/freetype/freetype-$FREETYPE_VERSION.tar.xz" "$src/freetype-$FREETYPE_VERSION.tar.xz" "$FREETYPE_SHA256"
     rm -rf "$src/freetype" && mkdir "$src/freetype"
-    tar -xJf "$src/freetype.tar.xz" -C "$src/freetype" --strip-components=1
+    tar -xJf "$src/freetype-$FREETYPE_VERSION.tar.xz" -C "$src/freetype" --strip-components=1
     cmake -S "$src/freetype" -B "$src/freetype/build" -G Ninja \
         -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" \
         -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET="$MIN_MACOS" \
@@ -203,9 +206,9 @@ fi
 # libsamplerate changes the sample rate of the sound.
 if [ ! -f "$stamps/samplerate-$SAMPLERATE_VERSION" ]; then
     step "Build libsamplerate $SAMPLERATE_VERSION"
-    fetch "https://github.com/libsndfile/libsamplerate/releases/download/$SAMPLERATE_VERSION/libsamplerate-$SAMPLERATE_VERSION.tar.xz" "$src/samplerate.tar.xz" "$SAMPLERATE_SHA256"
+    fetch "https://github.com/libsndfile/libsamplerate/releases/download/$SAMPLERATE_VERSION/libsamplerate-$SAMPLERATE_VERSION.tar.xz" "$src/samplerate-$SAMPLERATE_VERSION.tar.xz" "$SAMPLERATE_SHA256"
     rm -rf "$src/samplerate" && mkdir "$src/samplerate"
-    tar -xJf "$src/samplerate.tar.xz" -C "$src/samplerate" --strip-components=1
+    tar -xJf "$src/samplerate-$SAMPLERATE_VERSION.tar.xz" -C "$src/samplerate" --strip-components=1
     cmake -S "$src/samplerate" -B "$src/samplerate/build" -G Ninja \
         -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" \
         -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET="$MIN_MACOS" \
@@ -218,9 +221,9 @@ fi
 # toml++ reads the settings file. The library is a set of headers, and the program compiles the code one time.
 if [ ! -f "$stamps/tomlplusplus-$TOMLPP_VERSION" ]; then
     step "Install toml++ $TOMLPP_VERSION"
-    fetch "https://github.com/marzer/tomlplusplus/archive/refs/tags/v$TOMLPP_VERSION.tar.gz" "$src/tomlplusplus.tar.gz" "$TOMLPP_SHA256"
+    fetch "https://github.com/marzer/tomlplusplus/archive/refs/tags/v$TOMLPP_VERSION.tar.gz" "$src/tomlplusplus-$TOMLPP_VERSION.tar.gz" "$TOMLPP_SHA256"
     rm -rf "$src/tomlplusplus" && mkdir "$src/tomlplusplus"
-    tar -xzf "$src/tomlplusplus.tar.gz" -C "$src/tomlplusplus" --strip-components=1
+    tar -xzf "$src/tomlplusplus-$TOMLPP_VERSION.tar.gz" -C "$src/tomlplusplus" --strip-components=1
     cmake -S "$src/tomlplusplus" -B "$src/tomlplusplus/build" -G Ninja \
         -DCMAKE_INSTALL_PREFIX="$prefix" -Dtomlplusplus_BUILD_TESTS=OFF -Dtomlplusplus_BUILD_EXAMPLES=OFF
     cmake --install "$src/tomlplusplus/build"

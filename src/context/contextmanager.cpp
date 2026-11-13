@@ -295,10 +295,15 @@ void ContextManager::requestMicrophoneThen(std::function<void()> start)
         // One question at a time: a second press of play while the question is open waits for the same answer.
         if (mMicRequestPending) break;
         mMicRequestPending = true;
-        // The answer can come after the program quit. The guarded pointer then is null, and the answer is dropped.
+        // The answer can come after the program quit. The call runs on a thread of the system, and a guarded pointer is
+        // not safe there, because the Qt thread can delete the object at the same time. So the call posts the work to
+        // the application object, and the Qt thread looks at the guarded pointer. A program with no application
+        // object has quit, and the answer is dropped.
         requestSystemMicAccess([this, start, config = QPointer<Config>(mConfig.get())](bool allowed) {
-            if (config.isNull()) return;
-            QMetaObject::invokeMethod(config.data(), [this, start, allowed]() {
+            QCoreApplication *app = QCoreApplication::instance();
+            if (!app) return;
+            QMetaObject::invokeMethod(app, [this, start, allowed, config]() {
+                if (config.isNull()) return;
                 mMicRequestPending = false;
                 std::cout << "ContextManager] The user answered the microphone question: "
                           << (allowed ? "allowed" : "denied") << std::endl;

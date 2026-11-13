@@ -1217,3 +1217,63 @@ TEST(PracticeDelete, TP_PRG_14_AFolderOutsideTheLibraryIsRefused)
     EXPECT_FALSE(library.remove(r));
     EXPECT_TRUE(QDir(rootPath + "/2026/11/13/20261113-090000").exists());
 }
+
+// The parts of the timeline never gather rounding errors. A start time with a fraction gives at most 12 parts, and each
+// part has a length of more than a thousandth of a second.
+TEST(PracticeFiles, TP_PRA_21_AStartTimeWithAFractionGivesAtMostTwelveRealParts)
+{
+    for (double start : { 0.0, 2.9044, 7.3, 12.7777, 100.123456, 3599.9999 }) {
+        for (double length : { 5.0, 11.0, 60.0, 62.0, 100.0, 721.0, 3600.0, 86400.0 }) {
+            const auto parts = timelineParts(start, start + length);
+            ASSERT_FALSE(parts.empty()) << start << " " << length;
+            EXPECT_LE(parts.size(), 12u) << start << " " << length;
+            for (const TimelinePart &part : parts) EXPECT_GT(part.end - part.begin, 1e-3) << start << " " << length;
+            EXPECT_DOUBLE_EQ(parts.back().end, start + length);
+        }
+    }
+    // The case of the review: 60 seconds from a start of 2.9044 gave 13 parts.
+    EXPECT_EQ(timelineParts(2.9044, 62.9044).size(), 12u);
+}
+
+// The export copies the folder that the list found, also when the person renamed the session folder.
+TEST(PracticeFiles, TP_PRA_11_ExportAllCopiesAFolderThatThePersonRenamed)
+{
+    QTemporaryDir source;
+    QTemporaryDir target;
+    ASSERT_TRUE(source.isValid() && target.isValid());
+    PracticeLibrary library(source.path());
+
+    const PracticeRecord r = make("20261113-090000", "2026-11-13T09:00:00", "Free", 180.0);
+    ASSERT_TRUE(library.save(r));
+    ASSERT_TRUE(writeBundleText(library.sessionFolder(r), r, "report of " + r.id));
+    const QString moved = source.path() + "/2026/11/13/renamed-session";
+    ASSERT_TRUE(QDir().rename(library.sessionFolder(r), moved));
+
+    const PracticeExport result = exportPracticeLibrary(library, target.path(), QDateTime::fromString("2026-11-14T10:20:30", Qt::ISODate));
+    EXPECT_TRUE(result.ok);
+    EXPECT_EQ(result.copied, 1);
+    EXPECT_TRUE(QFile::exists(result.folder + "/2026/11/13/renamed-session/session.json"));
+    EXPECT_TRUE(QFile::exists(result.folder + "/2026/11/13/renamed-session/report.md"));
+}
+
+// The delete refuses a folder with a name that is not a date, even at the depth of a session.
+TEST(PracticeDelete, TP_PRG_14_AFolderWhoseNamesAreNotADateIsRefused)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    PracticeLibrary library(dir.path());
+
+    for (const QString &path : { QString("backup/11/13"), QString("2026/x1/13"), QString("2026/11/1"), QString("20x6/11/13"), QString("2026/11/١٣") }) {
+        const QString folder = dir.path() + "/" + path + "/20261113-090000";
+        ASSERT_TRUE(QDir().mkpath(folder)) << path.toStdString();
+        QFile file(folder + "/session.json");
+        ASSERT_TRUE(file.open(QIODevice::WriteOnly));
+        file.write("{}");
+        file.close();
+
+        PracticeRecord r = make("20261113-090000", "2026-11-13T09:00:00", "Free", 180.0);
+        r.folder = folder;
+        EXPECT_FALSE(library.remove(r)) << path.toStdString();
+        EXPECT_TRUE(QFile::exists(folder + "/session.json")) << path.toStdString();
+    }
+}

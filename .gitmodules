@@ -1,3 +1,0 @@
-[submodule "external/rpmalloc"]
-	path = external/rpmalloc
-	url = https://github.com/mjansson/rpmalloc

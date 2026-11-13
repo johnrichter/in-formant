@@ -76,7 +76,8 @@ inline void migrateConfig(toml::table &tbl)
     }
 
     if (fileVersion < 6) {
-        // The statistics boxes show by default. The program wrote the old default "off" to the file.
+        // The statistics boxes show by default. A file with "off" can hold the old default or a choice of the person, and the file
+        // cannot tell which. The migration turns the boxes on, and the person can turn them off again.
         toml::table &options = *tbl["options"].as_table();
         if (const auto shown = options["showStats"].value<bool>()) {
             if (!*shown) options.insert_or_assign("showStats", true);
@@ -84,7 +85,8 @@ inline void migrateConfig(toml::table &tbl)
     }
 
     if (fileVersion < 7) {
-        // The boxes of the tracks stand at the left of the graph by default. The program wrote the old default "bottom".
+        // The boxes of the tracks stand at the left of the graph by default. A file with "bottom" can hold the old default or a
+        // choice of the person, and the file cannot tell which. The migration moves the boxes, and the person can move them back.
         toml::table &options = *tbl["options"].as_table();
         if (const auto side = options["readoutSide"].value<std::string>()) {
             if (*side == "bottom") options.insert_or_assign("readoutSide", "left");

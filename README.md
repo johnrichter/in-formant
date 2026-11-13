@@ -83,7 +83,7 @@ The script `tests/check_plan_coverage.py` checks that each case of type Unit in 
 
 Build system:
 
-* **Native build:** The script `build-macos.sh` installs Qt with `aqtinstall` in a Python virtual environment. It builds FFTW 3.3.10, PortAudio 19.7, FreeType 2.15.0, and libsamplerate 0.2.2, and it installs Eigen 5.0.1 and toml++ 3.4.0, in a local folder. Then it builds the application with CMake and Ninja.
+* **Native build:** The script `build-macos.sh` installs Qt with `aqtinstall` in a Python virtual environment. It builds FFTW 3.3.11, PortAudio 19.7, FreeType 2.15.0, and libsamplerate 0.2.2, and it installs Eigen 5.0.1 and toml++ 3.4.0, in a local folder. Then it builds the application with CMake and Ninja.
 * **Pinned downloads:** The script checks a SHA-256 checksum for each of the six libraries, and it downloads over https only. It pins the versions of `aqtinstall`, CMake, and Ninja. It deletes the build folder when the Qt version changes. It needs the macOS 27 SDK.
 * **Minimum version:** The deployment target is macOS 27.0. The CMake file sets it, and `LSMinimumSystemVersion` in `dist-res/Info.plist` states it.
 * **AGL framework:** The macOS 27 SDK has no AGL framework, but Qt 6.12.0 links it. The CMake file replaces it with the OpenGL framework.

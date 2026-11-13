@@ -1,4 +1,5 @@
 #include "qpainterwrapper.h"
+#include "imagehold.h"
 #include "../context/timings.h"
 #include <algorithm>
 #include <cmath>
@@ -91,10 +92,9 @@ void QPainterWrapper::drawSpectrogram(SliceIterator begin, SliceIterator end)
     const double sliceTimeStart = firstTime - 0.5 * sliceSpacing;
     const double sliceTimeEnd = lastTime + 0.5 * sliceSpacing;
 
-    // The live view ends at the time of the newest slice. A gap of a few milliseconds can still
-    // remain, because the sound arrives in blocks. The newest slice fills such a gap.
-    constexpr double maxHold = 0.03;   // seconds
-    const double holdTimeEnd = (mTimeEnd > sliceTimeEnd && mTimeEnd - sliceTimeEnd <= maxHold) ? mTimeEnd : sliceTimeEnd;
+    // The live view ends at the time of the newest slice. A gap of up to 0.06 seconds can still remain, because the
+    // analysis hands over its slices in groups. The newest slice fills such a gap.
+    const double holdTimeEnd = Gui::imageHoldEnd(sliceTimeEnd, mTimeEnd);
 
     // Only store the slices that are not in the texture yet.
     double &lastTimeEnd = mSpectrogramLastTime;
@@ -229,6 +229,10 @@ void QPainterWrapper::drawSpectrogramImage(unsigned long long id, const rpm::vec
         mSpectrogramLastTime = -HUGE_VAL;
     }
 
+    // The picture of a live view is older than the view by the time that the analysis needs. The newest column
+    // fills that short span, so no empty strip shows at the edge of the newest sound.
+    const double holdTimeEnd = Gui::imageHoldEnd(timeEnd, mTimeEnd);
+
     p->setSpectrogramFilter(mSpectrogramQuality, (float) mSpectrogramBlur);
     p->drawSpectrogram(
         mSpectrogramOffset,
@@ -246,7 +250,7 @@ void QPainterWrapper::drawSpectrogramImage(unsigned long long id, const rpm::vec
         mOptions.theme.colormap,
         timeStart,
         timeEnd,
-        timeEnd,
+        holdTimeEnd,
         mTimeStart,
         mTimeEnd);
 

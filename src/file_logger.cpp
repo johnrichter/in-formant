@@ -85,12 +85,23 @@ void openFileLogger(const char *name) {
         };
 
         char buffer[4096];
-        ssize_t count;
         // The end of the file means that the application closed its end of the pipe.
         // Stop, or this process stays alive after the application exits.
-        while ((count = read(pipefd[0], buffer, sizeof(buffer))) > 0) {
-            builder.feed(buffer, (size_t) count, timeStamp, sink);
+        // A signal can interrupt the read. That is not an end, so read again.
+        for (;;) {
+            const ssize_t count = read(pipefd[0], buffer, sizeof(buffer));
+            if (count > 0) {
+                builder.feed(buffer, (size_t) count, timeStamp, sink);
+            }
+            else if (count < 0 && errno == EINTR) {
+                continue;
+            }
+            else {
+                break;
+            }
         }
+        // The last text can have no end of line.
+        builder.finish(sink);
 
         close(fd);
         close(pipefd[0]);

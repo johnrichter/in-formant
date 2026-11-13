@@ -71,3 +71,21 @@ TEST(LogFile, TP_LOG_04_ALongLineBreaksIntoTwoLinesAndLosesNoByte)
     }
     EXPECT_EQ(xs, text.size());
 }
+
+// The last text of a program can have no end of line. The finish call writes it as a line with one stamp.
+TEST(LogFile, TP_LOG_06_TheLastTextWithNoEndOfLineIsWrittenAtTheEnd)
+{
+    LineBuilder builder;
+    EXPECT_TRUE(run({ "done\nlast words" }, builder).size() == 1u);
+    EXPECT_TRUE(builder.open());
+
+    std::vector<std::string> lines;
+    builder.finish([&lines](const std::string &line) { lines.push_back(line); });
+    ASSERT_EQ(lines.size(), 1u);
+    EXPECT_EQ(lines[0], "[T] last words\n");
+    EXPECT_FALSE(builder.open());
+
+    // A second call writes nothing.
+    builder.finish([&lines](const std::string &line) { lines.push_back(line); });
+    EXPECT_EQ(lines.size(), 1u);
+}

@@ -228,3 +228,15 @@ TEST(Ticks, TheTicksOfTheAutomaticModeDoNotChangeWhenTheCallRepeats)
     const auto b = makeFrequencyTicks(FrequencyTickMode::Automatic, 0, 50, 5000, toPixel, 14, 8);
     EXPECT_TRUE(a.size() == b.size());
 }
+
+// A label size of 0, from a font that did not load, gives a finite list of ticks and no endless loop.
+TEST(Ticks, TP_AXT_10_ALabelSizeOfZeroEndsAndGivesFewTicks)
+{
+    auto toPixel = [](double f) { return 500.0 * (1.0 - (f - 100.0) / 900.0); };
+    for (bool linear : { true, false }) {
+        const auto ticks = makeFrequencyTicks(FrequencyTickMode::Automatic, 0, 100, 1000, toPixel, 0, 0, linear);
+        EXPECT_LT(ticks.size(), 5000u) << linear;
+    }
+    const auto narrow = makeFrequencyTicks(FrequencyTickMode::Automatic, 0, 95, 235, toPixel, 0, 0, false);
+    EXPECT_LT(narrow.size(), 5000u);
+}
