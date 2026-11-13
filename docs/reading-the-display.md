@@ -29,7 +29,7 @@ Click on the graph, or drag across it. A bar shows the moment from the top to th
 
 ## Read the statistics
 
-The statistics show in boxes. Each track has its own box with the name of the track, the live value, and one line for each statistic. The legend is a box too. A box keeps its size when the numbers change.
+The statistics show in boxes. They are on by default. Each track has its own box with the name of the track, the live value, and one line for each statistic. A box keeps its size when the numbers change.
 
 The Readouts tab of the settings has these choices:
 
@@ -37,7 +37,9 @@ The Readouts tab of the settings has these choices:
 - The order of the boxes, and a switch for each box.
 - The statistics that have a line in the boxes.
 
-The frame times show in a separate box at the top of the graph. The app hides this box during a recording.
+At the left of the graph, the column has the same order as the tracks in the graph. The highest formant (F4) is at the top, and the pitch is at the bottom.
+
+A bar above the graph holds the legend and the frame times. The two boxes stand side by side at the centre of the bar. The bar keeps its height during a recording, so the graph does not move. The app hides the frame times during a recording.
 
 | Line | Meaning |
 | --- | --- |
@@ -121,7 +123,8 @@ The Theme tab sets the colours of the spectrogram, the tracks, and the plots.
 The Practice button below the graph starts a session on the live capture. Choose the task in the list next to the button: Free, Vowels, Reading, or Conversation.
 
 - The M key, or the Mark button, saves a mark. A mark has the time, a note if you type one, and the pitch and F1 to F4 of the last half second.
-- Click Stop practice to save the session. A window shows a summary and compares it with your last session of the same task.
+- Click Stop practice to end the session. A window asks if you want to keep it. It shows the length, the marks, and a comparison with your last session of the same task. Keep saves the session. Discard saves nothing.
+- A session that is shorter than the minimum time is dropped with no question. The minimum is 5 seconds by default, and the General tab of the settings changes it.
 - A folder for the session holds the statistics, a report, the marks, and the sound. The General tab of the settings sets the folder. The default is Documents/InFormant/Practice.
 - The Progress button opens a chart of your change. Choose a measure, a task, and a period. Compare like with like. A formant median over mixed tasks says little.
 
@@ -129,7 +132,8 @@ The Practice button below the graph starts a session on the live capture. Choose
 
 The Synthesizer window makes a steady test voice. It starts in constant mode, so its sound does not change by itself.
 
-- Sliders set the pitch, F1 to F4, the bandwidths, and the amount of pitch jitter.
+- The box "Quick start" sets F1 to F4 and the pitch for ten vowels, for a lower voice or for a higher voice. The page "Synthesizer" in the help shows how to use it, with recipes.
+- Sliders and number boxes set the pitch, F1 to F4, the bandwidths, and the amount of pitch jitter.
 - The switches "Follow pitch estimates" and "Follow formant estimates" make the synthesizer follow your voice. Use headphones when you switch them on. Without headphones, the microphone hears the synthesizer, and the sound changes by itself.
 
 ## Settings that change what you see
