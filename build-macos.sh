@@ -12,15 +12,17 @@
 #   QT_VERSION     The Qt version that aqtinstall installs (default 6.12.0)
 #   WORK_DIR       The folder for downloads and build files (default build/native)
 #   JOBS           The number of parallel jobs (default: the number of CPU cores)
-#   SIGN_IDENTITY  The name of a code signing identity, for example "Developer ID Application: Name (TEAMID)".
-#                  The default is - (an ad hoc signature, which works on this Mac only).
+#   SIGN_IDENTITY  The name or the hash of a code signing identity. The script always signs. With no value, it
+#                  uses the first valid "Developer ID Application" identity of the keychain, and then the first
+#                  valid "Apple Development" identity. With no such identity, the script stops. It never makes
+#                  an unsigned or an ad hoc build.
 #   NOTARY_PROFILE The keychain profile of notarytool. With a profile, the script notarizes the application
-#                  and the disk image. It needs a SIGN_IDENTITY.
+#                  and the disk image. It needs a Developer ID identity.
 
 set -euo pipefail
 
 BUILD_TYPE=${BUILD_TYPE:-Release}
-SIGN_IDENTITY=${SIGN_IDENTITY:--}
+SIGN_IDENTITY=${SIGN_IDENTITY:-}
 NOTARY_PROFILE=${NOTARY_PROFILE:-}
 QT_VERSION=${QT_VERSION:-6.12.0}
 FFTW_VERSION=3.3.10
@@ -63,6 +65,19 @@ sdk=$(xcrun --sdk macosx --show-sdk-path 2>/dev/null) || die "the Xcode command 
 sdk_version=$(xcrun --sdk macosx --show-sdk-version 2>/dev/null) || die "the Xcode command line tools are missing. Run: xcode-select --install"
 [ "${sdk_version%%.*}" -ge 27 ] || die "this script needs the macOS 27 SDK (Xcode 27 or newer). The SDK is $sdk_version"
 command -v pkg-config > /dev/null || die "pkg-config is missing. Install it, for example with: brew install pkgconf"
+
+# The build always signs, so find the identity now and not after a long build.
+find_identity() {
+    # find_identity KIND: print the hash of the first valid identity whose name starts with KIND
+    security find-identity -v -p codesigning | grep "\"$1:" | head -n 1 | awk '{print $2}' || true
+}
+if [ -z "$SIGN_IDENTITY" ]; then
+    SIGN_IDENTITY=$(find_identity "Developer ID Application")
+fi
+if [ -z "$SIGN_IDENTITY" ]; then
+    SIGN_IDENTITY=$(find_identity "Apple Development")
+fi
+[ -n "$SIGN_IDENTITY" ] && [ "$SIGN_IDENTITY" != "-" ] || die "no code signing identity found. Create an Apple Development certificate in Xcode (Settings, Accounts, Manage Certificates), or set SIGN_IDENTITY. The script does not make an unsigned build"
 
 mkdir -p "$work" "$root/dist"
 prefix=$work/prefix
@@ -193,16 +208,13 @@ done < <(find "$build" -name '*.dylib' -exec dirname {} \; | sort -u)
 "$qt_dir/bin/macdeployqt" "$app" -qmldir="$root/src/qml" "${libpaths[@]}"
 
 # The deployment step changes library paths, and that breaks the signatures. Apple silicon refuses to
-# run an arm64 file with an invalid signature, so sign the whole bundle again. With no SIGN_IDENTITY the
-# signature is ad hoc. A Developer ID identity adds the hardened runtime and a secure timestamp, which
-# the notarization needs. The entitlements give the application the microphone and the Qt Quick compiler.
+# run an arm64 file with an invalid signature, so sign the whole bundle again. Each build is signed with the
+# hardened runtime and a secure timestamp. A stable identity also keeps the microphone choice of the user
+# between builds, because macOS ties that choice to the signature. The entitlements give the application
+# the microphone and the Qt Quick compiler.
 step "Sign the bundle"
-if [ "$SIGN_IDENTITY" = "-" ]; then
-    codesign --force --deep --sign - "$app"
-else
-    codesign --force --deep --options runtime --timestamp \
-        --entitlements "$root/dist-res/InFormant.entitlements" --sign "$SIGN_IDENTITY" "$app"
-fi
+codesign --force --deep --options runtime --timestamp \
+    --entitlements "$root/dist-res/InFormant.entitlements" --sign "$SIGN_IDENTITY" "$app"
 codesign --verify --deep --strict "$app"
 
 # Notarization sends the application to Apple, and it staples the ticket to the file. It needs a Developer ID
@@ -212,7 +224,6 @@ notarize() {
     xcrun notarytool submit "$1" --keychain-profile "$NOTARY_PROFILE" --wait
 }
 if [ -n "$NOTARY_PROFILE" ]; then
-    [ "$SIGN_IDENTITY" != "-" ] || die "NOTARY_PROFILE needs a SIGN_IDENTITY of a Developer ID"
     step "Notarize the application"
     ditto -c -k --keepParent "$app" "$stage/InFormant.zip"
     notarize "$stage/InFormant.zip"
@@ -226,9 +237,7 @@ dmg=$root/dist/InFormant-$version-macOS-arm64.dmg
 rm -f "$dmg"
 hdiutil create -volname InFormant -srcfolder "$stage" -ov -format UDZO "$dmg"
 
-if [ "$SIGN_IDENTITY" != "-" ]; then
-    codesign --force --timestamp --sign "$SIGN_IDENTITY" "$dmg"
-fi
+codesign --force --timestamp --sign "$SIGN_IDENTITY" "$dmg"
 if [ -n "$NOTARY_PROFILE" ]; then
     step "Notarize the disk image"
     notarize "$dmg"

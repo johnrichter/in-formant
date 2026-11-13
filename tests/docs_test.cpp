@@ -545,13 +545,19 @@ TEST(Release, TP_REL_09_TheBuildScriptPinsAndChecksItsDownloads)
     EXPECT_EQ(qtVersion(build), qtVersion(tests));
 }
 
-// The signing rules. The default is an ad hoc signature. A Developer ID identity adds the hardened runtime, the
-// entitlements for the microphone and the Qt Quick compiler, and the secure timestamp. The microphone text is in
-// the Info.plist, because macOS ends the program without it when the program asks for the microphone.
+// The signing rules. Each build is signed with the hardened runtime, the entitlements for the microphone and the Qt
+// Quick compiler, and the secure timestamp. The script finds an identity before the build, and it has no ad hoc
+// path. The microphone text is in the Info.plist, because macOS ends the program without it when the program asks
+// for the microphone.
 TEST(Release, TP_REL_11_TheSigningRulesAndTheMicrophoneEntitlementAreInPlace)
 {
     const std::string build = readFile(root / "build-macos.sh");
-    EXPECT_NE(build.find("SIGN_IDENTITY=${SIGN_IDENTITY:--}"), std::string::npos);
+    EXPECT_NE(build.find("SIGN_IDENTITY=${SIGN_IDENTITY:-}"), std::string::npos);
+    EXPECT_NE(build.find("security find-identity -v -p codesigning"), std::string::npos);
+    EXPECT_NE(build.find("does not make an unsigned build"), std::string::npos);
+    EXPECT_EQ(build.find("--sign -"), std::string::npos);
+    // The search for the identity comes before the first download, so a missing identity stops the build early.
+    EXPECT_LT(build.find("does not make an unsigned build"), build.find("pip\" install"));
     EXPECT_NE(build.find("--options runtime"), std::string::npos);
     EXPECT_NE(build.find("--entitlements"), std::string::npos);
     EXPECT_NE(build.find("--timestamp"), std::string::npos);
