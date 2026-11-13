@@ -128,3 +128,15 @@ informant_add_test(NAME audio_context_tests
     LIBS rpcxx_only lsr
     LABELS audio_context)
 target_include_directories(audio_context_tests SYSTEM PRIVATE ${APP_HEADER_INCLUDES})
+
+# The documents, the help pages, the fonts, and the release rules. These tests read the files of the source folder.
+informant_add_test(NAME docs_tests SOURCES docs_test.cpp LABELS docs)
+target_compile_definitions(docs_tests PRIVATE INFORMANT_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+
+# The help style and the fonts. The help style needs a Qt Quick text document.
+informant_add_test(NAME help_font_tests
+    SOURCES help_font_test.cpp ${SRC}/gui/helpstyle.cpp
+    LIBS ${APP_HEADER_LIBS}
+    LABELS docs)
+target_include_directories(help_font_tests SYSTEM PRIVATE ${APP_HEADER_INCLUDES})
+target_compile_definitions(help_font_tests PRIVATE INFORMANT_SOURCE_DIR="${PROJECT_SOURCE_DIR}")

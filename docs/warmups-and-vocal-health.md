@@ -131,7 +131,6 @@ These notes come from the summaries of the sources below. For a decision, read t
 - Water resistance therapy, a randomized trial in behavioral dysphonia, Journal of Voice, 2017: https://repositorio.uchile.cl/bitstream/handle/2250/147830/Efficacy-of-Water-Resistance-Therapy.pdf
 - Straw phonation in water for 4 weeks, older adults with vocal fold atrophy, Journal of Speech, Language, and Hearing Research, 2023: https://pubs.asha.org/doi/10.1044/2023_JSLHR-23-00071
 - Straw phonation in water for 6 weeks, older adults, Journal of Speech, Language, and Hearing Research, 2020: https://pubs.asha.org/doi/10.1044/2020_JSLHR-19-00124
-- Lip trill and the contact of the vocal folds, a case poster of one singer, Bowling Green State University: https://www.bgsu.edu/content/dam/BGSU/health-and-human-services/CenterofExcellenceHealthandWellness/PostersResearchSymposium/32-sdove.pdf
 - Lip trill and electroglottography in four professional voice users, Voice Foundation abstract, 2026: https://voicefoundation.org/view/2026-abstracts/entry/7047/
 - SOVT exercises and warm-up trills and self-rated vocal comfort, University of Pretoria: https://repository.up.ac.za/bitstreams/a132de47-3be6-428f-9731-f54eff12d0c4/download
 - Titze, I. (1996). What's in a voice warm-up? Five best vocal warm-ups. Journal of Singing. This is expert advice and not a trial.

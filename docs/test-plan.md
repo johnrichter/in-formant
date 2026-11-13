@@ -5,7 +5,7 @@ This page lists every use case that the project did not test during development.
 ## How to read this page
 
 - Each case has an ID, a short setup, and the result that a test must check.
-- The type tells how to automate the case. **Unit** is a C++ test in `tests/` with GoogleTest. The name of the test starts with the ID of the case, for example `TEST(Layout, TP_LAY_01_BoxesCentred)`. **Qt** is a Qt Quick Test or a Qt Test with a window. **Image** compares a screenshot with a stored picture. **Audio** analyses rendered samples. **Manual** needs a person or a device.
+- The type tells how to automate the case. **Unit** is a C++ test in `tests/` with GoogleTest. The name of the test starts with the ID of the case, for example `TEST(Layout, TP_LAY_01_BoxesCentered)`. **Qt** is a Qt Quick Test or a Qt Test with a window. **Image** compares a screenshot with a stored picture. **Audio** analyses rendered samples. **Manual** needs a person or a device.
 - The priority is **P1** (a failure harms a user), **P2** (a failure is visible), or **P3** (a small risk).
 - A case that says "not built yet" tests a feature that does not exist. Write the test when the feature exists.
 
@@ -49,7 +49,7 @@ Each "Limits" block in a report named things that the project did not test. This
 - **The Progress window was checked on the screen for the default measure only.** TP-PRG-08.
 - **Only six pride themes got an eye check.** TP-COL-05.
 - **The 16 dB headroom darkens the default Magma theme.** TP-COL-08.
-- **The warm-up ranks are a judgement from search summaries.** TP-DOC-07.
+- **The warm-up ranks are a judgment from search summaries.** TP-DOC-07.
 - **The formant tracker is not reliable above about 400 Hz.** TP-ANA-01.
 - **The Qt 6.8.3 build was verified on one Mac.** TP-REL-02, TP-REL-03.
 - **Old clones must clone again.** TP-REL-06.
@@ -120,7 +120,7 @@ The project never played the sound through a speaker. These cases use rendered s
 
 ## 3. Layout of the bar and the boxes
 
-- **TP-LAY-01** (Unit, P1). Compute the layout with the legend and the frame times on. Expect the two boxes side by side and centred over the graph.
+- **TP-LAY-01** (Unit, P1). Compute the layout with the legend and the frame times on. Expect the two boxes side by side and centered over the graph.
 - **TP-LAY-02** (Unit, P1). Compute the layout with the frame times on and `hideDebug` on (a recording). Expect the same top margin and the same graph size.
 - **TP-LAY-03** (Unit, P2). Compute the layout with both boxes off. Expect a top margin of the graph padding and nothing more.
 - **TP-LAY-04** (Unit, P2). Make the bar wider than the graph. Expect the bar to start at the left edge of the graph and to stay inside the window.
@@ -181,7 +181,7 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-MAP-12** (Qt, P2). Let the frame leave the map in live mode. Expect the map to scroll by itself.
 - **TP-MAP-13** (Unit, P2). Make the view span longer than the map window. Expect the map to widen to the span, so the handles work.
 - **TP-MAP-14** (Qt, P2). Type a value in the field "View" (below 1, above 3600, not a number). Expect a clamp or a rejection.
-- **TP-MAP-15** (Image, P3). Check the vertical centre of the text in the field "View".
+- **TP-MAP-15** (Image, P3). Check the vertical center of the text in the field "View".
 - **TP-MAP-16** (Qt, P1). Run a live capture for 60 seconds with a map window of 8 seconds. Record the time of each map drawing. Expect at least 50 drawings in a second and no gap above 40 ms. The first run had 62 drawings in a second and a longest gap of 29 ms.
 - **TP-MAP-17** (Image, P2). Record the map while a capture grows from 0 to 150 seconds. Compare two frames at each change of the bin size. Expect no jump in the shape of the sound.
 - **TP-MAP-18** (Qt, P1). Drag the frame with a mouse that sends a move each 16 ms. Expect the frame in the map under the pointer in each drawing, with a lag of at most one drawing.
@@ -221,14 +221,14 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-FLIP-14** (Qt, P2). Change the switch "Newest sound at the left" while capture runs. Expect the picture to redraw at once with no stale column and no crash.
 - **TP-FLIP-15** (Manual, P3). Check the wheel with the system setting "Natural scrolling" on and off. Expect the content to follow the fingers in both cases.
 - **TP-FLIP-16** (Unit, P2). Check that an old file with no `flipTime` value starts with the flip on, and that a stored `false` stays.
-- **TP-GRID-01** (Image, P1). Set each grid switch alone, then both. Expect lines at the labelled ticks for the major switch and at the other ticks for the minor switch.
+- **TP-GRID-01** (Image, P1). Set each grid switch alone, then both. Expect lines at the labeled ticks for the major switch and at the other ticks for the minor switch.
 - **TP-GRID-02** (Image, P2). Change the frequency scale (linear, logarithmic, Mel, ERB) and the tick mode. Expect each line to stay on its tick.
 - **TP-GRID-03** (Image, P2). Check that the lines stay behind the tracks and that the lines are not in the minimap.
 - **TP-GRID-04** (Image, P2). Check the brightness of the grid lines on each of the 16 pride themes and on Magma, with a loud sound and with silence. Expect the lines to show, and expect them not to hide the spectrogram.
 - **TP-GRID-05** (Image, P2). Check the grid lines at device pixel ratios 1 and 2. Expect a line of about the same visual width.
 - **TP-GRID-06** (Image, P2). Check the grid lines in the pitch-only graph with the fixed axis and with the automatic fit. Expect each line at a tick of the axis.
 - **TP-GRID-07** (Qt, P2). Record with the grid on. Extract a frame from the video. Expect the lines in the frame.
-- **TP-GRID-08** (Unit, P2). Test the grid with a custom tick step, with the note mode, and with the octave mode. Expect the major lines at the labelled ticks only.
+- **TP-GRID-08** (Unit, P2). Test the grid with a custom tick step, with the note mode, and with the octave mode. Expect the major lines at the labeled ticks only.
 - **TP-GRID-09** (Unit, P3). Test a graph so short that the ticks are closer than 2 pixels. Expect no more than one line for each pixel row.
 - **TP-TRACK-01** (Qt, P1). Turn off each formant switch in turn. Expect only that track, its box, and its legend entry to go.
 - **TP-TRACK-02** (Unit, P1). Migrate a file with the old switch off. Expect all four new switches off, and a second run to change nothing.
@@ -266,14 +266,14 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-AXT-07** (Qt, P2). Change "Number of labels" (Few, Normal, Many). Expect the graph to follow at once, and expect the grid lines to follow the same ticks.
 - **TP-AXT-08** (Image, P2). Check that the label text of the frequency axis has one size in the custom, the note, and the octave modes.
 - **TP-GRD-10** (Image, P1). Check the grid lines on every theme at strengths of 10, 60, and 100 percent. Expect lines that show, and expect no line to hide the loud sound.
-- **TP-GRD-11** (Unit, P2). Check the grid colour for a dark quiet colour and a light quiet colour. Expect a light tint for the first and a dark tint for the second.
-- **TP-QUI-01** (Unit, P1). Lift the quiet end of a map that starts at black. Expect a lightness of 0.22 to 0.32 at the first entry. Expect the same colours above 45 percent of the map, and no fall of the lightness. The unit test `oklab` has this.
-- **TP-QUI-02** (Unit, P2). Lift the quiet end of Viridis and of a grey map. Expect no change for Viridis and no chroma for the grey map.
+- **TP-GRD-11** (Unit, P2). Check the grid color for a dark quiet color and a light quiet color. Expect a light tint for the first and a dark tint for the second.
+- **TP-QUI-01** (Unit, P1). Lift the quiet end of a map that starts at black. Expect a lightness of 0.22 to 0.32 at the first entry. Expect the same colors above 45 percent of the map, and no fall of the lightness. The unit test `oklab` has this.
+- **TP-QUI-02** (Unit, P2). Lift the quiet end of Viridis and of a gray map. Expect no change for Viridis and no chroma for the gray map.
 - **TP-QUI-03** (Image, P1). Screenshot each of the 22 themes with the switch on and off. Expect the quiet parts to differ from the black window when the switch is off.
-- **TP-QUI-04** (Image, P2). Check the graph before the first sound arrives and in the empty part of a flipped graph. Expect the quiet colour and no black block.
+- **TP-QUI-04** (Image, P2). Check the graph before the first sound arrives and in the empty part of a flipped graph. Expect the quiet color and no black block.
 - **TP-QUI-05** (Qt, P2). Turn the switch on and off while capture runs. Expect the strip in the Theme tab, the graph, the map, and the plots to follow at once.
 - **TP-LFT-01** (Qt, P1). Start a live capture with the flip on. Expect the new sound at the left edge from the first second, and the old sound to flow to the right.
-- **TP-LFT-02** (Qt, P2). Check the empty part at the right of a young capture. Expect the quiet colour and no tick before time zero.
+- **TP-LFT-02** (Qt, P2). Check the empty part at the right of a young capture. Expect the quiet color and no tick before time zero.
 - **TP-LFT-03** (Qt, P2). Click in the empty part. Expect no pick, or a pick at time zero.
 - **TP-LFT-04** (Qt, P2). Pause, resume, and press Reset graph with the flip on. Expect the new sound at the left edge again.
 - **TP-LFT-05** (Unit, P2). Check the view end for a young capture (time 0 to 15 s) with the flip on and off. Expect a negative start with the flip on and a start of zero with the flip off.
@@ -291,9 +291,9 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-HLP-02** (Qt, P2). Close the box with a press outside, with Escape, and with a second press on the button.
 - **TP-HLP-03** (Qt, P2). Open the box near the right edge and the bottom edge of the window. Expect the box to stay inside the window.
 - **TP-HLP-04** (Manual, P2). Check each text of the boxes with a speech-language pathologist.
-- **TP-TYP-01** (Image, P1). Check each Help page at widths of 480, 760, and 1400 pixels. Expect a column of at most 640 pixels, centred, with no sideways scroll.
+- **TP-TYP-01** (Image, P1). Check each Help page at widths of 480, 760, and 1400 pixels. Expect a column of at most 640 pixels, centered, with no sideways scroll.
 - **TP-TYP-02** (Unit, P1). Check the prose scale. Lines and gaps must be on the 4-pixel grid. A body line must be at least 1.6 times the size. A heading must have more space above it than below it. The unit test `ui_scale` has this.
-- **TP-TYP-03** (Image, P2). Check a table, a code block, a list, a block quote, a link, and bold and code text in one paragraph. Expect the right size, colour, and gap for each.
+- **TP-TYP-03** (Image, P2). Check a table, a code block, a list, a block quote, a link, and bold and code text in one paragraph. Expect the right size, color, and gap for each.
 - **TP-TYP-04** (Qt, P3). Select text with the mouse and copy it. Expect the text without style marks.
 - **TP-TYP-05** (Manual, P2). Read each page for five minutes. Compare the comfort with the old pages.
 - **TP-GDE-01** (Manual, P2). A speech-language pathologist reads the page "Settings". Check each claim about a method, and check the advice for each goal.
@@ -357,19 +357,19 @@ The scroll views of the settings, the help pages, the help boxes, the Synthesize
 - **TP-ZONE-03** (Qt, P2). Record with the zones on and "Keep the zones in recordings" on. Extract a frame from the saved video. Expect the zones to show.
 - **TP-ZONE-04** (Qt, P2). Record with "Keep the zones in recordings" off. Extract a frame. Expect no zones, and expect the zones to come back on the screen after the recording.
 - **TP-ZONE-05** (Image, P3). Check the labels of the zones at a small window height.
-- **TP-ZONE-06** (Unit, P3). Check that the zone colours differ for a person with red-green colour blindness (simulate it).
+- **TP-ZONE-06** (Unit, P3). Check that the zone colors differ for a person with red-green color blindness (simulate it).
 
-## 10. Colour themes
+## 10. Color themes
 
 - **TP-COL-01** (Unit, P2). For each of the 16 pride themes, check that the lightness rises in order and that no stop is white.
 - **TP-COL-02** (Unit, P1). For "Trans (Dark)", check the top three stops. Expect an OKLab chroma of at least 0.12 after gamut mapping, and a hue between 340 and 360 degrees.
-- **TP-COL-03** (Unit, P2). Check that the colour table of each theme has 256 entries and that each entry is in the sRGB gamut.
-- **TP-COL-04** (Unit, P2). Check the OKLab distance between each track colour and every entry of its table. Expect a minimum above a set value.
+- **TP-COL-03** (Unit, P2). Check that the color table of each theme has 256 entries and that each entry is in the sRGB gamut.
+- **TP-COL-04** (Unit, P2). Check the OKLab distance between each track color and every entry of its table. Expect a minimum above a set value.
 - **TP-COL-05** (Image, P2). Screenshot each of the 16 pride themes with a real speech file. Only six themes and a strip picture of the others were checked.
 - **TP-COL-06** (Unit, P2). Change the saturation from 50 to 150 percent. Expect the chroma to scale and the lightness to stay.
 - **TP-COL-07** (Qt, P2). Move the Saturation slider. Expect the stored value to change in steps of 5 percent.
 - **TP-COL-08** (Image, P2). Check that the 16 dB headroom does not make the default Magma theme too dark. Compare with a stored picture.
-- **TP-COL-09** (Unit, P3). Parse a custom theme with a wrong colour, a missing colour, and a very long list. Expect a safe fallback.
+- **TP-COL-09** (Unit, P3). Parse a custom theme with a wrong color, a missing color, and a very long list. Expect a safe fallback.
 - **TP-COL-10** (Image, P3). Check the dark outline of dots and lines on each theme.
 
 ## 11. Capture lifecycle and devices
@@ -406,7 +406,7 @@ The scroll views of the settings, the help pages, the help boxes, the Synthesize
 - **TP-SET-11** (Qt, P2). Change the statistics window. Expect the statistics to cover that time.
 - **TP-SET-12** (Qt, P3). Select "Show the Range in semitones". Expect a value such as `7.0st` in the Range line.
 - **TP-SET-13** (Unit, P2). Check that the Range in semitones is 12 times log2(P95 / P5). Test P5 of 0 or negative. Expect a safe text.
-- **TP-SET-14** (Qt, P3). Check the grey hint under each control of each tab. Expect the text to wrap, to stay inside the window, and not to overlap.
+- **TP-SET-14** (Qt, P3). Check the gray hint under each control of each tab. Expect the text to wrap, to stay inside the window, and not to overlap.
 - **TP-SET-16** (Unit, P2). Check that every setter in `config.cpp` works when the file has no key for it. A setter crashed the app once for this reason (`showFormants`).
 - **TP-SET-18** (Unit, P1). Start with a file that has a syntax error. Expect the defaults and a copy of the file named `informant.conf.broken`. Before 3.2.2 the program stopped at launch.
 - **TP-SET-17** (Unit, P2). Check that each default value outside the option map has one definition (the `kDefault` constants). The getter and the reset must use the same one.
@@ -434,7 +434,7 @@ The scroll views of the settings, the help pages, the help boxes, the Synthesize
 - **TP-UI-01** (Unit, P2). Check the scale values. The type scale is 12, 14, 17, 20, and 24 pixels, with the line heights 16, 20, 24, 28, and 32. The spacing scale is 4, 8, 12, 16, 24, 32, and 48 pixels. The unit test `ui_scale` has the rules.
 - **TP-UI-02** (Qt, P2). Scan all QML files. Expect no hard-coded font size or margin outside the two scales, except where a comment says why.
 - **TP-UI-03** (Image, P2). Screenshot each window at device pixel ratios 1 and 2. Expect no clipped text.
-- **TP-UI-04** (Unit, P2). Check the contrast of the grey hint colour against the dark background. Expect at least 4.5 to 1.
+- **TP-UI-04** (Unit, P2). Check the contrast of the gray hint color against the dark background. Expect at least 4.5 to 1.
 - **TP-UI-05** (Qt, P3). Resize each window to its minimum size. Expect no overlap and a working scrollbar.
 - **TP-UI-06** (Manual, P3). Use a large system font. Expect the layout to hold.
 - **TP-UI-07** (Qt, P3). Check the keyboard focus order in each window and each dialog.
@@ -444,12 +444,12 @@ The scroll views of the settings, the help pages, the help boxes, the Synthesize
 - **TP-FONT-03** (Image, P2). Check that the digits in the boxes of the tracks, in the frame times, and on the axes keep their width when the values change.
 - **TP-FONT-04** (Unit, P3). Check that the frame-times text has the same width for 0.00 ms and for 99.99 ms.
 - **TP-FONT-05** (Image, P3). Check the text of the graph at device pixel ratios 1 and 2, and at the zoom steps of the toolbar.
-- **TP-FONT-06** (Unit, P3). Check that each font file is in Git LFS and that each licence file is in `resources`.
+- **TP-FONT-06** (Unit, P3). Check that each font file is in Git LFS and that each license file is in `resources`.
 - **TP-UI-15** (Image, P2). Check the gap between each switch and its hint. Expect at least 8 pixels from the visual bottom of the switch, in the Settings, Record, and Synthesizer windows.
 - **TP-UI-10** (Qt, P2). Check that each heading uses `Heading`, each hint uses `Hint`, and no window has a separator line between groups.
 - **TP-UI-11** (Image, P2). Check the spacing of one window with an overlay of the 4-pixel grid. Expect each gap to be a step of the scale.
 - **TP-UI-12** (Unit, P3). Check that no paragraph in a window is wider than 560 pixels.
-- **TP-UI-13** (Unit, P2). Check the contrast of the three text colours against the window and the surface. The unit test `ui_scale` does this. Repeat it when the Material theme changes.
+- **TP-UI-13** (Unit, P2). Check the contrast of the three text colors against the window and the surface. The unit test `ui_scale` does this. Repeat it when the Material theme changes.
 - **TP-UI-14** (Image, P3). Check that numbers in a column keep their width (tabular figures) when the values change.
 - **TP-UI-09** (Qt, P2). The task box of the practice mode must show the word "Conversation" in full. Test every task name and a long custom name.
 - **TP-UI-16** (Image, P2). The text in the graph (the boxes, the axes, the cursor labels, the frame times) uses sizes of 10, 12, and 14 pixels. Decide which steps of the type scale they use, change them, and compare screenshots.
@@ -501,7 +501,7 @@ The scroll views of the settings, the help pages, the help boxes, the Synthesize
 - **TP-PRG-07** (Unit, P2). Check the filter by task with different letter case, and with the empty filter.
 - **TP-PRG-08** (Qt, P2). Choose each measure and each statistic in the window. Expect the chart, the units, and the table to update. Only the default measure was checked on the screen.
 - **TP-PRG-09** (Qt, P2). Choose a statistic with no value in any session. Expect the message "No session has a value".
-- **TP-PRG-10** (Qt, P2). Check the colour of the chart for the pitch and for each formant.
+- **TP-PRG-10** (Qt, P2). Check the color of the chart for the pitch and for each formant.
 - **TP-PRG-11** (Image, P3). Check the chart with 1 point, 2 points, 200 points, and all values equal.
 - **TP-PRG-12** (Qt, P2). Save a new session while the window is open. Expect the chart to refresh.
 - **TP-PRG-13** (Unit, P3). Check the old API (`TrendMeasure`) against the new API (`TrendStat`). Expect the same numbers.
@@ -531,19 +531,19 @@ The scroll views of the settings, the help pages, the help boxes, the Synthesize
 
 - **TP-DOC-20** (Unit, P2). Check that `docs/design-system.md` lists the same numbers as `src/gui/uiscale.h`.
 
-- **TP-DOC-01** (Unit, P2). Run the style check on every file in `docs/` and on the README. Expect no new violation. The README has 13 known violations.
-- **TP-DOC-02** (Unit, P2). Check each link in the pages. Expect an answer of 200 for each source URL.
+- **TP-DOC-01** (Unit, P2). Run the style check on every file in `docs/` and on the README. Expect no new violation. The README has 12 known violations.
+- **TP-DOC-02** (Unit, P2). Check each link in the pages. Expect an answer of 200 for each source URL. A site can refuse an automated client (401 or 403). A site can fail for a short time (5xx). The test only reports these answers. The test needs the network. It runs only when the variable `INFORMANT_CHECK_LINKS` is set.
 - **TP-DOC-03** (Qt, P2). Open each of the seven tabs. Expect the page text, and expect the tab order Display, Feminization, Masculinization, Singing, Warm-ups, Synthesizer, The math.
 - **TP-DOC-04** (Qt, P3). Call `showPage` with a known and an unknown file. Expect the tab to change for the known file and no error for the unknown file.
 - **TP-DOC-05** (Unit, P2). Check that each file of `docs/` is in `resources/qml.qrc` and in the list of the Help window.
 - **TP-DOC-06** (Unit, P2). Check that the page "Warm-ups and vocal health" has the CAUTION text and the section "Sources".
-- **TP-DOC-07** (Manual, P2). A speech-language pathologist reads the page "Warm-ups and vocal health". The ranks are a judgement from search summaries and not from full papers. Check each rank against the full papers.
+- **TP-DOC-07** (Manual, P2). A speech-language pathologist reads the page "Warm-ups and vocal health". The ranks are a judgment from search summaries and not from full papers. Check each rank against the full papers.
 - **TP-DOC-08** (Unit, P3). Check that the worked examples in the guides (5.0 to 9.7 and 7.0 to 4.4 semitones) match the formula.
 
 ## 19. Analysis quality
 
 - **TP-ANA-01** (Audio, P1). Run the formant tracker on synthetic vowels with a pitch of 100 to 1000 Hz. The tracker is not reliable above about 400 Hz. Record the error against the pitch.
-- **TP-ANA-02** (Audio, P2). Run the pitch tracker on a signal with an octave jump, on vocal fry, and on whispered speech. Expect the documented behaviour.
+- **TP-ANA-02** (Audio, P2). Run the pitch tracker on a signal with an octave jump, on vocal fry, and on whispered speech. Expect the documented behavior.
 - **TP-ANA-03** (Audio, P2). Run each pitch method (YIN, McLeod, RAPT) on the same file. Compare the tracks.
 - **TP-ANA-04** (Audio, P2). Run each formant method and each LPC method on the same file. Compare the tracks.
 - **TP-ANA-05** (Audio, P2). Test the formant limit of 5200 Hz and the view range of 5500 Hz. Expect the tracker not to follow the view range.
@@ -571,11 +571,11 @@ The scroll views of the settings, the help pages, the help boxes, the Synthesize
 These items need a person.
 
 - Whether the synthesizer sounds natural to a listener.
-- Whether the colours look good to the user. The user approved the palette in one session.
+- Whether the colors look good to the user. The user approved the palette in one session.
 - Whether the help pages are clear for a first-time reader.
 - Whether the new flipped direction of time feels right to a person who reads the graph every day.
-- Whether the purple fill of the chosen button is obvious to a person with low vision or a colour deficiency.
-- **Some track colours are close to their own map.** The test TP-COL-04 sets a floor of 0.025 in OKLab. The themes Gay MLM (0.030), Rainbow (0.035), and Ember (0.039) are close to that floor. The dark outline of the tracks keeps them visible.
+- Whether the purple fill of the chosen button is obvious to a person with low vision or a color deficiency.
+- **Some track colors are close to their own map.** The test TP-COL-04 sets a floor of 0.025 in OKLab. The themes Gay MLM (0.030), Rainbow (0.035), and Ember (0.039) are close to that floor. The dark outline of the tracks keeps them visible.
 
 ## 23. Code that needs a change before a test can reach it
 
@@ -584,7 +584,7 @@ Some cases need a small change in the code. Do these changes first, because they
 - **A free function for the time mapping.** Done. `plotTimeToX` and `plotXToTime` in `src/gui/plotmap.h` take the graph, the time range, and the flip. TP-FLIP-07 uses them.
 - **A `Config` on a table in memory.** Done. The constructor `Config(toml::table)` never reads or writes the file. TP-RST-02 to TP-RST-04, TP-SET-16, and TP-SET-17 use it.
 - **The layout of the graph without a window.** Done for the layout and for the grid lines. `computeGraphLayout` in `src/gui/graphlayout.h` takes a text measure, and `makeGridLines` in `src/gui/gridlines.h` returns the rows. The cases TP-LAY and TP-GRID-08 to TP-GRID-09 use them.
-- **Colour and grid rules without a window.** Done. `gridLineColor` in `src/gui/gridcolor.h` returns the grid colour, and `defaultColorMap` lives in `src/gui/cmap.cpp`. The target `color_tests` builds the themes and tests them without Qt Quick. TP-COL, TP-GRD-11, and TP-QUI use them.
+- **Color and grid rules without a window.** Done. `gridLineColor` in `src/gui/gridcolor.h` returns the grid color, and `defaultColorMap` lives in `src/gui/cmap.cpp`. The target `color_tests` builds the themes and tests them without Qt Quick. TP-COL, TP-GRD-11, and TP-QUI use them.
 - **The map rules without a window.** Done. `src/gui/maplayout.h` holds the clock, the loudness scale, the pitch scale, and the gap rule of the map. A fake clock replaces the system clock in TP-MAP-26.
 - **The audio streams without a sound device.** Done. `AudioContext` takes a backend from the caller, and `src/context/audiocontext_streams.cpp` holds the code that does not depend on a backend. TP-CAP-15 uses a stand-in backend.
 - **The playback source and the preset table without a window.** Done. `src/context/playbackfeed.h` chooses the source of the playback stream, and `src/context/vowelpresets.h` holds the vowel table that the synthesizer window shows. TP-SYN-21 and TP-SYN-22 use them.
@@ -603,3 +603,7 @@ Each entry names the case, the bug, the version of the fix, and the test that gu
 - **The column N was too narrow for a count above 999999 (3.2.4).** A window of 24 hours has about 8.6 million frames, so the pattern now has 7 digits. TP-LAY-12.
 - **Two grid lines on one pixel row looked brighter than one line (3.2.4).** The grid now draws one line for each pixel row, and a major line wins over a minor line. TP-GRID-09.
 - **A stream call after a failed restart reached a stopped audio system (3.2.5).** When the restart failed, a later press of play still called the sound backend. Now the call throws an error, the status says that the input device did not start, and the backend sees no call. TP-CAP-15.
+- **British spellings in the guides and in two windows (3.2.6).** The design page, the test plan, and the README used "colour", "centred", "grey", and "licence". The Settings window used "labelled" and "neighbouring". Now all use American spelling. TP-DOC-11.
+- **The README listed seven help pages, and the app has eight (3.2.6).** The page about the settings had no link. Now the README lists all eight pages. TP-DOC-05.
+- **Wrapped text in the Progress and Synthesizer windows had no limit on its width (3.2.6).** In a wide window, a paragraph went over 560 pixels. Now each paragraph has a maximum width of 560 pixels. TP-UI-12.
+- **Three links did not work (3.2.6).** The README had a build badge and a Play Store link. Both services no longer exist for this fork. The warm-up page had a link to a removed poster. Now these links are gone. TP-DOC-02.

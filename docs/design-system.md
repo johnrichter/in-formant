@@ -27,7 +27,7 @@ The steps above the body follow the ratio 1.2 (16.8, 20.2, and 24.2, rounded to 
 - **Roboto Mono** is the font of numbers and of labels that line up. Each character has the same width, so digits stay in columns and a value does not move the text next to it.
 - In the graph, Roboto Mono shows the boxes of the tracks, the numbers on the axes, the frame times, and the labels of the cursor.
 - In the windows, Roboto Mono shows the values of sliders, the number boxes, and the number fields. It also shows the paths and the tables of the Progress window.
-- The font files are in the resources of the app, so the windows look the same on each Mac. The licence of both families is Apache 2.0. The files `LICENSE-Roboto.txt` and `LICENSE-RobotoMono.txt` are in the `resources` folder.
+- The font files are in the resources of the app, so the windows look the same on each Mac. The license of both families is Apache 2.0. The files `LICENSE-Roboto.txt` and `LICENSE-RobotoMono.txt` are in the `resources` folder.
 
 ## The spacing scale
 
@@ -47,7 +47,7 @@ The radii are 4, 8, and 12 pixels.
 
 All controls and boxes use the same corner radius: 8 pixels (the medium radius). This covers buttons, text fields, lists, the chosen tab, the groups of choices, and the boxes in the graph. A unit test checks the value. Four parts of the design follow from this rule:
 
-- **Groups of choices** (the component `SegmentedControl`) have an outline in the accent colour. The chosen segment has a solid accent fill and white bold text. The other segments have plain text.
+- **Groups of choices** (the component `SegmentedControl`) have an outline in the accent color. The chosen segment has a solid accent fill and white bold text. The other segments have plain text.
 - **Tabs** (the components `AppTabBar` and `AppTabButton`) follow the same rule. The chosen tab has the accent fill, and the bar has no line under it.
 - **Windows** set `Material.roundedScale: Material.SmallScale`, so the fields and lists of Qt Material take the radius of 8 pixels.
 - **Buttons** use the components `AppButton` and `AppToolButton`. A plain Qt button has fully round ends, so these components set the radius.
@@ -55,14 +55,14 @@ All controls and boxes use the same corner radius: 8 pixels (the medium radius).
 
 ## The rules
 
-1. **Three levels in each window.** A heading, a field label, and a hint. Each level differs in size, in weight, and in colour. The heading is 17 pixels and bold. The field label is 14 pixels and medium. The hint is 12 pixels in the secondary colour.
+1. **Three levels in each window.** A heading, a field label, and a hint. Each level differs in size, in weight, and in color. The heading is 17 pixels and bold. The field label is 14 pixels and medium. The hint is 12 pixels in the secondary color.
 2. **Close means related.** A hint is 4 pixels from its label or slider, and 8 pixels from a switch (a switch is a tall control). Two controls of one group are 12 pixels apart. Two groups are 24 pixels apart, or more. A person sees the groups without lines.
 3. **Space instead of lines.** A heading with a large space above it separates the groups. The windows have no separator lines between groups.
 4. **Short lines.** A paragraph has at most 560 pixels, which is about 70 characters. A longer line tires the eye.
-5. **Enough contrast.** Each text colour has a contrast of at least 4.5 to 1 against the window and the surface. The primary colour is for headings, labels, and values. The secondary colour is for hints and units. The tertiary colour is for the least important text.
+5. **Enough contrast.** Each text color has a contrast of at least 4.5 to 1 against the window and the surface. The primary color is for headings, labels, and values. The secondary color is for hints and units. The tertiary color is for the least important text.
 6. **Numbers in columns.** A value that changes uses the monospace font, so the digits keep their width.
 7. **One place for the numbers.** A window reads the scale through the context property `ui` (`ui.type`, `ui.space`, `ui.radius`, `ui.color`, `ui.font`, `ui.measure`). A window does not use its own number for a size or a space.
-8. **Every control explains itself.** A control has a grey hint under it when its name does not say what it does. A "?" button (the component `HelpButton`) next to a setting opens a box with a longer explanation. The box scrolls when the text is long. It adds detail and does not replace the hint.
+8. **Every control explains itself.** A control has a gray hint under it when its name does not say what it does. A "?" button (the component `HelpButton`) next to a setting opens a box with a longer explanation. The box scrolls when the text is long. It adds detail and does not replace the hint.
 
 ## How to use the scale in a window
 
@@ -82,8 +82,8 @@ Three sources shaped the rules: the typography plugin of Tailwind CSS (a body li
 - **Headings.** 28, 22, and 18 pixels, all bold. A heading has a tight line, 1.25 to 1.6 times its size, because a short line of large text needs less air.
 - **Code and tables.** 14 pixels on a line of 24. Inline code has a dark background.
 - **Gaps.** 20 pixels below a paragraph, a list, a table, or a code block. 8 pixels between two list items. A heading has 48 pixels above it (level 2) or 32 pixels (level 3), and 12 or 8 pixels below it. A heading then belongs to the text after it.
-- **Column.** 640 pixels wide, centred, with at least 32 pixels of margin. This is about 75 characters in a line.
-- **Colour.** The body is in the secondary colour, and headings and bold text are in the primary colour. Links are lilac and underlined. The table header has a stronger line than the other rows.
+- **Column.** 640 pixels wide, centered, with at least 32 pixels of margin. This is about 75 characters in a line.
+- **Color.** The body is in the secondary color, and headings and bold text are in the primary color. Links are lilac and underlined. The table header has a stronger line than the other rows.
 
 Qt adds the bottom margin of a block and the top margin of the next block, and it does not merge them. So the page uses a bottom margin for a normal gap and a top margin only to widen the gap above a heading.
 

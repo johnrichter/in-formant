@@ -142,6 +142,7 @@ ApplicationWindow {
 
         Label {
             Layout.fillWidth: true
+            Layout.maximumWidth: ui.measure
             visible: progressWindow.points.length === 0
             wrapMode: Text.WordWrap
             color: ui.color.secondary
@@ -236,6 +237,7 @@ ApplicationWindow {
 
         Label {
             Layout.fillWidth: true
+            Layout.maximumWidth: ui.measure
             color: ui.color.secondary
             font.pixelSize: ui.type.caption
             text: progressWindow.stat.name + " of " + progressWindow.measure.name + ", in " + progressWindow.stat.unit + ". The line shows the median of the sessions in each period. The bar shows the lowest and the highest session."

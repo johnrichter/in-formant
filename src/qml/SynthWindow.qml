@@ -293,6 +293,7 @@ ApplicationWindow {
                 Heading { text: "Quick start"; first: true }
                 Label {
                     Layout.fillWidth: true
+                    Layout.maximumWidth: ui.measure
                     Layout.preferredWidth: 520
                     wrapMode: Text.WordWrap
                     color: ui.color.secondary
@@ -341,6 +342,7 @@ ApplicationWindow {
                 Label {
                     visible: synth.enabled && (synth.followPitch || synth.followFormants)
                     Layout.fillWidth: true
+                    Layout.maximumWidth: ui.measure
                     Layout.preferredWidth: 520
                     wrapMode: Text.WordWrap
                     color: Material.color(Material.Orange, Material.Shade300)

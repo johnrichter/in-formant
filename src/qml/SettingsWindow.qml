@@ -531,7 +531,7 @@ ApplicationWindow {
 
                 Heading { text: "Grid lines" }
                 OptionSwitch {
-                    key: "gridMajor"; text: "Grid lines at the labelled values"
+                    key: "gridMajor"; text: "Grid lines at the labeled values"
                     hint: "A line across the graph at each number of the frequency axis."
                 }
                 OptionSwitch {
@@ -618,7 +618,7 @@ ApplicationWindow {
 
                 OptionSlider {
                     key: "lineSmoothness"; title: "Line smoothness"; unit: " %"; from: 0; to: 100
-                    hint: "0 % joins the measured points with straight lines. A higher value averages the neighbouring points and joins them with a smooth curve. The dots always show the measured values."
+                    hint: "0 % joins the measured points with straight lines. A higher value averages the neighboring points and joins them with a smooth curve. The dots always show the measured values."
                 }
                 OptionSlider {
                     key: "lineWidth"; title: "Line width"; unit: " px"; from: 1; to: 8; stepSize: 0.5; decimals: 1
