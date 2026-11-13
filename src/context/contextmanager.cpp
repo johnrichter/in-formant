@@ -1,8 +1,11 @@
 #include "contextmanager.h"
+#include "micaccess.h"
 #include "playbackfeed.h"
 #include "timings.h"
 
+#include <QCoreApplication>
 #include <QDateTime>
+#include <QPermissions>
 #include <QDir>
 #include <QMetaObject>
 #include <QStandardPaths>
@@ -80,11 +83,13 @@ ContextManager::ContextManager(
                     mDataStore->stopRealTime();
                 }
                 else {
-                    // The system can change its default input device while the capture is off.
-                    if (!mAudioReady || captureDeviceIsStale()) {
-                        reinitializeAudio(false);
-                    }
-                    startCapture();
+                    requestMicrophoneThen([this]() {
+                        // The system can change its default input device while the capture is off.
+                        if (!mAudioReady || captureDeviceIsStale()) {
+                            reinitializeAudio(false);
+                        }
+                        startCapture();
+                    });
                 }
             });
 
@@ -256,6 +261,38 @@ bool ContextManager::captureDeviceIsStale()
     if (!mConfig->getAudioCaptureDevice().isEmpty()) return false;
 
     return mOpenedDefaultInputId != systemDefaultInputDeviceId();
+}
+
+void ContextManager::requestMicrophoneThen(std::function<void()> start)
+{
+    QCoreApplication *app = QCoreApplication::instance();
+    const QMicrophonePermission permission;
+    const Qt::PermissionStatus status = app->checkPermission(permission);
+    const MicAccess access = status == Qt::PermissionStatus::Granted ? MicAccess::Granted
+                           : status == Qt::PermissionStatus::Denied ? MicAccess::Denied
+                                                                    : MicAccess::Undetermined;
+
+    switch (micStep(access)) {
+    case MicStep::Start:
+        start();
+        break;
+    case MicStep::Ask:
+        // The system shows its question. The handler runs on the Qt thread when the user answers.
+        app->requestPermission(permission, app, [this, start](const QPermission &answer) {
+            if (answer.status() == Qt::PermissionStatus::Granted) {
+                start();
+            }
+            else {
+                mSessionWrapper->showStatus(QString::fromUtf8(micDeniedMessage()));
+                mConfig->setPaused(true);
+            }
+        });
+        break;
+    case MicStep::ShowDenied:
+        mSessionWrapper->showStatus(QString::fromUtf8(micDeniedMessage()));
+        mConfig->setPaused(true);
+        break;
+    }
 }
 
 void ContextManager::startCapture()

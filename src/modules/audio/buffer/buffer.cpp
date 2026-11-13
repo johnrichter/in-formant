@@ -13,7 +13,7 @@ std::atomic_int Buffer::sId(0);
 Buffer::Buffer(double sampleRate)
     : mId(sId++),
       mSampleRate(sampleRate),
-      mQueue(1024)
+      mQueue(capacity)
 {
 }
 
@@ -51,8 +51,13 @@ void Buffer::pull(double *pOut, int outLength)
 
 void Buffer::push(const float *pIn, int inLength)
 {
+    // The audio thread of the system runs this function. try_enqueue never allocates memory, and it never
+    // blocks. A full buffer drops the sample, and the counter records it.
     for (int i = 0; i < inLength; ++i) {
-        mQueue.enqueue(pIn[i]);
+        if (!mQueue.try_enqueue(pIn[i])) {
+            mDropped.fetch_add(inLength - i, std::memory_order_relaxed);
+            return;
+        }
     }
 }
 

@@ -397,6 +397,11 @@ The scroll views of the settings, the help pages, the help boxes, the Synthesize
 - **TP-CAP-13** (Manual, P2). Use a Bluetooth microphone that changes its sample rate when the output opens. Expect no crash and no wrong pitch.
 - **TP-CAP-14** (Manual, P3). Deny the microphone permission. Expect a clear message.
 - **TP-CAP-15** (Unit, P2). Stop the synthesizer and the playback stream before the audio system restarts, and start them after. Expect no write to a closed stream.
+- **TP-CAP-16** (Unit, P1). The capture buffer reserves 1048576 samples at the start, and a push never allocates memory. A push into a full buffer drops the samples and counts them. The samples keep their order. The buffer takes samples again after the reader catches up.
+
+- **TP-CAP-17** (Unit, P1). Press play with the permission for the microphone in each state. Granted starts the capture. Undetermined asks the system. Denied stays paused and shows a message that names the System Settings.
+- **TP-CAP-18** (Manual, P1). Reset the permission with `tccutil reset Microphone fr.cloyunhee.InFormant`, and start the app. Expect no question at the start. Press play. Expect the question of the system, and the capture after you allow it.
+- **TP-CAP-19** (Manual, P1). Deny the microphone, and press play. Expect the paused state and the message with the System Settings. Allow it in the System Settings, and press play. Expect the capture.
 
 ## 12. Settings and persistence
 
@@ -568,6 +573,9 @@ The scroll views of the settings, the help pages, the help boxes, the Synthesize
 - **TP-REL-07** (Manual, P3). Run the app with the Sound settings of the system set to a sample rate of 8000, 48000, and 192000 Hz.
 - **TP-REL-09** (Unit, P1). Check that the build script downloads over https only and checks a pinned SHA-256 checksum for each download. Check that it pins the Python tools and that both scripts use the same Qt version.
 - **TP-REL-10** (Manual, P1). Change `QT_VERSION` and run `build-macos.sh` on a used build folder. Expect the script to delete the old build folder, and the app to link the new Qt.
+- **TP-REL-11** (Unit, P1). Check that the build script signs ad hoc by default, and with the hardened runtime, the entitlements, and a timestamp for a Developer ID. Check the entitlements for the microphone and the Qt Quick compiler, and the microphone text in the Info.plist. Check that the program links the static permission plugin of the microphone, because Qt reports a denied microphone without it.
+- **TP-REL-12** (Manual, P1). Run `SIGN_IDENTITY` with a Developer ID and `NOTARY_PROFILE`. Expect the status Accepted from Apple, a stapled ticket, and a start of the app on another Mac with no warning of Gatekeeper.
+- **TP-REL-13** (Manual, P2). Sign the app with the hardened runtime and the entitlements, and start it. Expect the window, the QML, and the capture to work.
 - **TP-REL-08** (Unit, P1). Check that the code of the app has no condition for another system, no choice of audio backend, and no optional library. Check that the build file stops on any other system.
 
 ## 21. Load and long sessions
@@ -602,6 +610,14 @@ Some cases need a small change in the code. Do these changes first, because they
 - **A hook for tests that stays out of release builds.** The project used a temporary hook in `src/context/guicontext.cpp` for each screenshot. A test-only target with its own entry point replaces it, so no test depends on a hook that must never be committed.
 - **Names for objects in QML.** Give an `objectName` to each control that a test must press (the reset button, the reset dialog, the segmented control, and the tabs).
 - Whether the warm-up ranks are right for a given voice.
+
+## 26. The log file
+
+- **TP-LOG-01** (Unit, P1). The log file is `~/Library/Logs/InFormant/InFormant.log`, and the file of the last run is `InFormant.1.log`.
+- **TP-LOG-02** (Unit, P2). A file over 5 MB moves to the second file when the program starts.
+- **TP-LOG-03** (Unit, P2). Each line gets one stamp. A line can span two chunks of text, and an open line waits for its end.
+- **TP-LOG-04** (Unit, P2). A line longer than 4096 bytes breaks into two lines and loses no byte.
+- **TP-LOG-05** (Manual, P1). Start the app from Finder, and not from a shell. Expect the file `InFormant.log` in the folder `~/Library/Logs/InFormant`, with lines that have stamps. Expect no file in the folder `/`.
 
 ## 25. The oscilloscope
 

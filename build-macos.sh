@@ -12,10 +12,16 @@
 #   QT_VERSION     The Qt version that aqtinstall installs (default 6.12.0)
 #   WORK_DIR       The folder for downloads and build files (default build/native)
 #   JOBS           The number of parallel jobs (default: the number of CPU cores)
+#   SIGN_IDENTITY  The name of a code signing identity, for example "Developer ID Application: Name (TEAMID)".
+#                  The default is - (an ad hoc signature, which works on this Mac only).
+#   NOTARY_PROFILE The keychain profile of notarytool. With a profile, the script notarizes the application
+#                  and the disk image. It needs a SIGN_IDENTITY.
 
 set -euo pipefail
 
 BUILD_TYPE=${BUILD_TYPE:-Release}
+SIGN_IDENTITY=${SIGN_IDENTITY:--}
+NOTARY_PROFILE=${NOTARY_PROFILE:-}
 QT_VERSION=${QT_VERSION:-6.12.0}
 FFTW_VERSION=3.3.10
 PORTAUDIO_URL=https://files.portaudio.com/archives/pa_stable_v190700_20210406.tgz
@@ -187,16 +193,47 @@ done < <(find "$build" -name '*.dylib' -exec dirname {} \; | sort -u)
 "$qt_dir/bin/macdeployqt" "$app" -qmldir="$root/src/qml" "${libpaths[@]}"
 
 # The deployment step changes library paths, and that breaks the signatures. Apple silicon refuses to
-# run an arm64 file with an invalid signature, so sign the whole bundle again (ad hoc).
+# run an arm64 file with an invalid signature, so sign the whole bundle again. With no SIGN_IDENTITY the
+# signature is ad hoc. A Developer ID identity adds the hardened runtime and a secure timestamp, which
+# the notarization needs. The entitlements give the application the microphone and the Qt Quick compiler.
 step "Sign the bundle"
-codesign --force --deep --sign - "$app"
+if [ "$SIGN_IDENTITY" = "-" ]; then
+    codesign --force --deep --sign - "$app"
+else
+    codesign --force --deep --options runtime --timestamp \
+        --entitlements "$root/dist-res/InFormant.entitlements" --sign "$SIGN_IDENTITY" "$app"
+fi
 codesign --verify --deep --strict "$app"
+
+# Notarization sends the application to Apple, and it staples the ticket to the file. It needs a Developer ID
+# identity and a profile of notarytool in the keychain (xcrun notarytool store-credentials).
+notarize() {
+    # notarize FILE: submit one file, and wait for the result
+    xcrun notarytool submit "$1" --keychain-profile "$NOTARY_PROFILE" --wait
+}
+if [ -n "$NOTARY_PROFILE" ]; then
+    [ "$SIGN_IDENTITY" != "-" ] || die "NOTARY_PROFILE needs a SIGN_IDENTITY of a Developer ID"
+    step "Notarize the application"
+    ditto -c -k --keepParent "$app" "$stage/InFormant.zip"
+    notarize "$stage/InFormant.zip"
+    rm -f "$stage/InFormant.zip"
+    xcrun stapler staple "$app"
+fi
 
 step "Make the disk image"
 ln -s /Applications "$stage/Applications"
 dmg=$root/dist/InFormant-$version-macOS-arm64.dmg
 rm -f "$dmg"
 hdiutil create -volname InFormant -srcfolder "$stage" -ov -format UDZO "$dmg"
+
+if [ "$SIGN_IDENTITY" != "-" ]; then
+    codesign --force --timestamp --sign "$SIGN_IDENTITY" "$dmg"
+fi
+if [ -n "$NOTARY_PROFILE" ]; then
+    step "Notarize the disk image"
+    notarize "$dmg"
+    xcrun stapler staple "$dmg"
+fi
 
 echo
 echo "Done: $dmg"

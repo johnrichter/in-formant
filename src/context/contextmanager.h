@@ -13,6 +13,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <functional>
 #include <mutex>
 #include <thread>
 
@@ -60,6 +61,8 @@ namespace Main {
         // calls these functions. The capture starts when startCapture is true.
         void reinitializeAudio(bool startCapture);
         bool captureDeviceIsStale();
+        // Starts the capture when the user allows the microphone. The first call shows the question of the system.
+        void requestMicrophoneThen(std::function<void()> start);
         void startCapture();
         void onAudioDevicesChanged();
 

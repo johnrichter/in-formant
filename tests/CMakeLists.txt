@@ -142,3 +142,16 @@ target_compile_definitions(help_font_tests PRIVATE INFORMANT_SOURCE_DIR="${PROJE
 
 # The trace of the oscilloscope: the trigger and the scale.
 informant_add_test(NAME scope_trace_tests SOURCES scope_trace_test.cpp LABELS scope)
+
+# The capture buffer. The audio thread of the system pushes into it, so it must not allocate memory.
+informant_add_test(NAME buffer_tests
+    SOURCES buffer_test.cpp ${AUDIO_SOURCES}
+    LIBS rpcxx_only lsr
+    LABELS buffer)
+target_include_directories(buffer_tests SYSTEM PRIVATE ${APP_HEADER_INCLUDES})
+
+# The rules of the log file: the folder, the rotation, and the lines with stamps.
+informant_add_test(NAME log_format_tests SOURCES log_format_test.cpp LABELS log)
+
+# The choice of the program for each state of the microphone permission.
+informant_add_test(NAME mic_access_tests SOURCES mic_access_test.cpp LABELS mic_access)

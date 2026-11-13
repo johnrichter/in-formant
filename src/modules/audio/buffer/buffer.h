@@ -21,6 +21,15 @@ namespace Module::Audio {
         double getSampleRate() const;
         int getLength() const;
 
+        // The number of samples that the buffer holds without a new allocation. The audio thread of the system
+        // calls push, and it must never allocate memory. So the buffer reserves this space when it starts. It is
+        // 21 seconds at 48000 Hz.
+        static constexpr int capacity = 1 << 20;
+
+        // The number of samples that push dropped, because the buffer was full. The reader is then more than
+        // 21 seconds behind.
+        long long droppedSamples() const { return mDropped.load(); }
+
         void pull(double *pOut, int outLength);
         void push(const float *pIn, int inLength);
 
@@ -32,6 +41,7 @@ namespace Module::Audio {
         double mSampleRate;
 
         moodycamel::BlockingReaderWriterQueue<float> mQueue;
+        std::atomic<long long> mDropped {0};
 
         static std::atomic_bool sCancel;
         static std::atomic_int sId;

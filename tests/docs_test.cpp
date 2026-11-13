@@ -545,6 +545,33 @@ TEST(Release, TP_REL_09_TheBuildScriptPinsAndChecksItsDownloads)
     EXPECT_EQ(qtVersion(build), qtVersion(tests));
 }
 
+// The signing rules. The default is an ad hoc signature. A Developer ID identity adds the hardened runtime, the
+// entitlements for the microphone and the Qt Quick compiler, and the secure timestamp. The microphone text is in
+// the Info.plist, because macOS ends the program without it when the program asks for the microphone.
+TEST(Release, TP_REL_11_TheSigningRulesAndTheMicrophoneEntitlementAreInPlace)
+{
+    const std::string build = readFile(root / "build-macos.sh");
+    EXPECT_NE(build.find("SIGN_IDENTITY=${SIGN_IDENTITY:--}"), std::string::npos);
+    EXPECT_NE(build.find("--options runtime"), std::string::npos);
+    EXPECT_NE(build.find("--entitlements"), std::string::npos);
+    EXPECT_NE(build.find("--timestamp"), std::string::npos);
+    EXPECT_NE(build.find("notarytool submit"), std::string::npos);
+    EXPECT_NE(build.find("stapler staple"), std::string::npos);
+
+    const std::string entitlements = readFile(root / "dist-res/InFormant.entitlements");
+    EXPECT_NE(entitlements.find("com.apple.security.device.audio-input"), std::string::npos);
+    EXPECT_NE(entitlements.find("com.apple.security.cs.allow-jit"), std::string::npos);
+
+    // Qt reports a denied microphone when the static permission plugin is not in the program.
+    const std::string cmake = readFile(root / "CMakeLists.txt");
+    EXPECT_NE(cmake.find("qt6_import_plugins(in-formant INCLUDE Qt6::QDarwinMicrophonePermissionPlugin)"), std::string::npos);
+
+    const std::string plist = readFile(root / "dist-res/Info.plist");
+    const size_t at = plist.find("NSMicrophoneUsageDescription");
+    ASSERT_NE(at, std::string::npos);
+    EXPECT_NE(plist.find("<string>", at), std::string::npos);
+}
+
 namespace {
 
 struct Block {

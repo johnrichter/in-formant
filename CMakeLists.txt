@@ -8,7 +8,7 @@ elseif(NOT CMAKE_OSX_DEPLOYMENT_TARGET)
 endif()
 
 if("x${CUR_VERSION}" STREQUAL "x")
-    set(CUR_VERSION "3.2.11")
+    set(CUR_VERSION "3.3.0")
 endif()
 
 string(FIND "${CUR_VERSION}" "-" dash_pos)
@@ -269,6 +269,10 @@ target_include_directories(in-formant SYSTEM PRIVATE ${FFTW_INCLUDE_DIRS} ${port
 target_link_libraries(in-formant PRIVATE Eigen3::Eigen ${FFTW_LIBRARIES} ${portaudio_LIBRARIES} Qt6::Quick Qt6::QuickControls2 Qt6::QuickTemplates2 Qt6::Qml Qt6::Widgets Qt6::OpenGL Qt6::Svg Qt6::Gui Qt6::Core)
 target_link_directories(in-formant PRIVATE ${FFTW_LIBRARY_DIRS} ${portaudio_LIBRARY_DIRS})
 target_link_libraries(in-formant PRIVATE "-framework AudioToolbox" "-framework CoreAudio" "-framework CoreFoundation" "-framework AVFoundation" "-framework CoreMedia" "-framework CoreVideo" "-framework Foundation")
+
+# The permission plugin for the microphone is a static plugin. Without it, Qt reports the permission as denied,
+# and the program cannot ask the user.
+qt6_import_plugins(in-formant INCLUDE Qt6::QDarwinMicrophonePermissionPlugin)
 
 set(BUILD_SHARED_LIBS TRUE)
 add_subdirectory(external/freetype EXCLUDE_FROM_ALL)

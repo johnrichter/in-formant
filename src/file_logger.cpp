@@ -1,115 +1,95 @@
 #include "file_logger.h"
+#include "logformat.h"
 
-
-#define _GNU_SOURCE
+#include <errno.h>
 #include <fcntl.h>
+#include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
-#include <limits.h>
-#include <sys/stat.h>
-#include <signal.h>
-//#include <sys/prctl.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
+#include <unistd.h>
 
-static void appendToLine(char *linebuf, const char *str, size_t strsz)
+#include <string>
+
+static std::string homeFolder()
 {
-    if (linebuf[0] == '\0') {
-        time_t timer;
-        struct tm* tm_info;
+    if (const char *home = getenv("HOME")) {
+        if (*home != '\0') return home;
+    }
+    if (const struct passwd *entry = getpwuid(getuid())) return entry->pw_dir;
+    return std::string();
+}
 
-        timer = time(NULL);
-        tm_info = localtime(&timer);
+// Opens the log file in ~/Library/Logs/InFormant. A file that is too large moves to a second file first.
+// The function returns -1 when no file can be opened.
+static int openLogFile(const char *name)
+{
+    const std::string home = homeFolder();
+    if (home.empty()) return -1;
 
-        strftime(linebuf, 23, "[%Y-%m-%d %H:%M:%S] ", tm_info);
+    mkdir((home + "/Library").c_str(), 0700);
+    mkdir((home + "/Library/Logs").c_str(), 0755);
+    mkdir(LogFormat::folder(home).c_str(), 0755);
+
+    const std::string path = LogFormat::file(home, name);
+    struct stat info;
+    if (stat(path.c_str(), &info) == 0 && LogFormat::needsRotation((long long) info.st_size)) {
+        rename(path.c_str(), LogFormat::rotatedFile(home, name).c_str());
     }
 
-    strncat(linebuf, str, strsz);
+    return open(path.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
+}
+
+static std::string timeStamp()
+{
+    const time_t timer = time(NULL);
+    struct tm info;
+    localtime_r(&timer, &info);
+    char text[32];
+    strftime(text, sizeof(text), "[%Y-%m-%d %H:%M:%S] ", &info);
+    return text;
 }
 
 void openFileLogger(const char *name) {
-    char filename[32];
-    snprintf(filename, 32, "%s.log", name);
-
-    int fd = open(filename, O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
-    
+    int fd = openLogFile(name);
     if (fd == -1) {
         perror("open");
         return;
     }
 
     int pipefd[2];
-    pipe(pipefd);
+    if (pipe(pipefd) != 0) {
+        perror("pipe");
+        close(fd);
+        return;
+    }
 
-    pid_t ppid = getpid();
     pid_t cpid = fork();
     if (cpid == -1) {
         perror("fork");
+        close(fd);
+        close(pipefd[0]);
+        close(pipefd[1]);
         return;
     }
 
     if (cpid == 0) {
-       /* int r = prctl(PR_SET_PDEATHSIG, SIGTERM);
-        if (r == -1) {
-            perror("prctl");
-            exit(EXIT_FAILURE);
-        }
-        if (getppid() != ppid) {
-            exit(EXIT_FAILURE);
-        } */
-
         close(pipefd[1]);
 
-        char linebuf[1024];
-        linebuf[0] = '\0';
+        LogFormat::LineBuilder builder;
+        auto sink = [fd](const std::string &line) {
+            (void) !write(STDOUT_FILENO, line.data(), line.size());
+            (void) !write(fd, line.data(), line.size());
+        };
 
-        int count = 0;
-        char rdbuf[33];
-        while ((count = read(pipefd[0], rdbuf, 32)) >= 0) {
-            if (count == -1) {
-                perror("read");
-                break;
-            }
-            // The end of the file means that the application closed its end of the pipe.
-            // Stop, or this process stays alive after the application exits.
-            if (count == 0) {
-                break;
-            }
-
-            rdbuf[count] = '\0';
-
-            char *pch;
-            pch = (char *) memchr(rdbuf, '\n', count);
-
-            if (pch == NULL) {
-                appendToLine(linebuf, rdbuf, count);
-            }
-            else {
-                appendToLine(linebuf, rdbuf, pch - rdbuf + 1);
-                write(STDOUT_FILENO, linebuf, strnlen(linebuf, 1024));
-                write(fd, linebuf, strnlen(linebuf, 1024));
-                linebuf[0] = '\0';
-
-                pch++;
-                count -= pch - rdbuf;
-
-                char *pch2;
-                while (count > 0 && (pch2 = (char *) memchr(pch, '\n', count)) != NULL) {
-                    appendToLine(linebuf, pch, pch2 - pch + 1);
-                    write(STDOUT_FILENO, linebuf, strnlen(linebuf, 1024));
-                    write(fd, linebuf, strnlen(linebuf, 1024));
-                    linebuf[0] = '\0';
-
-                    pch = pch2 + 1;
-                    count -= pch2 - pch;
-                }
-
-                appendToLine(linebuf, pch, count);
-            }
-
-            usleep(10000);
+        char buffer[4096];
+        ssize_t count;
+        // The end of the file means that the application closed its end of the pipe.
+        // Stop, or this process stays alive after the application exits.
+        while ((count = read(pipefd[0], buffer, sizeof(buffer))) > 0) {
+            builder.feed(buffer, (size_t) count, timeStamp, sink);
         }
 
         close(fd);
@@ -128,4 +108,3 @@ void openFileLogger(const char *name) {
         dup2(pipefd[1], STDERR_FILENO);
     }
 }
-
