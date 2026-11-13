@@ -46,7 +46,6 @@ OverviewItem::OverviewItem(QQuickItem *parent)
       mCacheBinSamples(0),
       mCachePitchEnd(-1),
       mCacheVersion(0),
-      mLastDuration(-1.0),
       mShownDuration(1.0),
       mSoundDirty(true),
       mPeak(0.02f),
@@ -76,22 +75,11 @@ double OverviewItem::shownDuration()
     if (sDataStore == nullptr) return 1.0;
 
     const double duration = sDataStore->session().duration();
-    const auto now = std::chrono::steady_clock::now();
-    const bool restarted = duration < mLastDuration;
-    if (duration != mLastDuration) {
-        mLastDuration = duration;
-        mDurationStamp = now;
-    }
-
+    const double now = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
     const bool running = sConfig != nullptr && sConfig->getSessionMode() == 0 && !sConfig->isPaused() && sConfig->getViewLive();
-    double shown = duration;
-    if (running) {
-        // The sound arrives in blocks. Between two blocks, the length grows with the clock, up to a short limit.
-        shown += std::min(std::chrono::duration<double>(now - mDurationStamp).count(), 0.25);
-        // The length never goes back while the capture runs. A late block of sound would else move the map back.
-        if (!restarted) shown = std::max(shown, mShownDuration);
-    }
-    mShownDuration = std::max(shown, 1.0);
+
+    // The sound arrives in blocks. Between two blocks, the length grows with the clock, up to a short limit.
+    mShownDuration = updateShownDuration(mClock, duration, now, running);
     return mShownDuration;
 }
 
@@ -211,11 +199,10 @@ void OverviewItem::rebuildCache(const MapView &view, long long binSamples, const
     // loudness scale at once. A quieter sound lowers it in about a second.
     const auto now = std::chrono::steady_clock::now();
     const double elapsed = std::clamp(std::chrono::duration<double>(now - mCacheTime).count(), 0.0, 2.0);
-    const double blend = 1.0 - std::exp(-elapsed / 1.0);
 
-    float target = 0.02f;
+    float target = mapMinimumPeak;
     for (int i = visibleFirst; i < visibleEnd; ++i) target = std::max({ target, mHigh[(size_t) i], -mLow[(size_t) i] });
-    mPeak = target >= mPeak ? target : mPeak - (float) blend * (mPeak - target);
+    mPeak = updateMapPeak(mPeak, target, elapsed);
     mPitch.assign((size_t) bins.count, 0.0f);
     sDataStore->beginRead();
     auto &track = sDataStore->getPitchTrack();
@@ -272,15 +259,9 @@ void OverviewItem::rebuildCache(const MapView &view, long long binSamples, const
         // The scale of the pitch fits the pitch in the map, with a margin. It grows at once and
         // shrinks slowly. It always covers at least one octave.
         if (highest > 0.0) {
-            double targetLow = lowest / 1.15;
-            double targetHigh = highest * 1.15;
-            if (targetHigh / targetLow < 2.0) {
-                const double centre = std::sqrt(targetLow * targetHigh);
-                targetLow = centre / std::sqrt(2.0);
-                targetHigh = centre * std::sqrt(2.0);
-            }
-            mPitchLow = targetLow < mPitchLow ? targetLow : mPitchLow + blend * (targetLow - mPitchLow);
-            mPitchHigh = targetHigh > mPitchHigh ? targetHigh : mPitchHigh + blend * (targetHigh - mPitchHigh);
+            const MapPitchScale scale = updateMapPitchScale({ mPitchLow, mPitchHigh }, lowest, highest, elapsed);
+            mPitchLow = scale.low;
+            mPitchHigh = scale.high;
         }
     }
     sDataStore->endRead();
@@ -361,7 +342,7 @@ void OverviewItem::paint(QPainter *painter)
 
     // The pitch is a line. It breaks where the track has no pitch for more than 70 ms, and where
     // a bin is empty. A bin that has no neighbour draws nothing.
-    const int maxGap = std::max(1, (int) std::ceil(0.07 / perBin));
+    const int maxGap = mapMaxGapBins(perBin);
     painter->setRenderHint(QPainter::Antialiasing, true);
     painter->setPen(QPen(mTheme.pitch, 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     const double logRange = std::log(mPitchHigh / mPitchLow);
@@ -370,15 +351,8 @@ void OverviewItem::paint(QPainter *painter)
         const double y = std::clamp(std::log(mPitch[(size_t) i] / mPitchLow) / logRange, 0.0, 1.0);
         return QPointF((t - view.start) * pixelsPerSecond, (plotH - 3) - y * (plotH - 6));
     };
-    const int pitchBins = (int) std::min<size_t>(mPitch.size(), (size_t) endDrawn);
-    int previous = -1;
-    for (int i = std::max(0, firstDrawn - maxGap - 1); i < pitchBins; ++i) {
-        if (mPitch[(size_t) i] <= 0) continue;
-
-        if (previous >= 0 && i - previous <= maxGap) {
-            painter->drawLine(pitchPoint(previous), pitchPoint(i));
-        }
-        previous = i;
+    for (const MapPitchPiece &piece : mapPitchPieces(mPitch, firstDrawn, endDrawn, maxGap)) {
+        painter->drawLine(pitchPoint(piece.from), pitchPoint(piece.to));
     }
     painter->setRenderHint(QPainter::Antialiasing, false);
 

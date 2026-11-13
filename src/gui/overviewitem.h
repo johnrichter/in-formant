@@ -92,9 +92,8 @@ namespace Gui {
         Key mKey;
 
         // The time of the last block of sound, and the length that the map shows now.
-        double mLastDuration;
         double mShownDuration;
-        std::chrono::steady_clock::time_point mDurationStamp;
+        Gui::MapClock mClock;
 
         // True when the sound or the pitch is newer than the cache. The check runs a few times in a second.
         bool mSoundDirty;

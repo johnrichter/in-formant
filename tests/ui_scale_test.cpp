@@ -157,6 +157,22 @@ TEST(UiScale, TP_UI_13_TextContrast)
     }
 }
 
+// TP-UI-04: the grey hint colour reads on the dark window and on the surface with a contrast of at least 4.5 to 1.
+// The secondary colour is the hint colour. It is a grey with a small tint, so its channels are close to each other.
+TEST(UiScale, TP_UI_04_HintColourContrast)
+{
+    const ColorToken &hint = textColors[1];
+    EXPECT_STREQ(hint.name, "secondary");
+    EXPECT_GE(contrast(hint.rgb, windowBackground), 4.5);
+    EXPECT_GE(contrast(hint.rgb, surfaceBackground), 4.5);
+    // The window is dark, and the hint is lighter than the window.
+    EXPECT_LT(contrast(0x000000, windowBackground), contrast(hint.rgb, windowBackground));
+    const int r = (hint.rgb >> 16) & 0xff, g = (hint.rgb >> 8) & 0xff, b = hint.rgb & 0xff;
+    EXPECT_LE(std::max({ r, g, b }) - std::min({ r, g, b }), 24);
+    // The least important text, the tertiary colour, also reads at 4.5 to 1 on the surface.
+    EXPECT_GE(contrast(textColors[2].rgb, surfaceBackground), 4.5);
+}
+
 // A line of text has about 70 characters at the body size (the average character is 0.5 times the size).
 TEST(UiScale, TextMeasureHasAboutSeventyCharacters)
 {

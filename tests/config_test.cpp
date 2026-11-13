@@ -24,14 +24,6 @@ using namespace Main;
 
 // The audio code is not part of this test program. The configuration asks for the default backend
 // only when the file has no value, and the tests never use that value.
-// The theme code asks the painter class for the default color map. The painter class needs the
-// window system, so the test program supplies a plain map. These tests do not read colors.
-const QVector<QRgb> &QPainterWrapper::defaultColorMap()
-{
-    static const QVector<QRgb> map(256, qRgb(0, 0, 0));
-    return map;
-}
-
 namespace Main {
 Module::Audio::Backend getDefaultAudioBackend()
 {

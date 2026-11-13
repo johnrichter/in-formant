@@ -59,13 +59,25 @@ add_library(tomlpp_for_tests STATIC ${SRC}/tomlplusplus.cpp)
 target_include_directories(tomlpp_for_tests SYSTEM PUBLIC ${PROJECT_SOURCE_DIR}/${TOMLPP_INCLUDE_DIR})
 informant_add_test(NAME config_migration_tests SOURCES config_migration_test.cpp LIBS tomlpp_for_tests LABELS config_migration)
 
+# The code that includes config.h or qpainterwrapper.h needs the headers of all Qt modules of the program.
+set(APP_HEADER_LIBS tomlpp_for_tests Eigen3::Eigen rpcxx_only Qt6::Quick Qt6::QuickControls2 Qt6::QuickTemplates2
+    Qt6::Qml Qt6::Widgets Qt6::OpenGL Qt6::Svg Qt6::Gui Qt6::Core freetype lsr)
+set(APP_HEADER_INCLUDES ${ARMADILLO_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/external/libsamplerate/src)
+
 # The settings. The configuration class needs the theme code and the TOML library. The audio backend
 # lookup lives in the audio code, so the test program supplies a stand-in for it.
 informant_add_test(NAME config_tests
-    SOURCES config_test.cpp ${SRC}/context/config.cpp ${SRC}/gui/theme.cpp
-    LIBS tomlpp_for_tests Eigen3::Eigen rpcxx_only Qt6::Quick Qt6::QuickControls2 Qt6::QuickTemplates2 Qt6::Qml Qt6::Widgets Qt6::OpenGL Qt6::Svg Qt6::Gui Qt6::Core freetype lsr
+    SOURCES config_test.cpp ${SRC}/context/config.cpp ${SRC}/gui/theme.cpp ${SRC}/gui/cmap.cpp
+    LIBS ${APP_HEADER_LIBS}
     LABELS config)
-target_include_directories(config_tests SYSTEM PRIVATE ${ARMADILLO_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/external/libsamplerate/src)
+target_include_directories(config_tests SYSTEM PRIVATE ${APP_HEADER_INCLUDES})
+
+# The colour themes, the quiet end of the colour maps, and the colour of the grid.
+informant_add_test(NAME color_tests
+    SOURCES color_test.cpp ${SRC}/gui/theme.cpp ${SRC}/gui/cmap.cpp
+    LIBS ${APP_HEADER_LIBS}
+    LABELS color)
+target_include_directories(color_tests SYSTEM PRIVATE ${APP_HEADER_INCLUDES})
 
 # The statistics in the table of the readouts. They need the note names of the tick code.
 informant_add_test(NAME readout_stats_tests SOURCES readout_stats_test.cpp ${SRC}/gui/ticks.cpp LIBS Qt6::Gui LABELS readout_stats)

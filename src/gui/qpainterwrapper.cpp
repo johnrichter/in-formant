@@ -88,11 +88,6 @@ double QPainterWrapper::mapFrequencyToY(double frequency)
     return mapFrequencyToY(frequency, plotHeight(), mFrequencyScale, mMinFrequency, mMaxFrequency);
 }
 
-const QVector<QRgb>& QPainterWrapper::defaultColorMap()
-{
-    return cmap;
-}
-
 void QPainterWrapper::setOptions(const Gui::RenderOptions &options)
 {
     mOptions = options;

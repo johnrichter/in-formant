@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 // The pure logic of the session map: which part of the session the map shows, and the bins of its
 // picture. The functions have no drawing code, so a test can run them.
@@ -139,6 +140,101 @@ inline double dragViewSpan(double span, double duration, double mapWindow)
 {
     const double limit = std::max(std::max(duration, mapWindow), minViewSpan);
     return std::clamp(std::round(span * 10.0) / 10.0, minViewSpan, std::min(limit, maxViewSpan));
+}
+
+// The length of the session that the map shows. The sound arrives in blocks, and the length of the session grows in
+// steps. Between two blocks, the shown length grows with the clock, up to a short limit, so the map moves smoothly.
+// The clock is a number of seconds from any start, so a test can use a fake clock.
+struct MapClock {
+    double lastDuration = -1.0;     // the length of the session at the last call
+    double stamp = 0.0;             // the time of the last change of the length
+    double shown = 1.0;             // the length that the map shows
+};
+
+constexpr double mapSmoothLimit = 0.25;
+
+inline double updateShownDuration(MapClock &clock, double duration, double now, bool running)
+{
+    // A length that is shorter than before means that the session started again (a reset or a new file).
+    const bool restarted = duration < clock.lastDuration;
+    if (duration != clock.lastDuration) {
+        clock.lastDuration = duration;
+        clock.stamp = now;
+    }
+
+    double shown = duration;
+    if (running) {
+        shown += std::min(std::max(now - clock.stamp, 0.0), mapSmoothLimit);
+        // The length never goes back while the capture runs. A late block of sound would else move the map back.
+        if (!restarted) shown = std::max(shown, clock.shown);
+    }
+    clock.shown = std::max(shown, 1.0);
+    return clock.shown;
+}
+
+// The scale of the loudness of the map. A louder sound raises the scale at once, so no sound is cut off. A quieter
+// sound lowers it with a time constant of one second. The change follows the clock, and not the number of drawings,
+// so ten drawings in a second give the same scale as two drawings. The elapsed time is limited to 2 seconds.
+constexpr float mapMinimumPeak = 0.02f;
+
+inline float updateMapPeak(float peak, float target, double elapsedSeconds)
+{
+    target = std::max(target, mapMinimumPeak);
+    const double elapsed = std::clamp(elapsedSeconds, 0.0, 2.0);
+    const double blend = 1.0 - std::exp(-elapsed / 1.0);
+    return target >= peak ? target : peak - (float) blend * (peak - target);
+}
+
+// The scale of the pitch line of the map, in Hz. The scale fits the pitch in the map with a margin of 15 percent.
+// It grows at once and shrinks slowly. It always covers at least one octave.
+struct MapPitchScale {
+    double low = 60.0;
+    double high = 600.0;
+};
+
+inline MapPitchScale updateMapPitchScale(MapPitchScale scale, double lowest, double highest, double elapsedSeconds)
+{
+    if (!(highest > 0.0) || !(lowest > 0.0)) return scale;
+    const double blend = 1.0 - std::exp(-std::clamp(elapsedSeconds, 0.0, 2.0) / 1.0);
+
+    double targetLow = lowest / 1.15;
+    double targetHigh = highest * 1.15;
+    if (targetHigh / targetLow < 2.0) {
+        const double centre = std::sqrt(targetLow * targetHigh);
+        targetLow = centre / std::sqrt(2.0);
+        targetHigh = centre * std::sqrt(2.0);
+    }
+    scale.low = targetLow < scale.low ? targetLow : scale.low + blend * (targetLow - scale.low);
+    scale.high = targetHigh > scale.high ? targetHigh : scale.high + blend * (targetHigh - scale.high);
+    return scale;
+}
+
+// The pitch line breaks where the track has no pitch for more than 70 ms, and where a bin is empty. The number is
+// the largest distance in bins between two bins that the line joins. A bin that is wider than 70 ms joins its
+// neighbour only.
+inline int mapMaxGapBins(double secondsPerBin)
+{
+    return std::max(1, (int) std::ceil(0.07 / secondsPerBin));
+}
+
+// The pieces of the pitch line. Each piece is a pair of bins that the line joins. The pitch of a bin is 0 when the
+// bin has no pitch. The bins from first to end (not including end) are in view.
+struct MapPitchPiece {
+    int from;
+    int to;
+};
+
+inline std::vector<MapPitchPiece> mapPitchPieces(const std::vector<float> &pitch, int first, int end, int maxGap)
+{
+    std::vector<MapPitchPiece> pieces;
+    const int count = (int) std::min<size_t>(pitch.size(), (size_t) std::max(end, 0));
+    int previous = -1;
+    for (int i = std::max(0, first - maxGap - 1); i < count; ++i) {
+        if (pitch[(size_t) i] <= 0) continue;
+        if (previous >= 0 && i - previous <= maxGap) pieces.push_back({ previous, i });
+        previous = i;
+    }
+    return pieces;
 }
 
 }

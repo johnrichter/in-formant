@@ -575,6 +575,7 @@ These items need a person.
 - Whether the help pages are clear for a first-time reader.
 - Whether the new flipped direction of time feels right to a person who reads the graph every day.
 - Whether the purple fill of the chosen button is obvious to a person with low vision or a colour deficiency.
+- **Some track colours are close to their own map.** The test TP-COL-04 sets a floor of 0.025 in OKLab. The themes Gay MLM (0.030), Rainbow (0.035), and Ember (0.039) are close to that floor. The dark outline of the tracks keeps them visible.
 
 ## 23. Code that needs a change before a test can reach it
 
@@ -583,6 +584,8 @@ Some cases need a small change in the code. Do these changes first, because they
 - **A free function for the time mapping.** Done. `plotTimeToX` and `plotXToTime` in `src/gui/plotmap.h` take the graph, the time range, and the flip. TP-FLIP-07 uses them.
 - **A `Config` on a table in memory.** Done. The constructor `Config(toml::table)` never reads or writes the file. TP-RST-02 to TP-RST-04, TP-SET-16, and TP-SET-17 use it.
 - **The layout of the graph without a window.** Done for the layout and for the grid lines. `computeGraphLayout` in `src/gui/graphlayout.h` takes a text measure, and `makeGridLines` in `src/gui/gridlines.h` returns the rows. The cases TP-LAY and TP-GRID-08 to TP-GRID-09 use them.
+- **Colour and grid rules without a window.** Done. `gridLineColor` in `src/gui/gridcolor.h` returns the grid colour, and `defaultColorMap` lives in `src/gui/cmap.cpp`. The target `color_tests` builds the themes and tests them without Qt Quick. TP-COL, TP-GRD-11, and TP-QUI use them.
+- **The map rules without a window.** Done. `src/gui/maplayout.h` holds the clock, the loudness scale, the pitch scale, and the gap rule of the map. A fake clock replaces the system clock in TP-MAP-26.
 - **A hook for tests that stays out of release builds.** The project used a temporary hook in `src/context/guicontext.cpp` for each screenshot. A test-only target with its own entry point replaces it, so no test depends on a hook that must never be committed.
 - **Names for objects in QML.** Give an `objectName` to each control that a test must press (the reset button, the reset dialog, the segmented control, and the tabs).
 - Whether the warm-up ranks are right for a given voice.

@@ -5,6 +5,7 @@
 #include "readoutstats.h"
 #include "graphlayout.h"
 #include "gridlines.h"
+#include "gridcolor.h"
 #include "bands.h"
 #include "../context/timings.h"
 #include <QElapsedTimer>
@@ -210,17 +211,8 @@ std::vector<Gui::Tick> QPainterWrapper::frequencyTicks()
 
 QColor QPainterWrapper::gridColor(double alphaScale) const
 {
-    // The line is a light tint of the quiet colour of the theme, or a dark tint when the quiet colour is light.
-    // The line has the hue of the theme, so it fits the picture, and it has a large difference in lightness.
     const QColor quiet = mOptions.theme.colormap.isEmpty() ? QColor(0, 0, 0) : QColor::fromRgb(mOptions.theme.colormap[0]);
-    const bool darkBase = quiet.lightnessF() < 0.5;
-    const QColor target = darkBase ? QColor(255, 255, 255) : QColor(0, 0, 0);
-    const double mix = 0.75;
-    QColor line = QColor::fromRgbF(quiet.redF() * (1 - mix) + target.redF() * mix,
-                                   quiet.greenF() * (1 - mix) + target.greenF() * mix,
-                                   quiet.blueF() * (1 - mix) + target.blueF() * mix);
-    line.setAlphaF(std::clamp(mOptions.gridStrength * alphaScale, 0.0, 1.0));
-    return line;
+    return gridLineColor(quiet, mOptions.gridStrength, alphaScale);
 }
 
 void QPainterWrapper::drawFrequencyGrid()
