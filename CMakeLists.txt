@@ -397,44 +397,6 @@ if(INFORMANT_BUILD_TESTS)
     enable_testing()
     # One target builds all tests. The script run-tests.sh builds this target and not the application.
     add_custom_target(unit_tests)
-    add_library(tomlpp_for_tests STATIC src/tomlplusplus.cpp)
-    target_include_directories(tomlpp_for_tests SYSTEM PUBLIC ${TOMLPP_INCLUDE_DIR})
-    add_executable(config_migration_test tests/config_migration_test.cpp)
-    target_link_libraries(config_migration_test PRIVATE tomlpp_for_tests)
-    add_test(NAME config_migration COMMAND config_migration_test)
-    add_executable(readout_layout_test tests/readout_layout_test.cpp)
-    add_test(NAME readout_layout COMMAND readout_layout_test)
-    add_executable(map_layout_test tests/map_layout_test.cpp)
-    add_test(NAME map_layout COMMAND map_layout_test)
-    add_executable(oklab_test tests/oklab_test.cpp)
-    add_test(NAME oklab COMMAND oklab_test)
-    add_executable(bands_test tests/bands_test.cpp)
-    add_test(NAME bands COMMAND bands_test)
-    add_executable(ui_scale_test tests/ui_scale_test.cpp)
-    add_test(NAME ui_scale COMMAND ui_scale_test)
-    add_executable(ticks_test tests/ticks_test.cpp src/gui/ticks.cpp)
-    add_test(NAME ticks COMMAND ticks_test)
-    add_executable(pitch_axis_test tests/pitch_axis_test.cpp)
-    add_test(NAME pitch_axis COMMAND pitch_axis_test)
-    add_executable(practice_test tests/practice_test.cpp src/context/practicelib.cpp)
-    target_link_libraries(practice_test PRIVATE Qt6::Core)
-    add_test(NAME practice COMMAND practice_test)
-
-    # The offline test of the synthesizer voice. It needs the filter code and the allocator only.
-    add_executable(voice_test tests/voice_test.cpp
-        src/synthesis/noise.cpp src/synthesis/filter.cpp src/synthesis/sosfilter.cpp
-        src/synthesis/glotLf.cpp src/synthesis/shiftFilter.cpp src/synthesis/polyFromRoots.cpp
-        src/synthesis/voice.cpp
-        src/analysis/filter/butterworth.cpp src/analysis/filter/zpk2sos.cpp
-        src/analysis/filter/sosfilter.cpp src/analysis/filter/filter.cpp
-        src/analysis/freqz/sosfreqz.cpp src/analysis/util/eval_polynomial.cpp)
-    target_include_directories(voice_test SYSTEM PRIVATE ${ARMADILLO_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS} external/libsamplerate/src)
-    target_link_libraries(voice_test PRIVATE Eigen3::Eigen rpcxx_only Qt6::Core)
-    add_test(NAME voice COMMAND voice_test)
-
-    add_dependencies(unit_tests config_migration_test readout_layout_test map_layout_test oklab_test bands_test
-        ui_scale_test ticks_test pitch_axis_test practice_test voice_test)
-
     # The tests with GoogleTest. See tests/CMakeLists.txt.
     add_subdirectory(tests)
 endif()

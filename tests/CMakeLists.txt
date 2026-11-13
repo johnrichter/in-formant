@@ -41,7 +41,39 @@ function(informant_add_test)
     add_dependencies(unit_tests ${T_NAME})
 endfunction()
 
+set(SRC ${PROJECT_SOURCE_DIR}/src)
+
 informant_add_test(NAME framework_tests SOURCES framework_test.cpp LABELS framework)
+
+# The logic that has no window and no sound device. Most of it is in header files.
+informant_add_test(NAME bands_tests SOURCES bands_test.cpp LABELS bands)
+informant_add_test(NAME pitch_axis_tests SOURCES pitch_axis_test.cpp LABELS pitch_axis)
+informant_add_test(NAME readout_layout_tests SOURCES readout_layout_test.cpp LABELS readout_layout)
+informant_add_test(NAME oklab_tests SOURCES oklab_test.cpp LABELS oklab)
+informant_add_test(NAME map_layout_tests SOURCES map_layout_test.cpp LABELS map_layout)
+informant_add_test(NAME ui_scale_tests SOURCES ui_scale_test.cpp LABELS ui_scale)
+informant_add_test(NAME ticks_tests SOURCES ticks_test.cpp ${SRC}/gui/ticks.cpp LABELS ticks)
+
+# The migration of the settings file needs the TOML library.
+add_library(tomlpp_for_tests STATIC ${SRC}/tomlplusplus.cpp)
+target_include_directories(tomlpp_for_tests SYSTEM PUBLIC ${PROJECT_SOURCE_DIR}/${TOMLPP_INCLUDE_DIR})
+informant_add_test(NAME config_migration_tests SOURCES config_migration_test.cpp LIBS tomlpp_for_tests LABELS config_migration)
+
+# The practice library uses QDir, QFile, and QDateTime, and the tests use QTemporaryDir for the files.
+informant_add_test(NAME practice_tests SOURCES practice_test.cpp ${SRC}/context/practicelib.cpp LIBS Qt6::Core LABELS practice)
+
+# The offline test of the synthesizer voice. It needs the filter code and the allocator only.
+informant_add_test(NAME voice_tests
+    SOURCES voice_test.cpp
+        ${SRC}/synthesis/noise.cpp ${SRC}/synthesis/filter.cpp ${SRC}/synthesis/sosfilter.cpp
+        ${SRC}/synthesis/glotLf.cpp ${SRC}/synthesis/shiftFilter.cpp ${SRC}/synthesis/polyFromRoots.cpp
+        ${SRC}/synthesis/voice.cpp
+        ${SRC}/analysis/filter/butterworth.cpp ${SRC}/analysis/filter/zpk2sos.cpp
+        ${SRC}/analysis/filter/sosfilter.cpp ${SRC}/analysis/filter/filter.cpp
+        ${SRC}/analysis/freqz/sosfreqz.cpp ${SRC}/analysis/util/eval_polynomial.cpp
+    LIBS Eigen3::Eigen rpcxx_only Qt6::Core
+    LABELS voice)
+target_include_directories(voice_tests SYSTEM PRIVATE ${ARMADILLO_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/external/libsamplerate/src)
 
 # The check that each case of type Unit in docs/test-plan.md has a test or a recorded reason.
 add_test(NAME plan_coverage

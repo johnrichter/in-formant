@@ -4,14 +4,6 @@
 
 TP-PITCH-05 | NOTBUILT | tests a feature that does not exist, so write a DISABLED_ test when the feature exists
 TP-PITCH-06 | NOTBUILT | needs a feature that does not exist and a CPU measure
-TP-AXT-01 | WP1 | an old test covers it, so move that test in WP1
-TP-MAP-21 | WP1 | an old test covers it, so move that test in WP1
-TP-QUI-01 | WP1 | an old test covers it, so move that test in WP1
-TP-SCR-10 | WP1 | an old test covers it, so move that test in WP1
-TP-SHAPE-01 | WP1 | an old test covers it, so move that test in WP1
-TP-TYP-02 | WP1 | an old test covers it, so move that test in WP1
-TP-UI-01 | WP1 | an old test covers it, so move that test in WP1
-TP-UI-13 | WP1 | an old test covers it, so move that test in WP1
 TP-CAP-08 | WP2 | planned in WP2
 TP-FLIP-16 | WP2 | planned in WP2
 TP-RST-02 | WP2 | planned in WP2

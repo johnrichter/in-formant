@@ -1,4 +1,4 @@
-#include "check.h"
+#include <gtest/gtest.h>
 #include "../src/synthesis/voice.h"
 #include <algorithm>
 #include <cmath>
@@ -65,71 +65,70 @@ std::vector<double> pulseTimes(const std::vector<double> &x)
 
 }
 
-int main()
+// The level of a voice with no filter stays the same from one second to the next.
+TEST(Voice, TheLevelOfAVoiceWithNoFilterStaysTheSameFromOneSecondToThe)
 {
-    // The level of a voice with no filter stays the same from one second to the next.
-    {
-        Voice voice;
-        VoiceParams params;
-        params.sampleRate = sampleRate;
-        params.pitch = 150.0;
+    Voice voice;
+    VoiceParams params;
+    params.sampleRate = sampleRate;
+    params.pitch = 150.0;
 
-        const auto x = renderSeconds(voice, params);
-        const auto levels = secondLevels(x);
-        const double low = *std::min_element(levels.begin(), levels.end());
-        const double high = *std::max_element(levels.begin(), levels.end());
-        CHECK(low > 0.01);
-        CHECK((high - low) / high < 0.01);
+    const auto x = renderSeconds(voice, params);
+    const auto levels = secondLevels(x);
+    const double low = *std::min_element(levels.begin(), levels.end());
+    const double high = *std::max_element(levels.begin(), levels.end());
+    EXPECT_TRUE(low > 0.01);
+    EXPECT_TRUE((high - low) / high < 0.01);
 
-        // The mean pitch has an error of less than 1 cent when the jitter is 0.
-        const auto times = pulseTimes(x);
-        CHECK(times.size() > 100);
-        if (times.size() > 100) {
-            const double pitch = (times.size() - 1) / (times.back() - times.front());
-            const double cents = 1200.0 * std::log2(pitch / params.pitch);
-            CHECK(std::fabs(cents) < 1.0);
-        }
+    // The mean pitch has an error of less than 1 cent when the jitter is 0.
+    const auto times = pulseTimes(x);
+    EXPECT_TRUE(times.size() > 100);
+    if (times.size() > 100) {
+        const double pitch = (times.size() - 1) / (times.back() - times.front());
+        const double cents = 1200.0 * std::log2(pitch / params.pitch);
+        EXPECT_TRUE(std::fabs(cents) < 1.0);
     }
+}
 
-    // The same holds for another pitch.
-    {
-        Voice voice;
-        VoiceParams params;
-        params.sampleRate = sampleRate;
-        params.pitch = 233.3;
+// The same holds for another pitch.
+TEST(Voice, TheSameHoldsForAnotherPitch)
+{
+    Voice voice;
+    VoiceParams params;
+    params.sampleRate = sampleRate;
+    params.pitch = 233.3;
 
-        const auto times = pulseTimes(renderSeconds(voice, params));
-        CHECK(times.size() > 100);
-        if (times.size() > 100) {
-            const double pitch = (times.size() - 1) / (times.back() - times.front());
-            CHECK(std::fabs(1200.0 * std::log2(pitch / params.pitch)) < 1.0);
-        }
+    const auto times = pulseTimes(renderSeconds(voice, params));
+    EXPECT_TRUE(times.size() > 100);
+    if (times.size() > 100) {
+        const double pitch = (times.size() - 1) / (times.back() - times.front());
+        EXPECT_TRUE(std::fabs(1200.0 * std::log2(pitch / params.pitch)) < 1.0);
     }
+}
 
-    // The level with a formant filter and aspirate noise stays the same from one second to the next.
-    {
-        Voice voice;
-        VoiceParams params;
-        params.sampleRate = sampleRate;
-        params.pitch = 170.0;
-        params.noiseGain = 0.3;
-        params.filter = frequencyShiftFilter({ {500, 60}, {1500, 90}, {2500, 120}, {3500, 150} }, sampleRate, 1.0);
+// The level with a formant filter and aspirate noise stays the same from one second to the next.
+TEST(Voice, TheLevelWithAFormantFilterAndAspirateNoiseStaysTheSameFrom)
+{
+    Voice voice;
+    VoiceParams params;
+    params.sampleRate = sampleRate;
+    params.pitch = 170.0;
+    params.noiseGain = 0.3;
+    params.filter = frequencyShiftFilter({ {500, 60}, {1500, 90}, {2500, 120}, {3500, 150} }, sampleRate, 1.0);
 
-        const auto levels = secondLevels(renderSeconds(voice, params));
-        const double low = *std::min_element(levels.begin(), levels.end());
-        const double high = *std::max_element(levels.begin(), levels.end());
-        CHECK(low > 0.01);
-        CHECK((high - low) / high < 0.02);
-    }
+    const auto levels = secondLevels(renderSeconds(voice, params));
+    const double low = *std::min_element(levels.begin(), levels.end());
+    const double high = *std::max_element(levels.begin(), levels.end());
+    EXPECT_TRUE(low > 0.01);
+    EXPECT_TRUE((high - low) / high < 0.02);
+}
 
-    // The jitter gives a sound with no invalid sample.
-    {
-        Voice voice;
-        VoiceParams params;
-        params.sampleRate = sampleRate;
-        params.jitter = 1.0;
-        for (double v : renderSeconds(voice, params)) CHECK(std::isfinite(v));
-    }
-
-    return TEST_RESULT();
+// The jitter gives a sound with no invalid sample.
+TEST(Voice, TheJitterGivesASoundWithNoInvalidSample)
+{
+    Voice voice;
+    VoiceParams params;
+    params.sampleRate = sampleRate;
+    params.jitter = 1.0;
+    for (double v : renderSeconds(voice, params)) EXPECT_TRUE(std::isfinite(v));
 }

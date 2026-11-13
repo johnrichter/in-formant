@@ -120,7 +120,7 @@ The `macdeployqt` tool prints `ERROR: no file at ".../libiodbc.2.dylib"` and `ER
 
 ### Run the unit tests
 
-The unit tests use GoogleTest and GoogleMock. Run `build-macos.sh` one time first. Then run this command:
+The unit tests use GoogleTest and GoogleMock. The file `CONTRIBUTING.md` has the full guide. Run `build-macos.sh` one time first. Then run this command:
 
 ```sh
 ./run-tests.sh

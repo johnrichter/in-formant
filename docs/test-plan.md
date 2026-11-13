@@ -11,6 +11,8 @@ This page lists every use case that the project did not test during development.
 
 ## How to run the unit tests
 
+The file `CONTRIBUTING.md` has the full guide.
+
 - Run `./run-tests.sh` to build and run all unit tests. Add `--sanitize` to build with the address and undefined behavior sanitizers.
 - Run `./run-tests.sh -R TP_LAY` to run the tests of one area.
 - The file `tests/deferred.txt` lists each Unit case that has no test yet, with the package that owns it. The script test `plan_coverage` fails when a case has neither a test nor a line in that file.
