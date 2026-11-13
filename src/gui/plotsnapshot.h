@@ -33,6 +33,9 @@ namespace Gui {
 
         std::vector<PlotSeries> series;
 
+        // A text for a plot that has no data. The plot draws the axes and the text.
+        QString message;
+
         // The value changes when the data changes.
         unsigned long long version = 0;
     };

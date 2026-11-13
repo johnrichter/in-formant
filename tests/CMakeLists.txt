@@ -140,3 +140,6 @@ informant_add_test(NAME help_font_tests
     LABELS docs)
 target_include_directories(help_font_tests SYSTEM PRIVATE ${APP_HEADER_INCLUDES})
 target_compile_definitions(help_font_tests PRIVATE INFORMANT_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+
+# The trace of the oscilloscope: the trigger and the scale.
+informant_add_test(NAME scope_trace_tests SOURCES scope_trace_test.cpp LABELS scope)

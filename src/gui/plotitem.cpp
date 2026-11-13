@@ -375,4 +375,9 @@ void PlotItem::paint(QPainter *painter)
     }
     painter->restore();
 
+    // A plot with no data shows a text in the middle of the axes.
+    if (!s.message.isEmpty()) {
+        painter->setPen(QColor(200, 204, 216));
+        painter->drawText(area, Qt::AlignCenter | Qt::TextWordWrap, s.message);
+    }
 }

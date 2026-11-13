@@ -592,6 +592,17 @@ Some cases need a small change in the code. Do these changes first, because they
 - **Names for objects in QML.** Give an `objectName` to each control that a test must press (the reset button, the reset dialog, the segmented control, and the tabs).
 - Whether the warm-up ranks are right for a given voice.
 
+## 25. The oscilloscope
+
+- **TP-SCP-01** (Unit, P2). Compute the span for 30 ms at 32000 Hz, for 0 ms, for 5000 ms, and for a time that is not a number. Expect a view of 960 samples, then 32 samples, then half of the ring, then 32 samples. Expect no negative search distance.
+- **TP-SCP-02** (Unit, P2). Give the trace fewer samples than it needs. Expect no trace.
+- **TP-SCP-03** (Unit, P1). Give the trace a steady tone. Expect a start at a rising zero crossing, and the same picture for two frames that differ by a part of a period.
+- **TP-SCP-04** (Unit, P2). Give the trace a quiet tone with an offset. Expect no offset and a peak of 1.
+- **TP-SCP-05** (Unit, P2). Give the trace silence. Expect a flat line and no value that is not a number.
+- **TP-SCP-06** (Image, P1). Start the app and open the Oscilloscope window before the first press of play. Expect the axes and the text "Press play to see the sound of the microphone."
+- **TP-SCP-07** (Image, P1). Load an audio file and open the Oscilloscope window. Expect the sound at the end of the view of the main graph, and the title with its time. Pick a moment with a click, and expect the sound at that moment.
+- **TP-SCP-08** (Image, P2). Press play, and open the Oscilloscope window. Expect the live sound and the glottal flow estimate.
+
 ## 24. Bugs found by the unit tests
 
 Each entry names the case, the bug, the version of the fix, and the test that guards it.
@@ -613,3 +624,4 @@ Each entry names the case, the bug, the version of the fix, and the test that gu
 - **The map code could loop for ever or divide by zero (3.2.7).** A span that was not finite, a bin width of 0, and a time range of 0 now give a safe result. TP-MAP-02 and TP-LAY-19.
 - **The program stopped at launch when no input device existed (3.2.7).** The window now opens with the status "No input device available". TP-CAP-06.
 - **The compiler removed the checks for a number that is not a number (3.2.7).** The flag `-ffast-math` makes these checks undefined. The flag `-fno-finite-math-only` now keeps them. TP-PRA-37.
+- **The oscilloscope showed nothing after the start and with a loaded file (3.2.8).** The plot had data only during a live capture, and it drew no axes and no text. Now the plot shows the axes and a text before the first press of play. When the capture is paused or a file is loaded, it shows the stored sound. The sound is at the picked moment, or at the end of the view. TP-SCP-06 and TP-SCP-07.

@@ -12,6 +12,9 @@
 
 namespace Main {
 
+    class Config;
+    class Session;
+
     // The data of the oscilloscope: the newest sound, and the estimate of the glottal flow. The
     // pipeline writes the data, and the plot of the oscilloscope reads it.
     class DataVisWrapper : public QObject, public Gui::PlotProvider {
@@ -26,6 +29,9 @@ namespace Main {
         // Store the newest estimate of the glottal flow. It ends at the newest sample of the sound.
         void setGif(const rpm::vector<double>& signal, double fs);
 
+        // The settings and the stored sound. They give the picture of a paused capture and of a loaded file.
+        void setReview(Config *config, Session *session);
+
         // True while an oscilloscope plot is on the screen.
         bool watched() const { return mWatchers.load() > 0; }
 
@@ -33,6 +39,12 @@ namespace Main {
         void changeWatchers(int kind, int delta) override;
 
     private:
+        bool fillLive(const Gui::PlotRequest &request, Gui::PlotSnapshot &out);
+        bool fillStored(const Gui::PlotRequest &request, Gui::PlotSnapshot &out);
+
+        Config *mConfig = nullptr;
+        Session *mSession = nullptr;
+
         std::mutex mMutex;
 
         // The newest 400 ms of the sound in a ring. mTotal counts all samples since the start.

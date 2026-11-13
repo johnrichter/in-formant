@@ -58,6 +58,7 @@ ContextManager::ContextManager(
 
     createViews();
     loadConfig();
+    mDataVisWrapper.setReview(mConfig.get(), &mDataStore->session());
     mDataStore->setFormantTrackCount(4);
     QObject::connect(mConfig.get(), &Config::pitchAlgorithmChanged,
             [this](int index) {
