@@ -85,6 +85,8 @@ namespace Main {
         Q_INVOKABLE QVariant option(const QString &name) const;
         Q_INVOKABLE void setOption(const QString &name, const QVariant &value);
         Q_INVOKABLE void resetOption(const QString &name);
+        // Return every setting to its default value, except the folder of the practice sessions.
+        Q_INVOKABLE void resetAll();
 
         bool optionBool(const QString &name) const;
         int optionInt(const QString &name) const;

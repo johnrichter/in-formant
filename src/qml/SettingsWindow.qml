@@ -120,6 +120,25 @@ ApplicationWindow {
         onToggled: config.setOption("statsMask", checked ? (config.options.statsMask | bit) : (config.options.statsMask & ~bit))
     }
 
+    Dialog {
+        id: resetDialog
+        Material.roundedScale: Material.SmallScale
+        objectName: "resetDialog"
+        title: "Reset all settings?"
+        modal: true
+        anchors.centerIn: Overlay.overlay
+        standardButtons: Dialog.Ok | Dialog.Cancel
+
+        Component.onCompleted: standardButton(Dialog.Ok).text = "Reset"
+        onAccepted: config.resetAll()
+
+        Label {
+            width: 420
+            wrapMode: Text.WordWrap
+            text: "Every setting returns to its default value. You cannot undo this. Your sessions, recordings, and files stay."
+        }
+    }
+
     header: AppTabBar {
         id: tabs
         objectName: "settingsTabs"
@@ -184,6 +203,17 @@ ApplicationWindow {
                 }
                 Hint {
                     text: "The Record button below the graph asks for the choices of the video at each start. The time of the view is a field at the right end of the bar below the graph."
+                }
+
+
+                Heading { text: "Reset" }
+                AppButton {
+                    objectName: "resetButton"
+                    text: "Reset all settings to defaults"
+                    onClicked: resetDialog.open()
+                }
+                Hint {
+                    text: "This returns every setting in this window, and the view, the layers, the algorithms, and the input device, to the values of a new installation. The folder of the practice sessions stays. Your sessions, recordings, and files stay."
                 }
             }
         }

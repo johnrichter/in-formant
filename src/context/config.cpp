@@ -10,6 +10,18 @@
 
 using namespace Main;
 
+namespace {
+// The default values of the settings that live outside the option map. A getter and the reset function read the same value.
+constexpr double kDefaultZoom = 1.0;
+constexpr int kDefaultMinFrequency = 1;
+constexpr int kDefaultMaxFrequency = 5500;
+constexpr int kDefaultFftSize = 2048;
+constexpr int kDefaultMaxGain = 0;
+constexpr int kDefaultSpectrogramQuality = 1;
+constexpr int kDefaultSpectrogramBlur = 33;
+constexpr double kDefaultTimeSpan = 15.0;
+}
+
 static void initSubTable(toml::table &tbl, const std::string &name)
 {
     if (!tbl[name]) {
@@ -302,6 +314,37 @@ void Config::resetOption(const QString &name)
     setOption(name, defaultOptions().value(name));
 }
 
+void Config::resetAll()
+{
+    // The folder of the practice sessions is a place and not a preference. A reset keeps it, so the sessions stay in the Progress window.
+    const QVariantMap defaults = defaultOptions();
+    for (auto it = defaults.begin(); it != defaults.end(); ++it) {
+        if (it.key() == "practiceFolder") continue;
+        setOption(it.key(), it.value());
+    }
+
+    setViewZoom(kDefaultZoom);
+    setViewMinFrequency(kDefaultMinFrequency);
+    setViewMaxFrequency(kDefaultMaxFrequency);
+    setViewFFTSize(kDefaultFftSize);
+    setViewMaxGain(kDefaultMaxGain);
+    setViewSpectrogramQuality(kDefaultSpectrogramQuality);
+    setViewSpectrogramBlur(kDefaultSpectrogramBlur);
+    setViewTimeSpan(kDefaultTimeSpan);
+    setViewFrequencyScale(FrequencyScale::ERB);
+    setViewShowSpectrogram(true);
+    setViewShowPitch(true);
+    setViewShowFormants(true);
+
+    setPitchAlgorithm(PitchAlgorithm::RAPT);
+    setLinpredAlgorithm(LinpredAlgorithm::Burg);
+    setFormantAlgorithm(FormantAlgorithm::Filtered);
+    setInvglotAlgorithm(InvglotAlgorithm::GFM_IAIF);
+
+    // An empty name selects the default input device of the system.
+    setAudioCaptureDevice(QString());
+}
+
 bool Config::optionBool(const QString &name) const { return mOptions.value(name).toBool(); }
 int Config::optionInt(const QString &name) const { return mOptions.value(name).toInt(); }
 double Config::optionDouble(const QString &name) const { return mOptions.value(name).toDouble(); }
@@ -320,7 +363,7 @@ Module::Audio::Backend Config::getAudioBackend()
 
 void Config::setAudioBackend(Module::Audio::Backend b)
 {
-    mTbl["audioBackend"].ref<int64_t>() = enumInt(b);
+    mTbl.insert_or_assign("audioBackend", static_cast<int64_t>(enumInt(b)));
     emit audioBackendChanged(enumInt(b));
 }
 
@@ -359,7 +402,7 @@ PitchAlgorithm Config::getPitchAlgorithm()
 
 void Config::setPitchAlgorithm(PitchAlgorithm alg)
 {
-    mTbl["solvers"]["pitch"].ref<int64_t>() = enumInt(alg);
+    mTbl["solvers"].as_table()->insert_or_assign("pitch", static_cast<int64_t>(enumInt(alg)));
     emit pitchAlgorithmChanged(enumInt(alg));
 }
 
@@ -380,7 +423,7 @@ LinpredAlgorithm Config::getLinpredAlgorithm()
 
 void Config::setLinpredAlgorithm(LinpredAlgorithm alg)
 {
-    mTbl["solvers"]["linpred"].ref<int64_t>() = enumInt(alg);
+    mTbl["solvers"].as_table()->insert_or_assign("linpred", static_cast<int64_t>(enumInt(alg)));
     emit linpredAlgorithmChanged(enumInt(alg));
 }
 
@@ -406,7 +449,7 @@ FormantAlgorithm Config::getFormantAlgorithm(bool internal)
 
 void Config::setFormantAlgorithm(FormantAlgorithm alg)
 {
-    mTbl["solvers"]["formant"].ref<int64_t>() = enumInt(alg);
+    mTbl["solvers"].as_table()->insert_or_assign("formant", static_cast<int64_t>(enumInt(alg)));
     emit formantAlgorithmChanged(enumInt(alg));
 }
 
@@ -427,7 +470,7 @@ InvglotAlgorithm Config::getInvglotAlgorithm()
 
 void Config::setInvglotAlgorithm(InvglotAlgorithm alg)
 {
-    mTbl["solvers"]["invglot"].ref<int64_t>() = enumInt(alg);
+    mTbl["solvers"].as_table()->insert_or_assign("invglot", static_cast<int64_t>(enumInt(alg)));
     emit invglotAlgorithmChanged(enumInt(alg));
 }
 
@@ -443,91 +486,91 @@ void Config::setInvglotAlgorithm(int alg)
 
 double Config::getViewZoom()
 {
-    return doubleField(mTbl["view"], "zoomScale", 1.0);
+    return doubleField(mTbl["view"], "zoomScale", kDefaultZoom);
 }
 
 void Config::setViewZoom(double scale)
 {
-    mTbl["view"]["zoomScale"].ref<double>() = scale;
+    mTbl["view"].as_table()->insert_or_assign("zoomScale", static_cast<double>(scale));
     emit viewZoomChanged(scale);
 }
 
 int Config::getViewMinFrequency()
 {
-    return integerField(mTbl["view"], "minFrequency", 1);
+    return integerField(mTbl["view"], "minFrequency", kDefaultMinFrequency);
 }
 
 void Config::setViewMinFrequency(int f)
 {
-    mTbl["view"]["minFrequency"].ref<int64_t>() = f;
+    mTbl["view"].as_table()->insert_or_assign("minFrequency", static_cast<int64_t>(f));
     emit viewMinFrequencyChanged(f);
 }
 
 int Config::getViewMaxFrequency()
 {
-    return integerField(mTbl["view"], "maxFrequency", 5500);
+    return integerField(mTbl["view"], "maxFrequency", kDefaultMaxFrequency);
 }
 
 void Config::setViewMaxFrequency(int f)
 {
-    mTbl["view"]["maxFrequency"].ref<int64_t>() = f;
+    mTbl["view"].as_table()->insert_or_assign("maxFrequency", static_cast<int64_t>(f));
     emit viewMaxFrequencyChanged(f);
 }
 
 int Config::getViewFFTSize()
 {
-    return integerField(mTbl["view"], "fftSize", 2048);
+    return integerField(mTbl["view"], "fftSize", kDefaultFftSize);
 }
 
 void Config::setViewFFTSize(int nfft)
 {
-    mTbl["view"]["fftSize"].ref<int64_t>() = nfft;
+    mTbl["view"].as_table()->insert_or_assign("fftSize", static_cast<int64_t>(nfft));
     emit viewFFTSizeChanged(nfft);
 }
 
 int Config::getViewMaxGain()
 {
-    return integerField(mTbl["view"], "maxGain", 0);
+    return integerField(mTbl["view"], "maxGain", kDefaultMaxGain);
 }
 
 void Config::setViewMaxGain(int g)
 {
-    mTbl["view"]["maxGain"].ref<int64_t>() = g;
+    mTbl["view"].as_table()->insert_or_assign("maxGain", static_cast<int64_t>(g));
     emit viewMaxGainChanged(g);
 }
 
 int Config::getViewSpectrogramQuality()
 {
-    return integerField(mTbl["view"], "spectrogramQuality", 1);
+    return integerField(mTbl["view"], "spectrogramQuality", kDefaultSpectrogramQuality);
 }
 
 void Config::setViewSpectrogramQuality(int quality)
 {
-    mTbl["view"]["spectrogramQuality"].ref<int64_t>() = quality;
+    mTbl["view"].as_table()->insert_or_assign("spectrogramQuality", static_cast<int64_t>(quality));
     emit viewSpectrogramQualityChanged(quality);
 }
 
 int Config::getViewSpectrogramBlur()
 {
-    return integerField(mTbl["view"], "spectrogramBlur", 33);
+    return integerField(mTbl["view"], "spectrogramBlur", kDefaultSpectrogramBlur);
 }
 
 void Config::setViewSpectrogramBlur(int percent)
 {
-    mTbl["view"]["spectrogramBlur"].ref<int64_t>() = percent;
+    mTbl["view"].as_table()->insert_or_assign("spectrogramBlur", static_cast<int64_t>(percent));
     emit viewSpectrogramBlurChanged(percent);
 }
 
 double Config::getViewTimeSpan()
 {
-    return doubleField(mTbl["view"], "timeSpan", 15.0);
+    return doubleField(mTbl["view"], "timeSpan", kDefaultTimeSpan);
 }
 
 void Config::setViewTimeSpan(double dur)
 {
     // The span is from half a second to 24 hours.
     dur = std::clamp(dur, 0.5, 86400.0);
-    mTbl["view"]["timeSpan"].ref<double>() = dur;
+    mTbl["view"].as_table()->insert_or_assign("timeSpan", static_cast<double>(dur));
     emit viewTimeSpanChanged(dur);
 }
 
@@ -585,7 +628,7 @@ FrequencyScale Config::getViewFrequencyScale()
 
 void Config::setViewFrequencyScale(FrequencyScale scale)
 {
-    mTbl["view"]["frequencyScale"].ref<int64_t>() = enumInt(scale);
+    mTbl["view"].as_table()->insert_or_assign("frequencyScale", static_cast<int64_t>(enumInt(scale)));
     emit viewFrequencyScaleChanged(enumInt(scale));
 }
 
@@ -658,7 +701,7 @@ bool Config::getViewShowSpectrogram()
 
 void Config::setViewShowSpectrogram(bool b)
 {
-    mTbl["view"]["showSpectrogram"].ref<bool>() = b;
+    mTbl["view"].as_table()->insert_or_assign("showSpectrogram", static_cast<bool>(b));
     emit viewShowSpectrogramChanged(b);
 }
 
@@ -669,7 +712,7 @@ bool Config::getViewShowPitch()
 
 void Config::setViewShowPitch(bool b)
 {
-    mTbl["view"]["showPitch"].ref<bool>() = b;
+    mTbl["view"].as_table()->insert_or_assign("showPitch", static_cast<bool>(b));
     emit viewShowPitchChanged(b);
 }
 
@@ -680,7 +723,7 @@ bool Config::getViewShowFormants()
 
 void Config::setViewShowFormants(bool b)
 {
-    mTbl["view"]["showFormants"].ref<bool>() = b;
+    mTbl["view"].as_table()->insert_or_assign("showFormants", static_cast<bool>(b));
     emit viewShowFormantsChanged(b);
 }
 
@@ -700,7 +743,7 @@ int Config::getAnalysisPitchSampleRate()
 }
 
 void Config::setAnalysisGranularity(double ms) {
-    mTbl["analysis"]["granularity"].ref<double>() = ms;
+    mTbl["analysis"].as_table()->insert_or_assign("granularity", static_cast<double>(ms));
 }
 
 double Config::getAnalysisGranularity() {
@@ -708,7 +751,7 @@ double Config::getAnalysisGranularity() {
 }
 
 void Config::setAnalysisSpectrogramWindow(double ms) {
-    mTbl["analysis"]["spectrogramWindow"].ref<double>() = ms;
+    mTbl["analysis"].as_table()->insert_or_assign("spectrogramWindow", static_cast<double>(ms));
 }
 
 double Config::getAnalysisSpectrogramWindow() {
@@ -716,7 +759,7 @@ double Config::getAnalysisSpectrogramWindow() {
 }
 
 void Config::setAnalysisPitchWindow(double ms) {
-    mTbl["analysis"]["pitchWindow"].ref<double>() = ms;
+    mTbl["analysis"].as_table()->insert_or_assign("pitchWindow", static_cast<double>(ms));
 }
 
 double Config::getAnalysisPitchWindow() {
@@ -724,7 +767,7 @@ double Config::getAnalysisPitchWindow() {
 }
 
 void Config::setAnalysisFormantWindow(double ms) {
-    mTbl["analysis"]["formantWindow"].ref<double>() = ms;
+    mTbl["analysis"].as_table()->insert_or_assign("formantWindow", static_cast<double>(ms));
 }
 
 double Config::getAnalysisFormantWindow() {
@@ -732,7 +775,7 @@ double Config::getAnalysisFormantWindow() {
 }
 
 void Config::setAnalysisOscilloscopeWindow(double ms) {
-    mTbl["analysis"]["oscilloscopeWindow"].ref<double>() = ms;
+    mTbl["analysis"].as_table()->insert_or_assign("oscilloscopeWindow", static_cast<double>(ms));
 }
 
 double Config::getAnalysisOscilloscopeWindow() {
@@ -740,7 +783,7 @@ double Config::getAnalysisOscilloscopeWindow() {
 }
 
 void Config::setAnalysisPitchSpacing(double ms) {
-    mTbl["analysis"]["pitchSpacing"].ref<double>() = ms;
+    mTbl["analysis"].as_table()->insert_or_assign("pitchSpacing", static_cast<double>(ms));
 }
 
 double Config::getAnalysisPitchSpacing() {
@@ -748,7 +791,7 @@ double Config::getAnalysisPitchSpacing() {
 }
 
 void Config::setAnalysisFormantSpacing(double ms) {
-    mTbl["analysis"]["formantSpacing"].ref<double>() = ms;
+    mTbl["analysis"].as_table()->insert_or_assign("formantSpacing", static_cast<double>(ms));
 }
 
 double Config::getAnalysisFormantSpacing() {
@@ -756,7 +799,7 @@ double Config::getAnalysisFormantSpacing() {
 }
 
 void Config::setAnalysisOscilloscopeSpacing(double ms) {
-    mTbl["analysis"]["oscilloscopeSpacing"].ref<double>() = ms;
+    mTbl["analysis"].as_table()->insert_or_assign("oscilloscopeSpacing", static_cast<double>(ms));
 }
 
 double Config::getAnalysisOscilloscopeSpacing() {

@@ -150,6 +150,10 @@ The Synthesizer window makes a steady test voice. It starts in constant mode, so
 - **FFT size.** A larger size separates close harmonics better. It shows fast changes less well.
 - **Gain normalization.** This slider sets the brightness of the spectrogram.
 
+## Return to the defaults
+
+The General tab of Settings has the button "Reset all settings to defaults". A dialog asks you to confirm. The reset cannot be undone. It returns every setting to its default value. The folder of the practice sessions stays, so the Progress window still shows your sessions. Your sessions, recordings, and files stay.
+
 ## Know the limits
 
 The tracks are estimates. Check them against the spectrogram.

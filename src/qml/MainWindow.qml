@@ -397,6 +397,7 @@ ApplicationWindow {
     // the comparison with the last session of the same task. The person must choose, so no other action closes it.
     Dialog {
         id: practiceDone
+        Material.roundedScale: Material.SmallScale
         objectName: "practiceDone"
         title: "Keep this practice session?"
         modal: true

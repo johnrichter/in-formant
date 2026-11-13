@@ -17,6 +17,47 @@ This page lists every use case that the project did not test during development.
 - Restore the system input device after each test that changes it.
 - Detach each disk image that a test mounts.
 
+## Index of the limits that were reported
+
+Each "Limits" block in a report named things that the project did not test. This index links each limit to the cases below. A limit with no case is a gap in this page.
+
+- **The synthesizer sound was never heard.** TP-SYN-01 to TP-SYN-30, and the section "Things that no test can cover".
+- **The frame-times box was not checked in a real recording.** TP-LAY-17.
+- **The stability of the live map got an eye check only.** TP-MAP-01 to TP-MAP-04.
+- **The left edge of the map was not clicked by hand.** TP-MAP-06, TP-MAP-07.
+- **The sideways scroll of the map was not tried by hand.** TP-MAP-10.
+- **The resize cursor was not seen by hand.** TP-MAP-09.
+- **The key combination for Settings was not tried by hand.** TP-SET-01.
+- **The toolbar buttons were not all clicked by hand.** TP-MODE-06.
+- **The Saturation slider was not moved by hand.** TP-COL-07.
+- **The pitch-axis fields were not used by hand.** TP-PITCH-04.
+- **The practice settings fields were not used by hand.** TP-SET-09.
+- **The switch between Full and Pitch only during live capture.** TP-MODE-01 to TP-MODE-03.
+- **The pitch-only axis has Hz only.** TP-PITCH-05 (not built yet).
+- **The Mel scale was never captured with zones.** TP-ZONE-01.
+- **A recording with zones got a window grab only.** TP-ZONE-03, TP-ZONE-04.
+- **No practice video and no zip export.** TP-PRA-12, TP-PRA-13 (not built yet).
+- **The practice comparison got unit tests and a check of the dialog text only.** TP-PRA-14.
+- **The Progress window was checked on the screen for the default measure only.** TP-PRG-08.
+- **Only six pride themes got an eye check.** TP-COL-05.
+- **The 16 dB headroom darkens the default Magma theme.** TP-COL-08.
+- **The warm-up ranks are a judgement from search summaries.** TP-DOC-07.
+- **The formant tracker is not reliable above about 400 Hz.** TP-ANA-01.
+- **The Qt 6.8.3 build was verified on one Mac.** TP-REL-02, TP-REL-03.
+- **Old clones must clone again.** TP-REL-06.
+- **The Escape key and a quit with the question open were not tried by hand.** TP-PRA-33, TP-PRA-34.
+- **The text in the graph is not on the type scale.** TP-UI-16.
+- **No person measured the reading speed.** TP-UI-17.
+- **The shortest practice time was read as "too short".** TP-PRA-39.
+- **The flipped time axis was checked with a saved file only.** TP-FLIP-03 to TP-FLIP-09.
+- **The wheel direction, the click pick, and the formant switches were not clicked by hand.** TP-FLIP-04, TP-FLIP-05, TP-TRACK-01.
+- **The session map stays in the old direction.** TP-FLIP-08.
+- **The Record sheet and the keep dialog were not checked for the new corner radius.** TP-SHAPE-03.
+- **The grid lines have a fixed brightness.** TP-GRID-04.
+- **The old setting `viewShowFormants` stays in the code.** TP-TRACK-03.
+- **The reset button got one script test, with one set of odd values.** TP-RST-01 to TP-RST-12.
+- **The scratch folders `mig` and `fresh` in the working area of the session cannot be removed by the shell gate.** This is not a product test. Remove them by hand.
+
 ## 1. Playback and synthesizer sound
 
 The project never played the sound through a speaker. These cases use rendered samples as a proxy.
@@ -128,12 +169,49 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-FLIP-04** (Qt, P1). Click in the graph in both directions. Expect the cursor line and the time of the cursor to match the click.
 - **TP-FLIP-05** (Qt, P2). Scroll the wheel and the trackpad sideways in both directions. Expect the content to follow the fingers.
 - **TP-FLIP-06** (Image, P2). Check the pitch-only graph and a recording in both directions.
+- **TP-FLIP-07** (Unit, P1). A test cannot reach the mapping yet, because it is a member of the painter. Move it to a free function. Then test that `timeAtX(mapTimeToX(t))` returns `t` in both directions. Use widths of 1, 2, and 4000 pixels.
+- **TP-FLIP-08** (Image, P2). Compare the session map with the graph. The map keeps old sound at the left. Decide with the user whether the map must flip too, then test the choice.
+- **TP-FLIP-09** (Image, P1). In live mode with the flip on, check the left 100 pixels at FFT sizes 512, 1024, 2048, and 4096. Expect no black bar, as in TP-EDGE-01.
+- **TP-FLIP-10** (Image, P2). Check the labels of the cursor and the boxes of the values. Expect each label to stay inside the graph when the cursor is at the left edge and at the right edge, in both directions.
+- **TP-FLIP-11** (Qt, P2). Play a window with the flip on. Expect the playback line to move from the right to the left, and expect the sound to match the line.
+- **TP-FLIP-12** (Qt, P2). Drag in the graph from the left edge to the right edge in both directions. Expect the cursor to follow the pointer with no jump.
+- **TP-FLIP-13** (Unit, P2). Check the time ticks with a decreasing pixel mapping. Expect the same labels as the increasing mapping, mirrored, and no overlap.
+- **TP-FLIP-14** (Qt, P2). Change the switch "Newest sound at the left" while capture runs. Expect the picture to redraw at once with no stale column and no crash.
+- **TP-FLIP-15** (Manual, P3). Check the wheel with the system setting "Natural scrolling" on and off. Expect the content to follow the fingers in both cases.
+- **TP-FLIP-16** (Unit, P2). Check that an old file with no `flipTime` value starts with the flip on, and that a stored `false` stays.
 - **TP-GRID-01** (Image, P1). Set each grid switch alone, then both. Expect lines at the labelled ticks for the major switch and at the other ticks for the minor switch.
 - **TP-GRID-02** (Image, P2). Change the frequency scale (linear, logarithmic, Mel, ERB) and the tick mode. Expect each line to stay on its tick.
 - **TP-GRID-03** (Image, P2). Check that the lines stay behind the tracks and that the lines are not in the minimap.
+- **TP-GRID-04** (Image, P2). Check the brightness of the grid lines on each of the 16 pride themes and on Magma, with a loud sound and with silence. Expect the lines to show, and expect them not to hide the spectrogram.
+- **TP-GRID-05** (Image, P2). Check the grid lines at device pixel ratios 1 and 2. Expect a line of about the same visual width.
+- **TP-GRID-06** (Image, P2). Check the grid lines in the pitch-only graph with the fixed axis and with the automatic fit. Expect each line at a tick of the axis.
+- **TP-GRID-07** (Qt, P2). Record with the grid on. Extract a frame from the video. Expect the lines in the frame.
+- **TP-GRID-08** (Unit, P2). Test the grid with a custom tick step, with the note mode, and with the octave mode. Expect the major lines at the labelled ticks only.
+- **TP-GRID-09** (Unit, P3). Test a graph so short that the ticks are closer than 2 pixels. Expect no more than one line for each pixel row.
 - **TP-TRACK-01** (Qt, P1). Turn off each formant switch in turn. Expect only that track, its box, and its legend entry to go.
 - **TP-TRACK-02** (Unit, P1). Migrate a file with the old switch off. Expect all four new switches off, and a second run to change nothing.
+- **TP-TRACK-03** (Unit, P3). Remove the old setting `viewShowFormants` and its property in `config.h`, or test that nothing reads it.
+- **TP-TRACK-04** (Qt, P1). Turn off one formant track in the pitch-only graph and turn the graph back to Full. Expect the choice to stay.
+- **TP-TRACK-05** (Qt, P2). Turn off all four formant tracks. Expect the legend and the boxes to show the pitch only, and expect no empty gap in the left column.
+- **TP-TRACK-06** (Qt, P2). Turn off F2 during a practice session. Expect the statistics of the session to keep F2, because the analysis does not stop.
+- **TP-TRACK-07** (Qt, P2). Turn off F3 and check the cursor labels. Expect no label for F3.
+- **TP-TRACK-08** (Unit, P2). Test a formant count of 3 and of 5 in the file (`formantCount`). Expect no read past the four switches.
+- **TP-TRACK-09** (Qt, P3). Check the hint text of each formant switch with a speech-language pathologist. Expect the text to be correct and short.
 - **TP-TAB-01** (Image, P1). Look at the Full and Pitch only buttons. Expect the chosen button to have a solid fill and the other to have an outline.
+- **TP-TAB-02** (Qt, P1). Click each segment of the group with the mouse and with the keyboard. Expect the choice to change and the fill to follow.
+- **TP-TAB-03** (Manual, P2). Show the group to five people for three seconds. Ask which mode is on. Expect a correct answer from all five.
+- **TP-TAB-04** (Qt, P2). Check the tab bars of Settings and Help at the minimum window width. Expect all tabs to stay reachable.
+- **TP-TAB-05** (Manual, P3). Check the group with VoiceOver. Expect the name, the role, and the chosen state.
+- **TP-TAB-06** (Image, P3). Check the hover fill of a segment and of a tab on the dark window. Expect the fill to show, and expect the text to keep a contrast of at least 4.5 to 1.
+
+## 6c. One shape for all controls
+
+- **TP-SHAPE-01** (Unit, P2). Check that `cornerRadius` equals the medium radius. The unit test `ui_scale` does this.
+- **TP-SHAPE-02** (Qt, P2). Scan all QML files. Expect each `Button` and `ToolButton` to be an `AppButton` or an `AppToolButton`, and expect each window and dialog to set `Material.roundedScale`.
+- **TP-SHAPE-03** (Image, P2). Screenshot the Record sheet, the keep dialog, the reset dialog, and each menu and list popup. Expect a radius of 8 pixels. The Record sheet and the keep dialog were not checked.
+- **TP-SHAPE-04** (Image, P2). Screenshot the boxes, the labels, and the legend in the graph at device pixel ratios 1 and 2. Expect a radius of 8 device-independent pixels.
+- **TP-SHAPE-05** (Image, P3). Check the frame of the session map with a narrow frame (under 8 pixels). Expect no broken outline.
+- **TP-SHAPE-06** (Image, P3). Check the combo boxes, the text fields, and the sliders. Expect the radius to match the buttons.
 
 ## 7. Switching between modes while capture runs
 
@@ -198,7 +276,7 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-SET-01** (Qt, P2). Open the Settings window with the key combination Command and comma. Expect the window to open, and expect a second press not to open a second window.
 - **TP-SET-02** (Qt, P2). Click each control in each of the seven tabs. Expect the stored option to change and the display to follow.
 - **TP-SET-03** (Qt, P2). Set each option, quit, and start again. Expect each option to keep its value.
-- **TP-SET-04** (Unit, P1). Migrate a file of each version from 0 to 5. Expect the chain to end at version 6 with the right defaults.
+- **TP-SET-04** (Unit, P1). Migrate a file of each version from 0 to 7. Expect the chain to end at version 8 with the right defaults.
 - **TP-SET-05** (Unit, P1). Migrate a version 5 file with `showStats = false`. Expect `true`. Migrate it again. Expect no change.
 - **TP-SET-06** (Unit, P2). Migrate a version 5 file with no `showStats`. Expect no value, so the default `true` applies.
 - **TP-SET-15** (Unit, P2). Start with no file. Expect the boxes at the left of the graph. Migrate a version 6 file with `readoutSide = "bottom"`. Expect `left`, and expect no second change.
@@ -210,6 +288,26 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-SET-12** (Qt, P3). Select "Show the Range in semitones". Expect a value such as `7.0st` in the Range line.
 - **TP-SET-13** (Unit, P2). Check that the Range in semitones is 12 times log2(P95 / P5). Test P5 of 0 or negative. Expect a safe text.
 - **TP-SET-14** (Qt, P3). Check the grey hint under each control of each tab. Expect the text to wrap, to stay inside the window, and not to overlap.
+- **TP-SET-16** (Unit, P2). Check that every setter in `config.cpp` works when the file has no key for it. A setter crashed the app once for this reason (`showFormants`).
+- **TP-SET-17** (Unit, P2). Check that each default value outside the option map has one definition (the `kDefault` constants). The getter and the reset must use the same one.
+
+## 12b. The reset button
+
+- **TP-RST-01** (Qt, P1). Change one option in each of the seven tabs. Press "Reset all settings to defaults" and confirm. Expect every option to return to its default.
+- **TP-RST-02** (Unit, P1). Compare every key of `defaultOptions()` after the reset with its default value. Expect no difference, except `practiceFolder`.
+- **TP-RST-03** (Unit, P1). Check the view values after the reset. These are the zoom, the two frequency limits, the FFT size, the gain, the quality, the blur, the time span, the scale, and the layers. Expect the defaults.
+- **TP-RST-04** (Unit, P1). Check the four algorithms after the reset. Expect RAPT, Burg, Filtered, and GFM-IAIF.
+- **TP-RST-05** (Qt, P1). Choose an input device that is not the default. Reset. Expect the system default device, and expect capture to continue on it.
+- **TP-RST-06** (Qt, P1). Press Cancel in the dialog, and press Escape. Expect no change.
+- **TP-RST-07** (Qt, P1). Set a practice folder. Reset. Expect the folder to stay, and expect the Progress window to still show the sessions.
+- **TP-RST-08** (Qt, P1). Reset during live capture. Expect the capture to continue, the graph to redraw with the default view, and no crash.
+- **TP-RST-09** (Qt, P1). Reset during a practice session and during a recording. Expect the session or the recording to continue and to finish with no loss.
+- **TP-RST-10** (Unit, P2). Reset twice in a row. Expect no change and no error the second time.
+- **TP-RST-11** (Qt, P2). Reset, quit, and start the app. Expect the default values, and expect no key that the reset left behind.
+- **TP-RST-12** (Qt, P2). Check that the reset does not remove sessions, recordings, exports, or the scratch recording.
+- **TP-RST-13** (Qt, P3). Check the text of the button, the dialog, and the hint. Expect the text to say that the action cannot be undone.
+- **TP-RST-14** (Not built yet, P3). A reset for one tab, and a reset for the view only (the zoom button at 100 percent). Ask the user which one they want, then test it.
+- **TP-RST-15** (Unit, P2). Make the reset testable without a window. `Config` needs a file and Qt objects today. Add a `Config` that works on a table in memory, then write TP-RST-02 to TP-RST-04 as plain unit tests.
 
 ## 13. Type scale and spacing scale
 
@@ -234,6 +332,8 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-UI-13** (Unit, P2). Check the contrast of the three text colours against the window and the surface. The unit test `ui_scale` does this. Repeat it when the Material theme changes.
 - **TP-UI-14** (Image, P3). Check that numbers in a column keep their width (tabular figures) when the values change.
 - **TP-UI-09** (Qt, P2). The task box of the practice mode must show the word "Conversation" in full. Test every task name and a long custom name.
+- **TP-UI-16** (Image, P2). The text in the graph (the boxes, the axes, the cursor labels, the frame times) uses sizes of 10, 12, and 14 pixels. Decide which steps of the type scale they use, change them, and compare screenshots.
+- **TP-UI-17** (Manual, P3). Measure the reading speed. Ask five people to find three values in the Settings window and in the boxes of the graph. Compare the time before and after the type scale.
 
 ## 14. Practice mode
 
@@ -246,6 +346,7 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-PRA-36** (Qt, P2). Change `practiceMinSeconds` from 2 to 30 in the General tab. Expect the new limit at the next session.
 - **TP-PRA-37** (Unit, P3). Set `practiceMinSeconds` to 0, to a negative number, and to text. Expect a minimum of 1 second.
 - **TP-PRA-38** (Qt, P2). Start a new practice while the dialog is open. Expect that the window blocks this action.
+- **TP-PRA-39** (Manual, P2). The user asked for a minimum time of "5 to 10 seconds". The app reads this as a limit with a default of 5 seconds and a range of 2 to 30 seconds. Ask the user if this is right, then fix the text or the default.
 
 - **TP-PRA-01** (Qt, P1). Start a practice session. Expect one click to start and one click to stop.
 - **TP-PRA-02** (Qt, P1). Press the key M and the button Mark. Expect a mark with the pitch and F1 to F4 at that time.
@@ -352,4 +453,16 @@ These items need a person.
 - Whether the synthesizer sounds natural to a listener.
 - Whether the colours look good to the user. The user approved the palette in one session.
 - Whether the help pages are clear for a first-time reader.
+- Whether the new flipped direction of time feels right to a person who reads the graph every day.
+- Whether the purple fill of the chosen button is obvious to a person with low vision or a colour deficiency.
+
+## 23. Code that needs a change before a test can reach it
+
+Some cases need a small change in the code. Do these changes first, because they make many cases cheap.
+
+- **A free function for the time mapping.** `mapTimeToX` and `timeAtX` are members of the painter, and they read the options. A free function with the plot size, the time range, and the flip as arguments makes TP-FLIP-07 and TP-FLIP-13 plain unit tests.
+- **A `Config` on a table in memory.** The class reads a file in its constructor and writes a file in its destructor. A constructor that takes a table makes TP-RST-02 to TP-RST-04, TP-SET-16, and TP-SET-17 plain unit tests.
+- **The layout of the graph without a window.** The functions `updateLayout` and `drawFrequencyGrid` need a renderer. A function that returns the list of lines (a plain list of numbers) makes TP-GRID-01 to TP-GRID-09 unit tests.
+- **A hook for tests that stays out of release builds.** The project used a temporary hook in `src/context/guicontext.cpp` for each screenshot. A test-only target with its own entry point replaces it, so no test depends on a hook that must never be committed.
+- **Names for objects in QML.** Give an `objectName` to each control that a test must press (the reset button, the reset dialog, the segmented control, and the tabs).
 - Whether the warm-up ranks are right for a given voice.
