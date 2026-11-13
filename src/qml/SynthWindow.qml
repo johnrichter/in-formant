@@ -32,25 +32,11 @@ ApplicationWindow {
     Material.roundedScale: Material.SmallScale
     Material.accent: Material.DeepPurple
 
-    // The first three formants of ten vowels for an average adult man and an average adult woman (Peterson and
-    // Barney, 1952, American English). F4 is a typical value, because the study has no F4.
-    readonly property var vowels: [
-        { name: "ee, as in see",      male: [270, 2290, 3010], female: [310, 2790, 3310] },
-        { name: "ih, as in sit",      male: [390, 1990, 2550], female: [430, 2480, 3070] },
-        { name: "eh, as in bed",      male: [530, 1840, 2480], female: [610, 2330, 2990] },
-        { name: "ae, as in cat",      male: [660, 1720, 2410], female: [860, 2050, 2850] },
-        { name: "ah, as in father",   male: [730, 1090, 2440], female: [850, 1220, 2810] },
-        { name: "aw, as in thought",  male: [570, 840, 2410],  female: [590, 920, 2710] },
-        { name: "uh, as in book",     male: [440, 1020, 2240], female: [470, 1160, 2680] },
-        { name: "oo, as in food",     male: [300, 870, 2240],  female: [370, 950, 2670] },
-        { name: "u, as in cup",       male: [640, 1190, 2390], female: [760, 1400, 2780] },
-        { name: "er, as in bird",     male: [490, 1350, 1690], female: [500, 1640, 1960] }
-    ]
-    readonly property var voices: [
-        { name: "Lower voice (average man)", key: "male", pitch: 120, f4: 3500 },
-        { name: "Higher voice (average woman)", key: "female", pitch: 210, f4: 4000 }
-    ]
-    readonly property var defaultBandwidths: [60, 90, 120, 150]
+    // The vowel and voice presets come from the program (vowelpresets.h). They are the averages of Peterson and
+    // Barney (1952, American English).
+    readonly property var vowels: synth.vowelPresets
+    readonly property var voices: synth.voicePresets
+    readonly property var defaultBandwidths: synth.presetBandwidths
 
     // Set the four formants to one vowel, and optionally the pitch. The follow modes go off, because they
     // would replace the values at once.

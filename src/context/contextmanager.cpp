@@ -1,4 +1,5 @@
 #include "contextmanager.h"
+#include "playbackfeed.h"
 #include "timings.h"
 
 #include <QDateTime>
@@ -519,25 +520,16 @@ void ContextManager::synthesisThreadLoop()
 
         // Generate sound only while the synthesizer is on. It ran all the time before, with the
         // volume at zero, and it used a few percent of a CPU core.
-        const bool synthOn = mSynthWrapper.enabled();
+        const PlaybackSource source = choosePlaybackSource(playingSession, mSynthWrapper.enabled());
 #ifdef _WIN32
         try {
-            if (playingSession) mPlaybackQueue->pushIfNeeded(mSessionPlayer.get());
-            else if (synthOn) mPlaybackQueue->pushIfNeeded(mSynthesizer.get()); else mPlaybackQueue->pushSilenceIfNeeded();
+            feedPlaybackQueue(*mPlaybackQueue, source, mSynthesizer.get(), mSessionPlayer.get());
         }
         catch (const std::exception& e) {
             StdExceptionHandler(e);
         }
 #else
-        if (playingSession) {
-            mPlaybackQueue->pushIfNeeded(mSessionPlayer.get());
-        }
-        else if (synthOn) {
-            mPlaybackQueue->pushIfNeeded(mSynthesizer.get());
-        }
-        else {
-            mPlaybackQueue->pushSilenceIfNeeded();
-        }
+        feedPlaybackQueue(*mPlaybackQueue, source, mSynthesizer.get(), mSessionPlayer.get());
 #endif
         std::this_thread::sleep_for(20ms);
     }

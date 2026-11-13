@@ -70,185 +70,49 @@ std::string Main::getAudioBackendName(Audio::Backend type)
     }
 }
 
-AudioContext::AudioContext(Audio::Backend type, Audio::Buffer *captureBuffer, Audio::Queue *playbackQueue)
-    : mInitialized(false),
-      mCaptureStreamOpened(false),
-      mCaptureStreamStarted(false),
-      mPlaybackStreamOpened(false),
-      mPlaybackStreamStarted(false)
-{    
+static std::unique_ptr<Audio::AbstractBase> makeAudioBackend(Audio::Backend type)
+{
+    std::unique_ptr<Audio::AbstractBase> backend;
     switch (type) {
 #ifdef AUDIO_USE_DUMMY
     case Audio::Backend::Dummy:
-        mAudio = std::make_unique<Audio::Dummy>();
+        backend = std::make_unique<Audio::Dummy>();
         break;
 #endif
 #ifdef AUDIO_USE_ALSA
     case Audio::Backend::ALSA:
-        mAudio = std::make_unique<Audio::Alsa>();
+        backend = std::make_unique<Audio::Alsa>();
         break;
 #endif
 #ifdef AUDIO_USE_PULSE
     case Audio::Backend::Pulse:
-        mAudio = std::make_unique<Audio::Pulse>();
+        backend = std::make_unique<Audio::Pulse>();
         break;
 #endif
 #ifdef AUDIO_USE_PORTAUDIO
     case Audio::Backend::PortAudio:
-        mAudio = std::make_unique<Audio::PortAudio>();
+        backend = std::make_unique<Audio::PortAudio>();
         break;
 #endif
 #ifdef AUDIO_USE_OBOE
     case Audio::Backend::Oboe:
-        mAudio = std::make_unique<Audio::Oboe>();
+        backend = std::make_unique<Audio::Oboe>();
         break;
 #endif
 #ifdef AUDIO_USE_WEBAUDIO
     case Audio::Backend::WebAudio:
-        mAudio = std::make_unique<Audio::WebAudio>();
+        backend = std::make_unique<Audio::WebAudio>();
         break;
 #endif
     default:
         throw std::runtime_error(std::string("AudioContext] Unknown backend: ") + std::to_string(static_cast<int>(type)));
     }
 
-    if (!mAudio) {
-        throw std::runtime_error("AudioContext] Backend could not be initialized.");
-    }
-
-    mAudio->setCaptureBuffer(captureBuffer);
-    mAudio->setPlaybackQueue(playbackQueue);
-    mAudio->initialize();
-    mInitialized = true;
-    mAudio->refreshDevices();
+    return backend;
 }
 
-AudioContext::~AudioContext()
+AudioContext::AudioContext(Audio::Backend type, Audio::Buffer *captureBuffer, Audio::Queue *playbackQueue)
+    : AudioContext(makeAudioBackend(type), captureBuffer, playbackQueue)
 {
-    try {
-        stopCaptureStream();
-        closeCaptureStream();
-        stopPlaybackStream();
-        closePlaybackStream();
-        if (mInitialized) {
-            mAudio->terminate();
-        }
-    }
-    catch (const std::exception &e) {
-        std::cout << "AudioContext] " << e.what() << std::endl;
-    }
-}
-
-void AudioContext::refreshDevices()
-{
-    mAudio->refreshDevices();
-}
-
-void AudioContext::reinitialize()
-{
-    stopCaptureStream();
-    closeCaptureStream();
-    stopPlaybackStream();
-    closePlaybackStream();
-
-    if (mInitialized) {
-        mInitialized = false;
-        mAudio->terminate();
-    }
-
-    mAudio->initialize();
-    mInitialized = true;
-    mAudio->refreshDevices();
-}
-
-const rpm::vector<Audio::Device>& AudioContext::getCaptureDevices() const
-{
-    return mAudio->getCaptureDevices();
-}
-
-const rpm::vector<Audio::Device>& AudioContext::getPlaybackDevices() const
-{
-    return mAudio->getPlaybackDevices();
-}
- 
-const Audio::Device& AudioContext::getDefaultCaptureDevice() const
-{
-    return mAudio->getDefaultCaptureDevice();
-}
-
-const Audio::Device& AudioContext::getDefaultPlaybackDevice() const
-{
-    return mAudio->getDefaultPlaybackDevice();
-}
-
-void AudioContext::openCaptureStream(const Audio::Device *pDevice)
-{
-    if (!mCaptureStreamOpened) {
-        mAudio->openCaptureStream(pDevice);
-        mCaptureStreamOpened = true;
-    }
-}
-
-void AudioContext::startCaptureStream()
-{
-    if (!mCaptureStreamStarted) {
-        mAudio->startCaptureStream();
-        mCaptureStreamStarted = true;
-    }
-}
-
-void AudioContext::stopCaptureStream()
-{
-    if (mCaptureStreamStarted) {
-        mAudio->stopCaptureStream();
-        mCaptureStreamStarted = false;
-    }
-}
-
-void AudioContext::closeCaptureStream()
-{
-    if (mCaptureStreamOpened) {
-        mAudio->closeCaptureStream();
-        mCaptureStreamOpened = false;
-    }
-}
-
-void AudioContext::openPlaybackStream(const Audio::Device *pDevice)
-{
-    if (!mPlaybackStreamOpened) {
-        mAudio->openPlaybackStream(pDevice);
-        mPlaybackStreamOpened = true;
-    }
-}
-
-void AudioContext::startPlaybackStream()
-{
-    if (!mPlaybackStreamStarted) {
-        mAudio->startPlaybackStream();
-        mPlaybackStreamStarted = true;
-    }
-}
-
-void AudioContext::stopPlaybackStream()
-{
-    if (mPlaybackStreamStarted) {
-        mAudio->stopPlaybackStream();
-        mPlaybackStreamStarted = false;
-    }
-}
-
-void AudioContext::closePlaybackStream()
-{
-    if (mPlaybackStreamOpened) {
-        mAudio->closePlaybackStream();
-        mPlaybackStreamOpened = false;
-    }
-}
-
-void AudioContext::tickAudio()
-{
-    if (mAudio->needsTicking()) {
-        mAudio->tickAudio();
-    }
 }
 

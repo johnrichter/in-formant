@@ -12,6 +12,7 @@
 #include <QVector>
 #include "../gui/plotitem.h"
 #include "../modules/app/synthesizer/synthesizer.h"
+#include "vowelpresets.h"
 
 namespace Main {
    
@@ -30,6 +31,9 @@ namespace Main {
         Q_PROPERTY(double jitter        READ jitter         WRITE setJitter         NOTIFY jitterChanged)
         Q_PROPERTY(QVariantList formantFrequencies READ formantFrequencies NOTIFY formantsChanged)
         Q_PROPERTY(QVariantList formantBandwidths  READ formantBandwidths  NOTIFY formantsChanged)
+        Q_PROPERTY(QVariantList vowelPresets READ vowelPresetList CONSTANT)
+        Q_PROPERTY(QVariantList voicePresets READ voicePresetList CONSTANT)
+        Q_PROPERTY(QVariantList presetBandwidths READ presetBandwidthList CONSTANT)
 
     signals:
         void enabledChanged(bool);
@@ -61,6 +65,9 @@ namespace Main {
         double jitter() const;
         QVariantList formantFrequencies() const;
         QVariantList formantBandwidths() const;
+        QVariantList vowelPresetList() const;
+        QVariantList voicePresetList() const;
+        QVariantList presetBandwidthList() const;
 
         // The manual formants. The synthesizer uses them while follow formants is off.
         static constexpr int formantCount = 4;

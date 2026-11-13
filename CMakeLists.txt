@@ -12,7 +12,7 @@ elseif(NOT CMAKE_OSX_DEPLOYMENT_TARGET)
 endif()
 
 if("x${CUR_VERSION}" STREQUAL "x")
-    set(CUR_VERSION "3.2.4")
+    set(CUR_VERSION "3.2.5")
 endif()
 
 string(FIND "${CUR_VERSION}" "-" dash_pos)
@@ -105,6 +105,7 @@ set(SOURCES
     src/context/contextmanager.cpp
     src/context/contextmanager.h
     src/context/audiocontext.cpp
+    src/context/audiocontext_streams.cpp
     src/context/audiocontext.h
     src/context/rendercontext.cpp
     src/context/rendercontext.h

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
+#include <QVariantMap>
 
 using namespace Main;
 
@@ -111,6 +112,35 @@ QVariantList SynthWrapper::formantBandwidths() const
 {
     QVariantList list;
     for (int i = 0; i < formantCount; ++i) list.append(mFormantBandwidth[i].load());
+    return list;
+}
+
+QVariantList SynthWrapper::vowelPresetList() const
+{
+    QVariantList list;
+    for (const VowelPreset &v : vowelPresets) {
+        QVariantList male, female;
+        for (int f : v.male) male.append(f);
+        for (int f : v.female) female.append(f);
+        list.append(QVariantMap{ { "name", QString::fromUtf8(v.name) }, { "male", male }, { "female", female } });
+    }
+    return list;
+}
+
+QVariantList SynthWrapper::voicePresetList() const
+{
+    QVariantList list;
+    for (const VoicePreset &v : voicePresets) {
+        list.append(QVariantMap{ { "name", QString::fromUtf8(v.name) }, { "key", QString::fromUtf8(v.key) },
+                                 { "pitch", v.pitch }, { "f4", v.f4 } });
+    }
+    return list;
+}
+
+QVariantList SynthWrapper::presetBandwidthList() const
+{
+    QVariantList list;
+    for (int b : presetBandwidths) list.append(b);
     return list;
 }
 

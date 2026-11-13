@@ -586,6 +586,8 @@ Some cases need a small change in the code. Do these changes first, because they
 - **The layout of the graph without a window.** Done for the layout and for the grid lines. `computeGraphLayout` in `src/gui/graphlayout.h` takes a text measure, and `makeGridLines` in `src/gui/gridlines.h` returns the rows. The cases TP-LAY and TP-GRID-08 to TP-GRID-09 use them.
 - **Colour and grid rules without a window.** Done. `gridLineColor` in `src/gui/gridcolor.h` returns the grid colour, and `defaultColorMap` lives in `src/gui/cmap.cpp`. The target `color_tests` builds the themes and tests them without Qt Quick. TP-COL, TP-GRD-11, and TP-QUI use them.
 - **The map rules without a window.** Done. `src/gui/maplayout.h` holds the clock, the loudness scale, the pitch scale, and the gap rule of the map. A fake clock replaces the system clock in TP-MAP-26.
+- **The audio streams without a sound device.** Done. `AudioContext` takes a backend from the caller, and `src/context/audiocontext_streams.cpp` holds the code that does not depend on a backend. TP-CAP-15 uses a stand-in backend.
+- **The playback source and the preset table without a window.** Done. `src/context/playbackfeed.h` chooses the source of the playback stream, and `src/context/vowelpresets.h` holds the vowel table that the synthesizer window shows. TP-SYN-21 and TP-SYN-22 use them.
 - **A hook for tests that stays out of release builds.** The project used a temporary hook in `src/context/guicontext.cpp` for each screenshot. A test-only target with its own entry point replaces it, so no test depends on a hook that must never be committed.
 - **Names for objects in QML.** Give an `objectName` to each control that a test must press (the reset button, the reset dialog, the segmented control, and the tabs).
 - Whether the warm-up ranks are right for a given voice.
@@ -600,3 +602,4 @@ Each entry names the case, the bug, the version of the fix, and the test that gu
 - **A click on the first pixel of the margin counted as a click on the graph (3.2.4).** The test of the graph now ends before the last pixel row and the last pixel column. TP-LAY-19, TP-LAY-20, and TP-LAY-23.
 - **The column N was too narrow for a count above 999999 (3.2.4).** A window of 24 hours has about 8.6 million frames, so the pattern now has 7 digits. TP-LAY-12.
 - **Two grid lines on one pixel row looked brighter than one line (3.2.4).** The grid now draws one line for each pixel row, and a major line wins over a minor line. TP-GRID-09.
+- **A stream call after a failed restart reached a stopped audio system (3.2.5).** When the restart failed, a later press of play still called the sound backend. Now the call throws an error, the status says that the input device did not start, and the backend sees no call. TP-CAP-15.

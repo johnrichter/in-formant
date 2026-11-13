@@ -112,3 +112,19 @@ add_test(NAME plan_coverage
         --tests ${CMAKE_CURRENT_SOURCE_DIR}
         --deferred ${CMAKE_CURRENT_SOURCE_DIR}/deferred.txt)
 set_tests_properties(plan_coverage PROPERTIES LABELS "script")
+
+# The playback feed and the preset table of the synthesizer. The queue needs the resampler.
+set(AUDIO_SOURCES ${SRC}/modules/audio/queue/queue.cpp ${SRC}/modules/audio/resampler/resampler.cpp
+    ${SRC}/modules/audio/base/base.cpp ${SRC}/modules/audio/buffer/buffer.cpp)
+informant_add_test(NAME synth_tests
+    SOURCES synth_test.cpp ${AUDIO_SOURCES}
+    LIBS rpcxx_only lsr
+    LABELS synth)
+target_include_directories(synth_tests SYSTEM PRIVATE ${APP_HEADER_INCLUDES})
+
+# The streams of the audio context, with a stand-in for the sound backend.
+informant_add_test(NAME audio_context_tests
+    SOURCES audio_context_test.cpp ${SRC}/context/audiocontext_streams.cpp ${AUDIO_SOURCES}
+    LIBS rpcxx_only lsr
+    LABELS audio_context)
+target_include_directories(audio_context_tests SYSTEM PRIVATE ${APP_HEADER_INCLUDES})

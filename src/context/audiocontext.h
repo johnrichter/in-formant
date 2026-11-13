@@ -15,6 +15,8 @@ namespace Main {
     class AudioContext {
     public:
         AudioContext(Audio::Backend type, Audio::Buffer *captureBuffer, Audio::Queue *playbackQueue);
+        // The backend comes from the caller. The tests use this form with a stand-in.
+        AudioContext(std::unique_ptr<Audio::AbstractBase> backend, Audio::Buffer *captureBuffer, Audio::Queue *playbackQueue);
         virtual ~AudioContext();
 
         void refreshDevices();
@@ -44,6 +46,9 @@ namespace Main {
         void tickAudio();
 
     private:
+        // Throws when the audio system is not running, for example after a restart that failed.
+        void requireReady() const;
+
         std::unique_ptr<Audio::AbstractBase> mAudio;
         bool mInitialized;
         bool mCaptureStreamOpened, mCaptureStreamStarted;

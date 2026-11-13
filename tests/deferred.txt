@@ -4,9 +4,6 @@
 
 TP-PITCH-05 | NOTBUILT | tests a feature that does not exist, so write a DISABLED_ test when the feature exists
 TP-PITCH-06 | NOTBUILT | needs a feature that does not exist and a CPU measure
-TP-CAP-15 | WP7 | planned in WP7
-TP-SYN-21 | WP7 | planned in WP7
-TP-SYN-22 | WP7 | planned in WP7
 TP-DOC-01 | WP8 | planned in WP8
 TP-DOC-02 | WP8 | planned in WP8
 TP-DOC-05 | WP8 | planned in WP8
