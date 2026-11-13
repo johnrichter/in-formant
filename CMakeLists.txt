@@ -8,7 +8,7 @@ elseif(NOT CMAKE_OSX_DEPLOYMENT_TARGET)
 endif()
 
 if("x${CUR_VERSION}" STREQUAL "x")
-    set(CUR_VERSION "3.3.0")
+    set(CUR_VERSION "3.3.1")
 endif()
 
 string(FIND "${CUR_VERSION}" "-" dash_pos)
@@ -214,6 +214,10 @@ set_source_files_properties(src/context/videowriter_mac.mm PROPERTIES LANGUAGE C
 list(APPEND SOURCES src/context/devicewatcher_mac.mm)
 set_source_files_properties(src/context/devicewatcher_mac.mm PROPERTIES LANGUAGE CXX COMPILE_FLAGS "-x objective-c++ -fobjc-arc")
 
+# The permission to use the microphone. The program asks AVFoundation directly.
+list(APPEND SOURCES src/context/micpermission_mac.mm)
+set_source_files_properties(src/context/micpermission_mac.mm PROPERTIES LANGUAGE CXX COMPILE_FLAGS "-x objective-c++ -fobjc-arc")
+
 ### REQUIRED MODULES
 
 find_package(PkgConfig REQUIRED)
@@ -270,9 +274,6 @@ target_link_libraries(in-formant PRIVATE Eigen3::Eigen ${FFTW_LIBRARIES} ${porta
 target_link_directories(in-formant PRIVATE ${FFTW_LIBRARY_DIRS} ${portaudio_LIBRARY_DIRS})
 target_link_libraries(in-formant PRIVATE "-framework AudioToolbox" "-framework CoreAudio" "-framework CoreFoundation" "-framework AVFoundation" "-framework CoreMedia" "-framework CoreVideo" "-framework Foundation")
 
-# The permission plugin for the microphone is a static plugin. Without it, Qt reports the permission as denied,
-# and the program cannot ask the user.
-qt6_import_plugins(in-formant INCLUDE Qt6::QDarwinMicrophonePermissionPlugin)
 
 set(BUILD_SHARED_LIBS TRUE)
 add_subdirectory(external/freetype EXCLUDE_FROM_ALL)

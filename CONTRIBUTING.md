@@ -16,6 +16,9 @@ The unit tests use GoogleTest and GoogleMock. Run `./build-macos.sh` one time fi
 - Run `./run-tests.sh -R TP_LAY` to run the tests whose name has `TP_LAY`. Any argument after the options goes to CTest.
 - Run `./run-tests.sh -L script` to run only the script tests.
 - Run `./run-tests.sh -V -R Ticks` to see the full output of the tests of one suite.
+- Run `./run-tests.sh -L app` to run only the app tests. These tests start the built application in `build/native/stage/InFormant.app`, and they take about 2 minutes.
+
+The app tests (labels `app`, names that start with `App.`) run `tests/app_smoke.py`. Run `./build-macos.sh` first. When the bundle is missing, CTest skips the app tests. To skip them on purpose, set `INFORMANT_NO_APP_TESTS=1`. The tests start the application as Finder does, from the root folder. They write to `~/Library/Logs/InFormant` and remove `informant.conf` at the end. Do not use the application during the tests.
 
 All tests must pass before you send a change. A failing test is a bug candidate. Fix the program in the same change, and never weaken a check to make a test pass.
 
@@ -34,7 +37,7 @@ The first run downloads GoogleTest 1.18.0. The download is pinned with a hash. T
 
 ## The test plan and the coverage check
 
-`docs/test-plan.md` lists the test cases. Each case has an ID, a type (Unit, Qt, Image, Audio, or Manual), and a priority.
+`docs/test-plan.md` lists the test cases. Each case has an ID, a type (Unit, Qt, Image, Audio, App, or Manual), and a priority.
 
 - Each case of type Unit needs a test or a line in `tests/deferred.txt`. The format of the line is `ID | package | reason`.
 - The script test `plan_coverage` runs `tests/check_plan_coverage.py`. It fails when a Unit case has neither, when a deferred line names an unknown case, and when a deferred case already has a test.

@@ -81,6 +81,7 @@ The script builds the tests in `build/native/build-tests` and runs them with CTe
 * `--sanitize`: Build the tests with the address and undefined behavior sanitizers.
 * `-R TP_LAY`: Run only the tests whose name has `TP_LAY`. The name of each test starts with the ID of its case in `docs/test-plan.md`.
 * `-L script`: Run only the script tests.
+* `-L app`: Run only the app tests. They start the built application, so run `build-macos.sh` first.
 
 The script `tests/check_plan_coverage.py` checks that each case of type Unit in the test plan has a test. A case with no test needs a line in `tests/deferred.txt` with a reason.
 

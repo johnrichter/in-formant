@@ -11,6 +11,7 @@
 #include "config.h"
 #include "datastore.h"
 #include "fileanalyzer.h"
+#include "micpermission.h"
 #include "recorder.h"
 #include "sessionplayer.h"
 
@@ -48,6 +49,17 @@ namespace Main {
 
         // Show a message in the status line. Call this from the thread of the application.
         void showStatus(const QString &text) { setStatus(text); }
+
+        // Tell the person that the microphone access is off. The interface shows a dialog with a button for the
+        // System Settings. Call this from the thread of the application.
+        void microphoneDenied()
+        {
+            setStatus(QString::fromUtf8(micDeniedMessage()));
+            emit microphoneAccessDenied();
+        }
+
+        // Open the page of the microphone in the System Settings.
+        Q_INVOKABLE void openMicrophoneSettings() { Main::openMicrophoneSettings(); }
 
         // The length of the stored sound in seconds.
         Q_INVOKABLE double duration() const;
@@ -95,6 +107,7 @@ namespace Main {
         void playingChanged();
         void exportingChanged();
         void statusChanged();
+        void microphoneAccessDenied();
         void exportFinished(const QString &path, bool ok);
         void fileModeChanged();
         void recordingChanged();

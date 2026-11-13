@@ -1,13 +1,13 @@
 #include "contextmanager.h"
-#include "micaccess.h"
+#include "micpermission.h"
 #include "playbackfeed.h"
 #include "timings.h"
 
 #include <QCoreApplication>
 #include <QDateTime>
-#include <QPermissions>
 #include <QDir>
 #include <QMetaObject>
+#include <QPointer>
 #include <QStandardPaths>
 #include <QTimer>
 
@@ -85,8 +85,13 @@ ContextManager::ContextManager(
                 else {
                     requestMicrophoneThen([this]() {
                         // The system can change its default input device while the capture is off.
-                        if (!mAudioReady || captureDeviceIsStale()) {
+                        if (!mAudioReady || !mCaptureOpen || captureDeviceIsStale()) {
                             reinitializeAudio(false);
+                        }
+                        if (!mAudioReady || !mCaptureOpen) {
+                            // The function reinitializeAudio showed the reason.
+                            mConfig->setPaused(true);
+                            return;
                         }
                         startCapture();
                     });
@@ -217,15 +222,26 @@ void ContextManager::publishCaptureDevices()
 void ContextManager::openAndStartAudioStreams()
 {
     publishCaptureDevices();
-    mAudioContext->openCaptureStream(findCaptureDevice());
-    mOpenedDefaultInputId = systemDefaultInputDeviceId();
+    openCaptureStreamIfAllowed();
 
     // The application starts in the paused state. The capture starts when the user presses play.
-    if (!mConfig->isPaused()) {
+    if (mCaptureOpen && !mConfig->isPaused()) {
         mAudioContext->startCaptureStream();
     }
     mAudioContext->openPlaybackStream(nullptr);
     mAudioContext->startPlaybackStream();
+}
+
+void ContextManager::openCaptureStreamIfAllowed()
+{
+    mCaptureOpen = false;
+    if (systemMicAccess() != MicAccess::Granted) {
+        std::cout << "ContextManager] The microphone is not allowed yet, so the capture stream stays closed." << std::endl;
+        return;
+    }
+    mAudioContext->openCaptureStream(findCaptureDevice());
+    mOpenedDefaultInputId = systemDefaultInputDeviceId();
+    mCaptureOpen = true;
 }
 
 void ContextManager::reinitializeAudio(bool startCapture)
@@ -238,16 +254,16 @@ void ContextManager::reinitializeAudio(bool startCapture)
         mAudioReady = true;
 
         publishCaptureDevices();
-        mAudioContext->openCaptureStream(findCaptureDevice());
-        mOpenedDefaultInputId = systemDefaultInputDeviceId();
+        openCaptureStreamIfAllowed();
         mAudioContext->openPlaybackStream(nullptr);
         mAudioContext->startPlaybackStream();
-        if (startCapture) {
+        if (startCapture && mCaptureOpen) {
             mAudioContext->startCaptureStream();
         }
     }
     catch (const std::exception &e) {
         mAudioReady = false;
+        mCaptureOpen = false;
         std::cout << "ContextManager] The audio system did not start: " << e.what() << std::endl;
         mSessionWrapper->showStatus(QStringLiteral("No input device available"));
     }
@@ -265,31 +281,41 @@ bool ContextManager::captureDeviceIsStale()
 
 void ContextManager::requestMicrophoneThen(std::function<void()> start)
 {
-    QCoreApplication *app = QCoreApplication::instance();
-    const QMicrophonePermission permission;
-    const Qt::PermissionStatus status = app->checkPermission(permission);
-    const MicAccess access = status == Qt::PermissionStatus::Granted ? MicAccess::Granted
-                           : status == Qt::PermissionStatus::Denied ? MicAccess::Denied
-                                                                    : MicAccess::Undetermined;
+    const MicAccess access = systemMicAccess();
+
+    std::cout << "ContextManager] Microphone permission: "
+              << (access == MicAccess::Granted ? "granted" : access == MicAccess::Denied ? "denied" : "not asked yet") << std::endl;
 
     switch (micStep(access)) {
     case MicStep::Start:
         start();
         break;
     case MicStep::Ask:
-        // The system shows its question. The handler runs on the Qt thread when the user answers.
-        app->requestPermission(permission, app, [this, start](const QPermission &answer) {
-            if (answer.status() == Qt::PermissionStatus::Granted) {
-                start();
-            }
-            else {
-                mSessionWrapper->showStatus(QString::fromUtf8(micDeniedMessage()));
-                mConfig->setPaused(true);
-            }
+        // The system shows its question. The answer comes on a thread of the system, so the program moves it to the Qt thread.
+        // One question at a time: a second press of play while the question is open waits for the same answer.
+        if (mMicRequestPending) break;
+        mMicRequestPending = true;
+        // The answer can come after the program quit. The guarded pointer then is null, and the answer is dropped.
+        requestSystemMicAccess([this, start, config = QPointer<Config>(mConfig.get())](bool allowed) {
+            if (config.isNull()) return;
+            QMetaObject::invokeMethod(config.data(), [this, start, allowed]() {
+                mMicRequestPending = false;
+                std::cout << "ContextManager] The user answered the microphone question: "
+                          << (allowed ? "allowed" : "denied") << std::endl;
+                // The user can press pause while the question is open. Then the capture must not start.
+                if (mConfig->isPaused()) return;
+                if (allowed) {
+                    start();
+                }
+                else {
+                    mSessionWrapper->microphoneDenied();
+                    mConfig->setPaused(true);
+                }
+            }, Qt::QueuedConnection);
         });
         break;
     case MicStep::ShowDenied:
-        mSessionWrapper->showStatus(QString::fromUtf8(micDeniedMessage()));
+        mSessionWrapper->microphoneDenied();
         mConfig->setPaused(true);
         break;
     }
@@ -310,12 +336,13 @@ void ContextManager::startCapture()
 
 void ContextManager::onAudioDevicesChanged()
 {
-    const bool running = !mConfig->isPaused();
+    // While the question of the microphone is open, the capture is not on yet. The list of devices still updates.
+    const bool running = !mConfig->isPaused() && mCaptureOpen;
 
     // While the capture runs, its clock stops for the short gap of the restart.
     if (running) mDataStore->stopRealTime();
     reinitializeAudio(running);
-    if (running && mAudioReady) mDataStore->startRealTime();
+    if (running && mAudioReady && mCaptureOpen) mDataStore->startRealTime();
     else if (running) mConfig->setPaused(true);
 }
 

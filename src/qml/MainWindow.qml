@@ -475,6 +475,34 @@ ApplicationWindow {
         }
     }
 
+    // The microphone access is off. The system does not ask again, so the person must change it in the System Settings.
+    Dialog {
+        id: micDeniedDialog
+        objectName: "micDeniedDialog"
+        Material.roundedScale: Material.SmallScale
+        title: "Microphone access is off"
+        modal: true
+        anchors.centerIn: Overlay.overlay
+        standardButtons: Dialog.Open | Dialog.Close
+
+        Component.onCompleted: standardButton(Dialog.Open).text = "Open System Settings"
+        onAccepted: sessionControl.openMicrophoneSettings()
+
+        ColumnLayout {
+            spacing: ui.space.md
+            Label {
+                Layout.preferredWidth: 420
+                wrapMode: Text.WordWrap
+                text: "InFormant cannot listen to the microphone. Open System Settings, go to Privacy and Security, then Microphone, and switch on InFormant. Then press play again."
+            }
+        }
+    }
+
+    Connections {
+        target: sessionControl
+        function onMicrophoneAccessDenied() { micDeniedDialog.open() }
+    }
+
     Connections {
         target: practice
         function onConfirm(text) {

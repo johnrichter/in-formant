@@ -562,14 +562,44 @@ TEST(Release, TP_REL_11_TheSigningRulesAndTheMicrophoneEntitlementAreInPlace)
     EXPECT_NE(entitlements.find("com.apple.security.device.audio-input"), std::string::npos);
     EXPECT_NE(entitlements.find("com.apple.security.cs.allow-jit"), std::string::npos);
 
-    // Qt reports a denied microphone when the static permission plugin is not in the program.
-    const std::string cmake = readFile(root / "CMakeLists.txt");
-    EXPECT_NE(cmake.find("qt6_import_plugins(in-formant INCLUDE Qt6::QDarwinMicrophonePermissionPlugin)"), std::string::npos);
-
     const std::string plist = readFile(root / "dist-res/Info.plist");
     const size_t at = plist.find("NSMicrophoneUsageDescription");
     ASSERT_NE(at, std::string::npos);
     EXPECT_NE(plist.find("<string>", at), std::string::npos);
+}
+
+// The permission plugin of Qt refused to ask for the microphone in a build that Finder starts. The program then
+// stayed paused, and the play button seemed to do nothing. The program must ask AVFoundation directly. The source
+// file of that call must be in the list of sources before the target is made, or the link fails.
+TEST(Capture, TP_CAP_20_TheProgramAsksTheMicrophoneThroughAVFoundation)
+{
+    const std::string cmake = readFile(root / "CMakeLists.txt");
+    const size_t added = cmake.find("list(APPEND SOURCES src/context/micpermission_mac.mm)");
+    const size_t target = cmake.find("add_executable(in-formant");
+    ASSERT_NE(added, std::string::npos);
+    ASSERT_NE(target, std::string::npos);
+    EXPECT_LT(added, target);
+    EXPECT_EQ(cmake.find("QDarwinMicrophonePermissionPlugin"), std::string::npos);
+
+    const std::string call = readFile(root / "src/context/micpermission_mac.mm");
+    EXPECT_NE(call.find("authorizationStatusForMediaType:AVMediaTypeAudio"), std::string::npos);
+    EXPECT_NE(call.find("requestAccessForMediaType:AVMediaTypeAudio"), std::string::npos);
+    EXPECT_NE(call.find("Privacy_Microphone"), std::string::npos);
+
+    // No file asks the permission plugin of Qt.
+    for (const auto &entry : fs::recursive_directory_iterator(root / "src")) {
+        const auto ext = entry.path().extension();
+        if (ext != ".cpp" && ext != ".h" && ext != ".mm") continue;
+        const std::string text = readFile(entry.path());
+        EXPECT_EQ(text.find("<QPermissions>"), std::string::npos) << entry.path();
+        EXPECT_EQ(text.find("QMicrophonePermission"), std::string::npos) << entry.path();
+    }
+
+    // A denied answer opens the dialog with the button for the System Settings.
+    const std::string qml = readFile(root / "src/qml/MainWindow.qml");
+    EXPECT_NE(qml.find("micDeniedDialog"), std::string::npos);
+    EXPECT_NE(qml.find("onMicrophoneAccessDenied"), std::string::npos);
+    EXPECT_NE(qml.find("sessionControl.openMicrophoneSettings()"), std::string::npos);
 }
 
 namespace {

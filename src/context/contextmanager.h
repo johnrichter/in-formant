@@ -60,6 +60,7 @@ namespace Main {
         // Rebuild the state of the audio system, and open the streams again. Only the Qt thread
         // calls these functions. The capture starts when startCapture is true.
         void reinitializeAudio(bool startCapture);
+        void openCaptureStreamIfAllowed();
         bool captureDeviceIsStale();
         // Starts the capture when the user allows the microphone. The first call shows the question of the system.
         void requestMicrophoneThen(std::function<void()> start);
@@ -135,6 +136,11 @@ namespace Main {
 
         // False when the audio system could not start, for example with no input device.
         bool mAudioReady = true;
+        // The capture stream opens only after the user allowed the microphone. Opening it earlier makes the system
+        // show its question at launch, and the whole program waits for the answer.
+        bool mCaptureOpen = false;
+        // True while the question of the system for the microphone is open.
+        bool mMicRequestPending = false;
         bool mReinitializing = false;
         std::atomic_bool mDeviceChangePending{false};
 

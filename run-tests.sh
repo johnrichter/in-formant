@@ -61,6 +61,7 @@ cmake -S "$root" -B "$build" -G Ninja \
     -DCMAKE_IGNORE_PREFIX_PATH=/opt/homebrew \
     -DCUR_VERSION="$(cat "$root/version")" \
     -DINFORMANT_BUILD_TESTS=ON \
+    -DINFORMANT_APP_PATH="$work/stage/InFormant.app" \
     -DINFORMANT_SANITIZE_TESTS="$sanitize"
 
 cmake --build "$build" --target unit_tests --parallel "$jobs"

@@ -153,5 +153,18 @@ target_include_directories(buffer_tests SYSTEM PRIVATE ${APP_HEADER_INCLUDES})
 # The rules of the log file: the folder, the rotation, and the lines with stamps.
 informant_add_test(NAME log_format_tests SOURCES log_format_test.cpp LABELS log)
 
+# Smoke tests of the built application. They need the bundle that build-macos.sh makes, and they skip when it is
+# missing. The tests share the log file and the settings file of the user, so they run one at a time.
+set(INFORMANT_APP_PATH "" CACHE PATH "The application bundle for the smoke tests")
+foreach(case IN ITEMS "start|TP_APP_01_TheAppStartsAndQuitsWithNoError" "log|TP_LOG_05_TheAppWritesItsLogInTheFolderOfTheUser"
+        "idle|TP_IDLE_03_APausedAppUsesLittleCpu" "signature|TP_REL_13_TheSignatureIsValidAndTheSignedAppStarts")
+    string(REPLACE "|" ";" parts "${case}")
+    list(GET parts 0 mode)
+    list(GET parts 1 name)
+    add_test(NAME App.${name}
+        COMMAND python3 -I ${CMAKE_CURRENT_SOURCE_DIR}/app_smoke.py --app "${INFORMANT_APP_PATH}" --case ${mode})
+    set_tests_properties(App.${name} PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 120 RESOURCE_LOCK informant_app LABELS "app")
+endforeach()
+
 # The choice of the program for each state of the microphone permission.
 informant_add_test(NAME mic_access_tests SOURCES mic_access_test.cpp LABELS mic_access)

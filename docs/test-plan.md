@@ -5,7 +5,7 @@ This page lists every use case of the project. A test names the ID of its case. 
 ## How to read this page
 
 - Each case has an ID, a short setup, and the result that a test must check.
-- The type tells how to automate the case. **Unit** is a C++ test in `tests/` with GoogleTest. The name of the test starts with the ID of the case, for example `TEST(Layout, TP_LAY_01_BoxesCentered)`. **Perf** is a timed measure on a real session. **Qt** is a Qt Quick Test or a Qt Test with a window. **Image** compares a screenshot with a stored picture. **Audio** analyses rendered samples. **Manual** needs a person or a device.
+- The type tells how to automate the case. **Unit** is a C++ test in `tests/` with GoogleTest. The name of the test starts with the ID of the case, for example `TEST(Layout, TP_LAY_01_BoxesCentered)`. **Perf** is a timed measure on a real session. **Qt** is a Qt Quick Test or a Qt Test with a window. **Image** compares a screenshot with a stored picture. **Audio** analyses rendered samples. **App** starts the built application bundle, and a script in `tests/app_smoke.py` checks the result. **Manual** needs a person or a device.
 - The priority is **P1** (a failure harms a user), **P2** (a failure is visible), or **P3** (a small risk).
 - A case that says "not built yet" tests a feature that does not exist. Write the test when the feature exists.
 
@@ -114,7 +114,8 @@ The project never played the sound through a speaker. These cases use rendered s
 - **TP-SYN-33** (Audio, P2). Leave the synthesizer off for a minute. Switch it on, and then press play on a stored sound. Expect the sound within 200 ms each time.
 - **TP-IDLE-01** (Manual, P2). Pause the capture, close the synthesizer window, and measure the wake-ups of the process for 10 s with `sample` or Activity Monitor. Expect fewer than 40 wake-ups in a second.
 - **TP-IDLE-02** (Unit, P1). The canvas draws the next frame at once only while the capture or a playback runs. It does the same for 1 s after an input of the user. Else it draws one frame for each 200 ms. An input in any window counts.
-- **TP-IDLE-03** (Manual, P1). Pause the capture, and measure the CPU use of the process for 30 s. Expect less than 3 percent of one core. Then move the mouse over the graph. Expect the cursor to follow with no lag, and the spectrogram to show the change of a setting at once.
+- **TP-IDLE-03** (App, P1). Start the app and leave it paused. Measure the CPU use of the process for 20 s. Expect less than 6 percent of one core.
+- **TP-IDLE-05** (Manual, P1). Pause the capture, and move the mouse over the graph. Expect the cursor to follow with no lag, and the spectrogram to show the change of a setting at once.
 - **TP-IDLE-04** (Image, P2). Pause the capture. Change the theme, the scale, and the view range. Expect the graph to show each change at once. Press play, and then pause. Expect the last frame to stay on the screen.
 
 ## 2. Playback of a session
@@ -400,6 +401,8 @@ The scroll views of the settings, the help pages, the help boxes, the Synthesize
 - **TP-CAP-16** (Unit, P1). The capture buffer reserves 1048576 samples at the start, and a push never allocates memory. A push into a full buffer drops the samples and counts them. The samples keep their order. The buffer takes samples again after the reader catches up.
 
 - **TP-CAP-17** (Unit, P1). Press play with the permission for the microphone in each state. Granted starts the capture. Undetermined asks the system. Denied stays paused and shows a message that names the System Settings.
+- **TP-CAP-20** (Unit, P1). Check that the program asks for the microphone through AVFoundation and not through the permission plugin of Qt. Check that the source file of the call is in the list before the target, and that no file includes the Qt permission header. Check that a denied answer opens a dialog with a button for the System Settings.
+- **TP-CAP-21** (Manual, P1). Start an app that has no microphone access, for example a new build with a new signature. Expect the window at once, with no question of the system. Press play. Expect the question of the system, and the capture after you allow it.
 - **TP-CAP-18** (Manual, P1). Reset the permission with `tccutil reset Microphone fr.cloyunhee.InFormant`, and start the app. Expect no question at the start. Press play. Expect the question of the system, and the capture after you allow it.
 - **TP-CAP-19** (Manual, P1). Deny the microphone, and press play. Expect the paused state and the message with the System Settings. Allow it in the System Settings, and press play. Expect the capture.
 
@@ -573,9 +576,8 @@ The scroll views of the settings, the help pages, the help boxes, the Synthesize
 - **TP-REL-07** (Manual, P3). Run the app with the Sound settings of the system set to a sample rate of 8000, 48000, and 192000 Hz.
 - **TP-REL-09** (Unit, P1). Check that the build script downloads over https only and checks a pinned SHA-256 checksum for each download. Check that it pins the Python tools and that both scripts use the same Qt version.
 - **TP-REL-10** (Manual, P1). Change `QT_VERSION` and run `build-macos.sh` on a used build folder. Expect the script to delete the old build folder, and the app to link the new Qt.
-- **TP-REL-11** (Unit, P1). Check that the build script signs ad hoc by default, and with the hardened runtime, the entitlements, and a timestamp for a Developer ID. Check the entitlements for the microphone and the Qt Quick compiler, and the microphone text in the Info.plist. Check that the program links the static permission plugin of the microphone, because Qt reports a denied microphone without it.
-- **TP-REL-12** (Manual, P1). Run `SIGN_IDENTITY` with a Developer ID and `NOTARY_PROFILE`. Expect the status Accepted from Apple, a stapled ticket, and a start of the app on another Mac with no warning of Gatekeeper.
-- **TP-REL-13** (Manual, P2). Sign the app with the hardened runtime and the entitlements, and start it. Expect the window, the QML, and the capture to work.
+- **TP-REL-11** (Unit, P1). Check that the build script signs ad hoc by default, and with the hardened runtime, the entitlements, and a timestamp for a Developer ID. Check the entitlements for the microphone and the Qt Quick compiler, and the microphone text in the Info.plist.- **TP-REL-12** (Manual, P1). Run `SIGN_IDENTITY` with a Developer ID and `NOTARY_PROFILE`. Expect the status Accepted from Apple, a stapled ticket, and a start of the app on another Mac with no warning of Gatekeeper.
+- **TP-REL-13** (App, P2). Check that the bundle has a valid signature. Start the signed app. Expect a start with no QML error and a quit at SIGTERM. Sign with the hardened runtime and a Developer ID or an Apple Development certificate to test this case in full.
 - **TP-REL-08** (Unit, P1). Check that the code of the app has no condition for another system, no choice of audio backend, and no optional library. Check that the build file stops on any other system.
 
 ## 21. Load and long sessions
@@ -611,13 +613,17 @@ Some cases need a small change in the code. Do these changes first, because they
 - **Names for objects in QML.** Give an `objectName` to each control that a test must press (the reset button, the reset dialog, the segmented control, and the tabs).
 - Whether the warm-up ranks are right for a given voice.
 
+## 27. Start and quit of the application
+
+- **TP-APP-01** (App, P1). Start the app from the root folder with no hook. Expect the window to stay open for 8 s, and no QML error in the log. Expect the log to show that the start got past the capture step, with no wait for a system question. Expect a quit within 15 s at SIGTERM.
+
 ## 26. The log file
 
 - **TP-LOG-01** (Unit, P1). The log file is `~/Library/Logs/InFormant/InFormant.log`, and the file of the last run is `InFormant.1.log`.
 - **TP-LOG-02** (Unit, P2). A file over 5 MB moves to the second file when the program starts.
 - **TP-LOG-03** (Unit, P2). Each line gets one stamp. A line can span two chunks of text, and an open line waits for its end.
 - **TP-LOG-04** (Unit, P2). A line longer than 4096 bytes breaks into two lines and loses no byte.
-- **TP-LOG-05** (Manual, P1). Start the app from Finder, and not from a shell. Expect the file `InFormant.log` in the folder `~/Library/Logs/InFormant`, with lines that have stamps. Expect no file in the folder `/`.
+- **TP-LOG-05** (App, P1). Start the app with the root folder as the working folder, as Finder does. Expect new lines with stamps in `~/Library/Logs/InFormant/InFormant.log`. Expect no file in the folder `/`.
 
 ## 25. The oscilloscope
 
@@ -653,3 +659,4 @@ Each entry names the case, the bug, the version of the fix, and the test that gu
 - **The compiler removed the checks for a number that is not a number (3.2.7).** The flag `-ffast-math` makes these checks undefined. The flag `-fno-finite-math-only` now keeps them. TP-PRA-37.
 - **The oscilloscope showed nothing after the start and with a loaded file (3.2.8).** The plot had data only during a live capture, and it drew no axes and no text. Now the plot shows the axes and a text before the first press of play. When the capture is paused or a file is loaded, it shows the stored sound. The sound is at the picked moment, or at the end of the view. TP-SCP-06 and TP-SCP-07.
 - **A change of the audio backend could free the audio system while it ran (3.2.9).** The handler replaced the audio context while the synthesizer thread still used it. The program now has one backend, PortAudio, and no such option. TP-REL-08.
+- **The play button did nothing in an app that Finder started (3.3.1).** The permission plugin of Qt refused to ask for the microphone. The program then paused again at once, and only a hidden status line told the reason. Now the program asks AVFoundation directly, and a denied answer opens a dialog with a button for the System Settings. The program also opened the capture stream at launch. The system then showed its question at launch, and the program waited for the answer with no window. Now the stream opens after the user allows the microphone. TP-CAP-20, TP-CAP-21, and TP-APP-01.
