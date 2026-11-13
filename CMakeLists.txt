@@ -395,6 +395,8 @@ endif()
 option(INFORMANT_BUILD_TESTS "Build the unit tests" OFF)
 if(INFORMANT_BUILD_TESTS)
     enable_testing()
+    # One target builds all tests. The script run-tests.sh builds this target and not the application.
+    add_custom_target(unit_tests)
     add_library(tomlpp_for_tests STATIC src/tomlplusplus.cpp)
     target_include_directories(tomlpp_for_tests SYSTEM PUBLIC ${TOMLPP_INCLUDE_DIR})
     add_executable(config_migration_test tests/config_migration_test.cpp)
@@ -429,6 +431,12 @@ if(INFORMANT_BUILD_TESTS)
     target_include_directories(voice_test SYSTEM PRIVATE ${ARMADILLO_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS} external/libsamplerate/src)
     target_link_libraries(voice_test PRIVATE Eigen3::Eigen rpcxx_only Qt6::Core)
     add_test(NAME voice COMMAND voice_test)
+
+    add_dependencies(unit_tests config_migration_test readout_layout_test map_layout_test oklab_test bands_test
+        ui_scale_test ticks_test pitch_axis_test practice_test voice_test)
+
+    # The tests with GoogleTest. See tests/CMakeLists.txt.
+    add_subdirectory(tests)
 endif()
 
 target_include_directories(in-formant SYSTEM PRIVATE ${ARMADILLO_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS} ${TOMLPP_INCLUDE_DIR})

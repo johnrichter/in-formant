@@ -118,6 +118,22 @@ The script writes its downloads and build files in `build/native`. It reads thes
 
 The `macdeployqt` tool prints `ERROR: no file at ".../libiodbc.2.dylib"` and `ERROR: no file at ".../libpq.5.dylib"`. These messages come from the optional Qt SQL plugins. The application does not use them. Ignore these messages.
 
+### Run the unit tests
+
+The unit tests use GoogleTest and GoogleMock. Run `build-macos.sh` one time first. Then run this command:
+
+```sh
+./run-tests.sh
+```
+
+The script builds the tests in `build/native/build-tests` and runs them with CTest. The application build does not contain any test code. These options help:
+
+* `--sanitize`: Build the tests with the address and undefined behavior sanitizers.
+* `-R TP_LAY`: Run only the tests whose name has `TP_LAY`. The name of each test starts with the ID of its case in `docs/test-plan.md`.
+* `-L script`: Run only the script tests.
+
+The script `tests/check_plan_coverage.py` checks that each case of type Unit in the test plan has a test. A case with no test needs a line in `tests/deferred.txt` with a reason.
+
 ### Changes in this fork
 
 Build system:

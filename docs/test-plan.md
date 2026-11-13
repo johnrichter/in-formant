@@ -5,9 +5,15 @@ This page lists every use case that the project did not test during development.
 ## How to read this page
 
 - Each case has an ID, a short setup, and the result that a test must check.
-- The type tells how to automate the case. **Unit** is a plain C++ test in `tests/`. **Qt** is a Qt Quick Test or a Qt Test with a window. **Image** compares a screenshot with a stored picture. **Audio** analyses rendered samples. **Manual** needs a person or a device.
+- The type tells how to automate the case. **Unit** is a C++ test in `tests/` with GoogleTest. The name of the test starts with the ID of the case, for example `TEST(Layout, TP_LAY_01_BoxesCentred)`. **Qt** is a Qt Quick Test or a Qt Test with a window. **Image** compares a screenshot with a stored picture. **Audio** analyses rendered samples. **Manual** needs a person or a device.
 - The priority is **P1** (a failure harms a user), **P2** (a failure is visible), or **P3** (a small risk).
 - A case that says "not built yet" tests a feature that does not exist. Write the test when the feature exists.
+
+## How to run the unit tests
+
+- Run `./run-tests.sh` to build and run all unit tests. Add `--sanitize` to build with the address and undefined behavior sanitizers.
+- Run `./run-tests.sh -R TP_LAY` to run the tests of one area.
+- The file `tests/deferred.txt` lists each Unit case that has no test yet, with the package that owns it. The script test `plan_coverage` fails when a case has neither a test nor a line in that file.
 
 ## What the tests must never do
 

@@ -1,0 +1,125 @@
+# Cases of type Unit in docs/test-plan.md that have no test yet.
+# Format: ID | package | reason. Remove a line when the test exists. The script check_plan_coverage.py checks this file.
+# The packages WP1 to WP8 are in the plan of the unit tests. NOTBUILT marks a case for a feature that does not exist.
+
+TP-PITCH-05 | NOTBUILT | tests a feature that does not exist, so write a DISABLED_ test when the feature exists
+TP-PITCH-06 | NOTBUILT | needs a feature that does not exist and a CPU measure
+TP-AXT-01 | WP1 | an old test covers it, so move that test in WP1
+TP-MAP-21 | WP1 | an old test covers it, so move that test in WP1
+TP-QUI-01 | WP1 | an old test covers it, so move that test in WP1
+TP-SCR-10 | WP1 | an old test covers it, so move that test in WP1
+TP-SHAPE-01 | WP1 | an old test covers it, so move that test in WP1
+TP-TYP-02 | WP1 | an old test covers it, so move that test in WP1
+TP-UI-01 | WP1 | an old test covers it, so move that test in WP1
+TP-UI-13 | WP1 | an old test covers it, so move that test in WP1
+TP-CAP-08 | WP2 | planned in WP2
+TP-FLIP-16 | WP2 | planned in WP2
+TP-RST-02 | WP2 | planned in WP2
+TP-RST-03 | WP2 | planned in WP2
+TP-RST-04 | WP2 | planned in WP2
+TP-RST-10 | WP2 | planned in WP2
+TP-RST-15 | WP2 | planned in WP2
+TP-SET-04 | WP2 | planned in WP2
+TP-SET-05 | WP2 | planned in WP2
+TP-SET-06 | WP2 | planned in WP2
+TP-SET-07 | WP2 | planned in WP2
+TP-SET-08 | WP2 | planned in WP2
+TP-SET-13 | WP2 | planned in WP2
+TP-SET-15 | WP2 | planned in WP2
+TP-SET-16 | WP2 | planned in WP2
+TP-SET-17 | WP2 | planned in WP2
+TP-TRACK-02 | WP2 | planned in WP2
+TP-TRACK-03 | WP2 | planned in WP2
+TP-TRACK-08 | WP2 | planned in WP2
+TP-PRA-04 | WP3 | planned in WP3
+TP-PRA-05 | WP3 | planned in WP3
+TP-PRA-09 | WP3 | planned in WP3
+TP-PRA-10 | WP3 | planned in WP3
+TP-PRA-11 | WP3 | planned in WP3
+TP-PRA-15 | WP3 | planned in WP3
+TP-PRA-16 | WP3 | planned in WP3
+TP-PRA-17 | WP3 | planned in WP3
+TP-PRA-18 | WP3 | planned in WP3
+TP-PRA-21 | WP3 | planned in WP3
+TP-PRA-35 | WP3 | planned in WP3
+TP-PRA-37 | WP3 | planned in WP3
+TP-PRG-01 | WP3 | planned in WP3
+TP-PRG-02 | WP3 | planned in WP3
+TP-PRG-03 | WP3 | planned in WP3
+TP-PRG-04 | WP3 | planned in WP3
+TP-PRG-05 | WP3 | planned in WP3
+TP-PRG-06 | WP3 | planned in WP3
+TP-PRG-07 | WP3 | planned in WP3
+TP-PRG-13 | WP3 | planned in WP3
+TP-STA-01 | WP3 | planned in WP3
+TP-STA-02 | WP3 | planned in WP3
+TP-STA-03 | WP3 | planned in WP3
+TP-STA-04 | WP3 | planned in WP3
+TP-STA-05 | WP3 | planned in WP3
+TP-STA-06 | WP3 | planned in WP3
+TP-AXT-02 | WP4 | planned in WP4
+TP-AXT-04 | WP4 | planned in WP4
+TP-AXT-06 | WP4 | planned in WP4
+TP-FLIP-07 | WP4 | planned in WP4
+TP-FLIP-13 | WP4 | planned in WP4
+TP-GRID-08 | WP4 | planned in WP4
+TP-GRID-09 | WP4 | planned in WP4
+TP-LAY-01 | WP4 | planned in WP4
+TP-LAY-02 | WP4 | planned in WP4
+TP-LAY-03 | WP4 | planned in WP4
+TP-LAY-04 | WP4 | planned in WP4
+TP-LAY-05 | WP4 | planned in WP4
+TP-LAY-06 | WP4 | planned in WP4
+TP-LAY-07 | WP4 | planned in WP4
+TP-LAY-08 | WP4 | planned in WP4
+TP-LAY-09 | WP4 | planned in WP4
+TP-LAY-10 | WP4 | planned in WP4
+TP-LAY-11 | WP4 | planned in WP4
+TP-LAY-12 | WP4 | planned in WP4
+TP-LAY-14 | WP4 | planned in WP4
+TP-LAY-16 | WP4 | planned in WP4
+TP-LAY-19 | WP4 | planned in WP4
+TP-LAY-20 | WP4 | planned in WP4
+TP-LAY-23 | WP4 | planned in WP4
+TP-LAY-29 | WP4 | planned in WP4
+TP-LAY-30 | WP4 | planned in WP4
+TP-LFT-05 | WP4 | planned in WP4
+TP-PITCH-01 | WP4 | planned in WP4
+TP-PITCH-02 | WP4 | planned in WP4
+TP-PITCH-03 | WP4 | planned in WP4
+TP-ZONE-02 | WP4 | planned in WP4
+TP-ZONE-06 | WP4 | planned in WP4
+TP-COL-01 | WP5 | planned in WP5
+TP-COL-02 | WP5 | planned in WP5
+TP-COL-03 | WP5 | planned in WP5
+TP-COL-04 | WP5 | planned in WP5
+TP-COL-06 | WP5 | planned in WP5
+TP-COL-09 | WP5 | planned in WP5
+TP-GRD-11 | WP5 | planned in WP5
+TP-QUI-02 | WP5 | planned in WP5
+TP-QUI-06 | WP5 | planned in WP5
+TP-UI-04 | WP5 | planned in WP5
+TP-MAP-02 | WP6 | planned in WP6
+TP-MAP-03 | WP6 | planned in WP6
+TP-MAP-04 | WP6 | planned in WP6
+TP-MAP-05 | WP6 | planned in WP6
+TP-MAP-08 | WP6 | planned in WP6
+TP-MAP-13 | WP6 | planned in WP6
+TP-MAP-26 | WP6 | planned in WP6
+TP-CAP-15 | WP7 | planned in WP7
+TP-SYN-21 | WP7 | planned in WP7
+TP-SYN-22 | WP7 | planned in WP7
+TP-DOC-01 | WP8 | planned in WP8
+TP-DOC-02 | WP8 | planned in WP8
+TP-DOC-05 | WP8 | planned in WP8
+TP-DOC-06 | WP8 | planned in WP8
+TP-DOC-08 | WP8 | planned in WP8
+TP-DOC-11 | WP8 | planned in WP8
+TP-DOC-13 | WP8 | planned in WP8
+TP-DOC-20 | WP8 | planned in WP8
+TP-FONT-04 | WP8 | planned in WP8
+TP-FONT-06 | WP8 | planned in WP8
+TP-GDE-02 | WP8 | planned in WP8
+TP-REL-05 | WP8 | planned in WP8
+TP-STP-02 | WP8 | planned in WP8
+TP-UI-12 | WP8 | planned in WP8
