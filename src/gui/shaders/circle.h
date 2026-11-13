@@ -6,7 +6,7 @@ namespace Gui::Shaders {
 // The number of circles that one draw call can draw.
 constexpr int circleMaxCircles = 128;
 
-// Many circles of the same radius and colour in one draw call. The centres are in a uniform
+// Many circles of the same radius and color in one draw call. The centers are in a uniform
 // array, because a buffer update for each draw call makes the Apple OpenGL driver submit
 // the command buffer to the GPU every time.
 constexpr const char *circleVertex = R"foo(

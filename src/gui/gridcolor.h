@@ -4,11 +4,11 @@
 #include <QColor>
 #include <algorithm>
 
-// The colour of the grid lines. The function has no drawing code, so a test can run it.
+// The color of the grid lines. The function has no drawing code, so a test can run it.
 
 namespace Gui {
 
-// The line is a light tint of the quiet colour of the theme, or a dark tint when the quiet colour is light.
+// The line is a light tint of the quiet color of the theme, or a dark tint when the quiet color is light.
 // The line has the hue of the theme, so it fits the picture, and it has a large difference in lightness.
 // The strength (0 to 1) and the scale of the line set the opacity.
 inline QColor gridLineColor(const QColor &quiet, double strength, double alphaScale)

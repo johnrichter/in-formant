@@ -13,8 +13,8 @@ namespace Gui {
 
 using BandEdges = std::array<double, 4>;
 
-// The colours of the three zones, from the lowest zone to the highest. The middle zone has a yellow-green
-// colour, so it is not on the pink and blue axis.
+// The colors of the three zones, from the lowest zone to the highest. The middle zone has a yellow-green
+// color, so it is not on the pink and blue axis.
 struct ZoneColor {
     int r, g, b;
     const char *name;

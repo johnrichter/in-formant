@@ -8,7 +8,7 @@ using namespace Gui::UiScale;
 
 namespace {
 
-// The relative luminance of an sRGB colour, and the contrast ratio of two colours (WCAG).
+// The relative luminance of an sRGB color, and the contrast ratio of two colors (WCAG).
 double luminance(unsigned int rgb)
 {
     auto channel = [](unsigned int v) {
@@ -144,8 +144,8 @@ TEST(UiScale, TP_SHAPE_01_CornerRadiusIsMedium)
     EXPECT_EQ(cornerRadius, radiusSteps[1].size);
 }
 
-// TP-UI-13: each text colour reads on the window and on the surface with a contrast of at least 4.5 to 1.
-// The primary colour has more contrast than the secondary colour, and the secondary more than the tertiary.
+// TP-UI-13: each text color reads on the window and on the surface with a contrast of at least 4.5 to 1.
+// The primary color has more contrast than the secondary color, and the secondary more than the tertiary.
 TEST(UiScale, TP_UI_13_TextContrast)
 {
     double previous = 1e9;
@@ -157,9 +157,9 @@ TEST(UiScale, TP_UI_13_TextContrast)
     }
 }
 
-// TP-UI-04: the grey hint colour reads on the dark window and on the surface with a contrast of at least 4.5 to 1.
-// The secondary colour is the hint colour. It is a grey with a small tint, so its channels are close to each other.
-TEST(UiScale, TP_UI_04_HintColourContrast)
+// TP-UI-04: the gray hint color reads on the dark window and on the surface with a contrast of at least 4.5 to 1.
+// The secondary color is the hint color. It is a gray with a small tint, so its channels are close to each other.
+TEST(UiScale, TP_UI_04_HintColorContrast)
 {
     const ColorToken &hint = textColors[1];
     EXPECT_STREQ(hint.name, "secondary");
@@ -169,7 +169,7 @@ TEST(UiScale, TP_UI_04_HintColourContrast)
     EXPECT_LT(contrast(0x000000, windowBackground), contrast(hint.rgb, windowBackground));
     const int r = (hint.rgb >> 16) & 0xff, g = (hint.rgb >> 8) & 0xff, b = hint.rgb & 0xff;
     EXPECT_LE(std::max({ r, g, b }) - std::min({ r, g, b }), 24);
-    // The least important text, the tertiary colour, also reads at 4.5 to 1 on the surface.
+    // The least important text, the tertiary color, also reads at 4.5 to 1 on the surface.
     EXPECT_GE(contrast(textColors[2].rgb, surfaceBackground), 4.5);
 }
 

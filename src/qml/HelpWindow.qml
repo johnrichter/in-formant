@@ -60,7 +60,7 @@ ApplicationWindow {
                 clip: true
                 contentWidth: availableWidth
 
-                // The page is a column of 640 pixels, centred in the window. The typography comes from the prose
+                // The page is a column of 640 pixels, centered in the window. The typography comes from the prose
                 // scale (see gui/uiscale.h): a body of 16 pixels on a line of 28, a large space above each heading,
                 // a small space below it, and a gap between two blocks.
                 TextEdit {

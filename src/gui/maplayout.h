@@ -101,7 +101,9 @@ inline long long mapBinSamples(double span, int widthPixels, int sampleRate)
 // need a new picture for each frame.
 inline long long mapStableBinSamples(long long current, double span, int widthPixels, int sampleRate)
 {
-    const double ideal = std::max(1.0, span * sampleRate / std::max(widthPixels, 1));
+    double ideal = span * sampleRate / std::max(widthPixels, 1);
+    // A span that is not a number, or is not finite, must not make an endless loop below.
+    ideal = std::isfinite(ideal) ? std::clamp(ideal, 1.0, 1e12) : 1.0;
     if (current > 0 && (double) current >= ideal && (double) current <= 2.5 * ideal) return current;
 
     long long size = 1;
@@ -118,6 +120,8 @@ struct MapBins {
 inline MapBins mapBinRange(const MapView &view, long long binSamples, int sampleRate)
 {
     MapBins bins;
+    bins.count = 1;
+    if (binSamples <= 0 || sampleRate <= 0 || !std::isfinite(view.start) || !std::isfinite(view.span)) return bins;
     const double perBin = (double) binSamples / sampleRate;
     bins.first = (long long) std::floor(view.start / perBin);
     const long long last = (long long) std::ceil((view.start + view.span) / perBin);
@@ -200,9 +204,9 @@ inline MapPitchScale updateMapPitchScale(MapPitchScale scale, double lowest, dou
     double targetLow = lowest / 1.15;
     double targetHigh = highest * 1.15;
     if (targetHigh / targetLow < 2.0) {
-        const double centre = std::sqrt(targetLow * targetHigh);
-        targetLow = centre / std::sqrt(2.0);
-        targetHigh = centre * std::sqrt(2.0);
+        const double center = std::sqrt(targetLow * targetHigh);
+        targetLow = center / std::sqrt(2.0);
+        targetHigh = center * std::sqrt(2.0);
     }
     scale.low = targetLow < scale.low ? targetLow : scale.low + blend * (targetLow - scale.low);
     scale.high = targetHigh > scale.high ? targetHigh : scale.high + blend * (targetHigh - scale.high);
@@ -211,9 +215,10 @@ inline MapPitchScale updateMapPitchScale(MapPitchScale scale, double lowest, dou
 
 // The pitch line breaks where the track has no pitch for more than 70 ms, and where a bin is empty. The number is
 // the largest distance in bins between two bins that the line joins. A bin that is wider than 70 ms joins its
-// neighbour only.
+// neighbor only.
 inline int mapMaxGapBins(double secondsPerBin)
 {
+    if (!(secondsPerBin > 0.0)) return 1;
     return std::max(1, (int) std::ceil(0.07 / secondsPerBin));
 }
 

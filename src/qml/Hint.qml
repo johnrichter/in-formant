@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import QtQuick.Controls
 
 // A short line of text under a control. It says what the control does. The size, the line height, the
-// colour, and the longest line come from the scale (see gui/uiscale.h).
+// color, and the longest line come from the scale (see gui/uiscale.h).
 Label {
     Layout.fillWidth: true
     Layout.maximumWidth: ui.measure

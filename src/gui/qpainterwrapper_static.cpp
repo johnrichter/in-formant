@@ -41,11 +41,6 @@ double QPainterWrapper::inverseFrequency(double value, FrequencyScale scale)
     }
 }
 
-double QPainterWrapper::mapTimeToX(double time, int width, double startTime, double endTime)
-{
-    return width * (time - startTime) / (endTime - startTime);
-}
-
 double QPainterWrapper::mapFrequencyToY(double frequency, int height, FrequencyScale scale, double minFrequency, double maxFrequency)
 {
     const double vmin = transformFrequency(minFrequency, scale);

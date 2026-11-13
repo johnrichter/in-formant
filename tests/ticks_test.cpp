@@ -12,7 +12,7 @@ static double mantissaOf(double v)
     return v / std::pow(10.0, std::floor(std::log10(v) + 1e-9));
 }
 
-static std::vector<double> labelled(const std::vector<Tick> &ticks)
+static std::vector<double> labeled(const std::vector<Tick> &ticks)
 {
     std::vector<double> values;
     for (const Tick &t : ticks) if (!t.label.empty()) values.push_back(t.value);
@@ -40,7 +40,7 @@ TEST(Ticks, AWindowOf15SHasLabelsAtEachSecondAndNoTickBetweenWhole)
     auto toPixel = [](double t) { return 1400.0 * t / 15.0; };
     const auto ticks = makeTimeTicks(TimeTickMode::Automatic, 0, 0, 15, toPixel, 30, 10);
     for (const Tick &t : ticks) EXPECT_TRUE(std::fabs(t.value - std::round(t.value)) < 1e-9);
-    EXPECT_TRUE(labelled(ticks).size() >= 14);
+    EXPECT_TRUE(labeled(ticks).size() >= 14);
 }
 
 // A window of 60 s has labels at 5 s, and a window of 120 s at 10 s.
@@ -48,11 +48,11 @@ TEST(Ticks, AWindowOf60SHasLabelsAt5SAndAWindowOf120SAt10S)
 {
     auto toPixel = [](double t) { return 1400.0 * t / 60.0; };
     const auto ticks = makeTimeTicks(TimeTickMode::Automatic, 0, 0, 60, toPixel, 30, 10);
-    for (double v : labelled(ticks)) EXPECT_TRUE(std::fmod(v, 5.0) < 1e-9);
-    EXPECT_TRUE(labelled(ticks).size() == 13);
+    for (double v : labeled(ticks)) EXPECT_TRUE(std::fmod(v, 5.0) < 1e-9);
+    EXPECT_TRUE(labeled(ticks).size() == 13);
     auto toPixel2 = [](double t) { return 1400.0 * t / 120.0; };
     const auto ticks2 = makeTimeTicks(TimeTickMode::Automatic, 0, 0, 120, toPixel2, 30, 10);
-    for (double v : labelled(ticks2)) EXPECT_TRUE(std::fmod(v, 10.0) < 1e-9);
+    for (double v : labeled(ticks2)) EXPECT_TRUE(std::fmod(v, 10.0) < 1e-9);
 }
 
 // A custom step below 1 second is raised to 1 second.
@@ -77,13 +77,13 @@ TEST(Ticks, ALogarithmicAxisLabelsOnlyTheValues123And5TimesAPowerOfTenIn)
     const double lo = 50, hi = 5000;
     auto toPixel = [&](double f) { return 700.0 * (1.0 - std::log(f / lo) / std::log(hi / lo)); };
     const auto ticks = makeFrequencyTicks(FrequencyTickMode::Automatic, 0, lo, hi, toPixel, 14, 8, false, TickDensity::Normal);
-    const auto values = labelled(ticks);
+    const auto values = labeled(ticks);
     EXPECT_TRUE(values.size() >= 5);
     for (double v : values) {
         const double m = mantissaOf(v);
         EXPECT_TRUE(std::fabs(m - 1) < 1e-6 || std::fabs(m - 2) < 1e-6 || std::fabs(m - 3) < 1e-6 || std::fabs(m - 5) < 1e-6);
     }
-    // A mantissa is labelled in all decades or in none. This keeps the pattern the same along the axis.
+    // A mantissa is labeled in all decades or in none. This keeps the pattern the same along the axis.
     std::set<double> seen;
     for (double v : values) seen.insert(std::round(mantissaOf(v) * 100) / 100);
     for (double m : seen) {
@@ -107,7 +107,7 @@ TEST(Ticks, TheLabelsNeverOverlapAtAnyHeight)
             auto toPixel = [&](double f) { return height * (1.0 - std::log(f / lo) / std::log(hi / lo)); };
             const auto ticks = makeFrequencyTicks(FrequencyTickMode::Automatic, 0, lo, hi, toPixel, 14, 8, false, d);
             std::vector<double> positions;
-            for (double v : labelled(ticks)) positions.push_back(toPixel(v));
+            for (double v : labeled(ticks)) positions.push_back(toPixel(v));
             std::sort(positions.begin(), positions.end());
             for (size_t i = 1; i < positions.size(); ++i) EXPECT_TRUE(positions[i] - positions[i - 1] >= 14);
         }
@@ -119,8 +119,8 @@ TEST(Ticks, ASparserDensityNeverLabelsAValueThatADenserDensityLeavesOut)
 {
     const double lo = 50, hi = 5000;
     auto toPixel = [&](double f) { return 700.0 * (1.0 - std::log(f / lo) / std::log(hi / lo)); };
-    const auto sparse = labelled(makeFrequencyTicks(FrequencyTickMode::Automatic, 0, lo, hi, toPixel, 14, 8, false, TickDensity::Sparse));
-    const auto dense = labelled(makeFrequencyTicks(FrequencyTickMode::Automatic, 0, lo, hi, toPixel, 14, 8, false, TickDensity::Dense));
+    const auto sparse = labeled(makeFrequencyTicks(FrequencyTickMode::Automatic, 0, lo, hi, toPixel, 14, 8, false, TickDensity::Sparse));
+    const auto dense = labeled(makeFrequencyTicks(FrequencyTickMode::Automatic, 0, lo, hi, toPixel, 14, 8, false, TickDensity::Dense));
     EXPECT_TRUE(sparse.size() <= dense.size());
     for (double v : sparse) {
         const double m = mantissaOf(v);
@@ -133,7 +133,7 @@ TEST(Ticks, ALinearAxisUsesEqualStepsAndNotPowersOfTen)
 {
     auto toPixel = [](double f) { return 600.0 * (1.0 - f / 500.0); };
     const auto ticks = makeFrequencyTicks(FrequencyTickMode::Automatic, 0, 0, 500, toPixel, 14, 8, true, TickDensity::Normal);
-    const auto values = labelled(ticks);
+    const auto values = labeled(ticks);
     EXPECT_TRUE(values.size() >= 5);
     std::vector<double> sorted = values;
     std::sort(sorted.begin(), sorted.end());

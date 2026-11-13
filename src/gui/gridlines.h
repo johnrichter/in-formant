@@ -27,7 +27,7 @@ inline GridLines makeGridLines(const std::vector<Tick> &ticks, const ToPixel &to
     std::set<long> used;
     auto row = [](double y) { return (long) std::floor(y + 0.5); };
 
-    // The labelled ticks first, so a major line takes its row before a minor line.
+    // The labeled ticks first, so a major line takes its row before a minor line.
     for (const Tick &tick : ticks) {
         const double y = toY(tick.value);
         if (y < 0.0 || y > height || tick.label.empty()) continue;

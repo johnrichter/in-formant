@@ -1,11 +1,11 @@
 # Test plan: use cases for later tests
 
-This page lists every use case that the project did not test during development. Each case is a test to write later. The list is long on purpose.
+This page lists every use case of the project. A test names the ID of its case. The command `tests/check_plan_coverage.py --report` lists the cases that have no test yet. The list is long on purpose.
 
 ## How to read this page
 
 - Each case has an ID, a short setup, and the result that a test must check.
-- The type tells how to automate the case. **Unit** is a C++ test in `tests/` with GoogleTest. The name of the test starts with the ID of the case, for example `TEST(Layout, TP_LAY_01_BoxesCentered)`. **Qt** is a Qt Quick Test or a Qt Test with a window. **Image** compares a screenshot with a stored picture. **Audio** analyses rendered samples. **Manual** needs a person or a device.
+- The type tells how to automate the case. **Unit** is a C++ test in `tests/` with GoogleTest. The name of the test starts with the ID of the case, for example `TEST(Layout, TP_LAY_01_BoxesCentered)`. **Perf** is a timed measure on a real session. **Qt** is a Qt Quick Test or a Qt Test with a window. **Image** compares a screenshot with a stored picture. **Audio** analyses rendered samples. **Manual** needs a person or a device.
 - The priority is **P1** (a failure harms a user), **P2** (a failure is visible), or **P3** (a small risk).
 - A case that says "not built yet" tests a feature that does not exist. Write the test when the feature exists.
 
@@ -211,7 +211,7 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-FLIP-04** (Qt, P1). Click in the graph in both directions. Expect the cursor line and the time of the cursor to match the click.
 - **TP-FLIP-05** (Qt, P2). Scroll the wheel and the trackpad sideways in both directions. Expect the content to follow the fingers.
 - **TP-FLIP-06** (Image, P2). Check the pitch-only graph and a recording in both directions.
-- **TP-FLIP-07** (Unit, P1). A test cannot reach the mapping yet, because it is a member of the painter. Move it to a free function. Then test that `timeAtX(mapTimeToX(t))` returns `t` in both directions. Use widths of 1, 2, and 4000 pixels.
+- **TP-FLIP-07** (Unit, P1). Test that `plotXToTime(plotTimeToX(t))` returns `t` in both directions. Use the free functions of `src/gui/plotmap.h`. Use widths of 1, 2, and 4000 pixels.
 - **TP-FLIP-08** (Image, P2). Compare the session map with the graph. The map keeps old sound at the left. Decide with the user whether the map must flip too, then test the choice.
 - **TP-FLIP-09** (Image, P1). In live mode with the flip on, check the left 100 pixels at FFT sizes 512, 1024, 2048, and 4096. Expect no black bar, as in TP-EDGE-01.
 - **TP-FLIP-10** (Image, P2). Check the labels of the cursor and the boxes of the values. Expect each label to stay inside the graph when the cursor is at the left edge and at the right edge, in both directions.
@@ -302,7 +302,7 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-HLP-05** (Qt, P1). Press each of the 37 "?" buttons in a window of 700 by 900 pixels. Expect a box fully inside the window and a scroll bar for a long text. Expect a close on Escape, on an outside press, and on a second press. Only the Pitch button got a screenshot check.
 - **TP-HLP-06** (Qt, P2). Press a "?" button near the bottom edge and near the right edge of a narrow window of 420 pixels. Expect a box that stays inside the window.
 - **TP-HLP-07** (Qt, P2). A test that presses a "?" button must press a visible button of the open tab. The test hook of the first run pressed a button of a hidden tab, and the box showed in a wrong place.
-- **TP-STP-02** (Unit, P1). Time `HelpStyle::apply` on all help pages. Expect less than 200 ms in total. Without one edit block, the start of the app took 12 seconds.
+- **TP-STP-02** (Unit, P1). Time `HelpStyle::apply` on all help pages. Expect less than 200 ms in total. The test allows 600 ms, because a busy machine is slower. Without one edit block, the start of the app took 12 seconds.
 - **TP-STP-03** (Manual, P2). Start the app for the first time, with the microphone permission not yet given. Expect the window in less than 3 seconds and the permission box without a freeze.
 - **TP-STP-04** (Qt, P2). Start the app with the default input device on a camera microphone, on a USB device, and on the built-in microphone. Expect less than 3 seconds to the line "Input device" on each.
 - **TP-LFT-06** (Qt, P1). Start a live capture with a view of 2 seconds and an FFT size of 4096. Expect the newest sound at the left edge from the first column. Expect no jump when the sound fills the view.
@@ -477,7 +477,7 @@ The scroll views of the settings, the help pages, the help boxes, the Synthesize
 - **TP-PRA-07** (Manual, P2). Quit during a session, with the folder not writable. Expect a clear result and no data loss.
 - **TP-PRA-08** (Manual, P2). Start with the default folder in Documents on a new account. Expect the privacy question of macOS, and expect a clear message when the person denies it.
 - **TP-PRA-09** (Unit, P2). Load a library with one broken `session.json`. Expect the program to skip it and to list the others.
-- **TP-PRA-10** (Unit, P2). Load a library of 5000 sessions. Expect the Progress window to open in under 2 seconds.
+- **TP-PRA-10** (Unit, P2). Load a library of 5000 sessions. Expect the Progress window to open in under 2 seconds. The test allows 6 seconds, because a busy machine is slower.
 - **TP-PRA-11** (Unit, P2). Export all sessions. Expect each folder, a `history.csv`, and a status text. Test a target folder that exists and a read-only target.
 - **TP-PRA-12** (Not built yet, P3). A video in a practice session. Expect the same files as Record.
 - **TP-PRA-13** (Not built yet, P3). A zip export with `ditto`. Expect one file with all sessions.
@@ -531,9 +531,9 @@ The scroll views of the settings, the help pages, the help boxes, the Synthesize
 
 - **TP-DOC-20** (Unit, P2). Check that `docs/design-system.md` lists the same numbers as `src/gui/uiscale.h`.
 
-- **TP-DOC-01** (Unit, P2). Run the style check on every file in `docs/` and on the README. Expect no new violation. The README has 12 known violations.
+- **TP-DOC-01** (Unit, P2). Run the style check on every file in `docs/` and on the README. Expect no new violation. The README has 12 known violations. The test runs only when the variable `INFORMANT_STE_CHECK` gives the path of the style script.
 - **TP-DOC-02** (Unit, P2). Check each link in the pages. Expect an answer of 200 for each source URL. A site can refuse an automated client (401 or 403). A site can fail for a short time (5xx). The test only reports these answers. The test needs the network. It runs only when the variable `INFORMANT_CHECK_LINKS` is set.
-- **TP-DOC-03** (Qt, P2). Open each of the seven tabs. Expect the page text, and expect the tab order Display, Feminization, Masculinization, Singing, Warm-ups, Synthesizer, The math.
+- **TP-DOC-03** (Qt, P2). Open each of the eight tabs. Expect the page text, and expect the tab order Display, Settings, Feminization, Masculinization, Singing, Warm-ups, Synthesizer, The math.
 - **TP-DOC-04** (Qt, P3). Call `showPage` with a known and an unknown file. Expect the tab to change for the known file and no error for the unknown file.
 - **TP-DOC-05** (Unit, P2). Check that each file of `docs/` is in `resources/qml.qrc` and in the list of the Help window.
 - **TP-DOC-06** (Unit, P2). Check that the page "Warm-ups and vocal health" has the CAUTION text and the section "Sources".
@@ -553,7 +553,7 @@ The scroll views of the settings, the help pages, the help boxes, the Synthesize
 
 - **TP-REL-01** (Manual, P1). Build the Release app and the disk image from a clean clone. Expect no error.
 - **TP-REL-02** (Manual, P1). Start the app from the disk image on another Mac. The build was verified only on one Mac with macOS 27 and Qt 6.8.3.
-- **TP-REL-03** (Manual, P2). Build and start on an Intel Mac and on an older macOS version.
+- **TP-REL-03** (Manual, P2). Build and start the app on macOS 27.0, the oldest version that the fork supports. Expect a start with no error.
 - **TP-REL-04** (Manual, P2). Check that each binary file is in Git LFS and that `git lfs status` shows no screenshot, helper script, or test hook.
 - **TP-REL-05** (Unit, P1). Check that the test hook is not in `src/context/guicontext.cpp` of a release commit.
 - **TP-REL-06** (Manual, P3). Clone the old history and read the notes. Expect a clear message that old clones must clone again.
@@ -607,3 +607,9 @@ Each entry names the case, the bug, the version of the fix, and the test that gu
 - **The README listed seven help pages, and the app has eight (3.2.6).** The page about the settings had no link. Now the README lists all eight pages. TP-DOC-05.
 - **Wrapped text in the Progress and Synthesizer windows had no limit on its width (3.2.6).** In a wide window, a paragraph went over 560 pixels. Now each paragraph has a maximum width of 560 pixels. TP-UI-12.
 - **Three links did not work (3.2.6).** The README had a build badge and a Play Store link. Both services no longer exist for this fork. The warm-up page had a link to a removed poster. Now these links are gone. TP-DOC-02.
+- **A failed backup of a broken settings file lost the file (3.2.7).** The program wrote the defaults over the only copy. Now the program does not write the settings when the backup fails, and each save goes through a temporary file. TP-SET-18.
+- **A failed write of the practice files gave no message (3.2.7).** Now the status says that the practice files were not saved. TP-PRA-04.
+- **A note that started with a formula character ran as a formula in a spreadsheet (3.2.7).** Now the CSV file puts a quote before such a note. TP-PRA-04.
+- **The map code could loop for ever or divide by zero (3.2.7).** A span that was not finite, a bin width of 0, and a time range of 0 now give a safe result. TP-MAP-02 and TP-LAY-19.
+- **The program stopped at launch when no input device existed (3.2.7).** The window now opens with the status "No input device available". TP-CAP-06.
+- **The compiler removed the checks for a number that is not a number (3.2.7).** The flag `-ffast-math` makes these checks undefined. The flag `-fno-finite-math-only` now keeps them. TP-PRA-37.

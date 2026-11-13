@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "../src/gui/maplayout.h"
+#include <limits>
 
 using namespace Gui;
 
@@ -404,4 +405,26 @@ TEST(MapLayout, TP_MAP_26_TheMapLengthNeverGoesBackWhileTheCaptureRuns)
     MapClock other;
     updateShownDuration(other, 50.0, 0.0, true);
     EXPECT_NEAR(updateShownDuration(other, 20.0, 1.0, true), 20.0, 1e-9);
+}
+
+// A bin width of 0, a rate of 0, and a span that is not finite give a map that the code can draw. No loop is endless.
+TEST(MapLayout, EdgeInputGivesAFiniteResult)
+{
+    const MapView view{ 10.0, 100.0 };
+    EXPECT_EQ(mapBinRange(view, 0, 32000).count, 1);
+    EXPECT_EQ(mapBinRange(view, 1024, 0).count, 1);
+    const double inf = std::numeric_limits<double>::infinity();
+    EXPECT_EQ(mapBinRange({ inf, 100.0 }, 1024, 32000).count, 1);
+    EXPECT_EQ(mapBinRange({ 0.0, inf }, 1024, 32000).count, 1);
+
+    EXPECT_EQ(mapMaxGapBins(0.0), 1);
+    EXPECT_EQ(mapMaxGapBins(-1.0), 1);
+    EXPECT_EQ(mapMaxGapBins(std::numeric_limits<double>::quiet_NaN()), 1);
+
+    // The stable bin size ends for a span that is infinite or not a number, and it stays a power of two.
+    for (double span : { inf, -inf, std::numeric_limits<double>::quiet_NaN(), 1e30, -5.0 }) {
+        const long long size = mapStableBinSamples(0, span, 1500, 32000);
+        EXPECT_GE(size, 1) << span;
+        EXPECT_EQ(size & (size - 1), 0) << span;
+    }
 }

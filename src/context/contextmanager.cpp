@@ -146,7 +146,17 @@ int ContextManager::exec()
     // Remove the scratch files of runs that ended in a crash. Keep their sound when the user asks.
     Session::recoverOrphans(mConfig->optionBool("keepRecordings") ? keptRecordingsFolder() : QString());
 
-    openAndStartAudioStreams();
+    // With no input device, the audio system throws an error. The window then opens with a status, and the
+    // device watcher restarts the audio when a device appears.
+    try {
+        openAndStartAudioStreams();
+    }
+    catch (const std::exception &e) {
+        mAudioReady = false;
+        std::cout << "ContextManager] The audio system did not start: " << e.what() << std::endl;
+        mSessionWrapper->showStatus(QStringLiteral("No input device available"));
+        mConfig->setPaused(true);
+    }
     startAnalysisThread();
 #ifndef WITHOUT_SYNTH
     startSynthesisThread();

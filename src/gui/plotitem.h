@@ -74,7 +74,7 @@ namespace Gui {
         QString mThemeKey;
         Theme mTheme;
 
-        // The data and the colours of one frame.
+        // The data and the colors of one frame.
         struct Frame;
         std::mutex mFrameMutex;
         std::shared_ptr<const Frame> mFrame;

@@ -35,7 +35,7 @@ double mantissaOf(double v)
     return v / std::pow(10.0, std::floor(std::log10(v) + 1e-9));
 }
 
-std::vector<double> labelledValues(const std::vector<Tick> &ticks)
+std::vector<double> labeledValues(const std::vector<Tick> &ticks)
 {
     std::vector<double> values;
     for (const Tick &t : ticks) if (!t.label.empty()) values.push_back(t.value);
@@ -95,7 +95,7 @@ TEST(Axes, TP_AXT_04_AMantissaGetsALabelInAllDecadesOrInNone)
                     const double labelSize = 14, labelGap = 8;
                     const auto ticks = makeFrequencyTicks(FrequencyTickMode::Automatic, 0, range.lo, range.hi, toPixel,
                                                           labelSize, labelGap, false, density);
-                    const auto values = labelledValues(ticks);
+                    const auto values = labeledValues(ticks);
 
                     std::set<double> mantissas;
                     for (double v : values) mantissas.insert(std::round(mantissaOf(v) * 100) / 100);
@@ -126,7 +126,7 @@ TEST(Axes, TP_AXT_06_TheLinearAxisHasEqualSteps)
         for (double height : { 300.0, 600.0, 1000.0 }) {
             auto toPixel = [&](double f) { return height * (1.0 - f / hi); };
             const auto ticks = makeFrequencyTicks(FrequencyTickMode::Automatic, 0, 0, hi, toPixel, 14, 8, true, TickDensity::Normal);
-            std::vector<double> values = labelledValues(ticks);
+            std::vector<double> values = labeledValues(ticks);
             ASSERT_GE(values.size(), 3u) << hi << " " << height;
             std::sort(values.begin(), values.end());
 
@@ -155,8 +155,8 @@ TEST(Axes, TP_FLIP_13_ADecreasingMappingGivesTheSameLabelsMirrored)
 
             const auto a = makeTimeTicks(TimeTickMode::Automatic, 0, start, start + span, increasing, labelWidth, gap);
             const auto b = makeTimeTicks(TimeTickMode::Automatic, 0, start, start + span, decreasing, labelWidth, gap);
-            const auto la = labelledValues(a);
-            const auto lb = labelledValues(b);
+            const auto la = labeledValues(a);
+            const auto lb = labeledValues(b);
             EXPECT_EQ(la, lb) << span << " " << start;
             EXPECT_EQ(a.size(), b.size());
 
@@ -174,7 +174,7 @@ TEST(Axes, TP_FLIP_13_ADecreasingMappingGivesTheSameLabelsMirrored)
     }
 }
 
-// The grid has its major lines at the labelled ticks only, in the custom step, the note, and the octave mode.
+// The grid has its major lines at the labeled ticks only, in the custom step, the note, and the octave mode.
 TEST(Axes, TP_GRID_08_TheMajorLinesAreAtTheLabelledTicksOnly)
 {
     const double lo = 50, hi = 2000, height = 800;
@@ -184,27 +184,27 @@ TEST(Axes, TP_GRID_08_TheMajorLinesAreAtTheLabelledTicksOnly)
         const auto ticks = makeFrequencyTicks(mode, 100.0, lo, hi, toY, 14, 8);
         const GridLines lines = makeGridLines(ticks, toY, height);
 
-        std::set<long> labelledRows, unlabelledRows;
+        std::set<long> labeledRows, unlabeledRows;
         for (const Tick &t : ticks) {
-            (t.label.empty() ? unlabelledRows : labelledRows).insert(std::lround(toY(t.value)));
+            (t.label.empty() ? unlabeledRows : labeledRows).insert(std::lround(toY(t.value)));
         }
         ASSERT_FALSE(lines.major.empty()) << (int) mode;
         for (double y : lines.major) {
-            EXPECT_TRUE(labelledRows.count(std::lround(y))) << "mode " << (int) mode << " row " << y;
+            EXPECT_TRUE(labeledRows.count(std::lround(y))) << "mode " << (int) mode << " row " << y;
         }
         for (double y : lines.minor) {
-            EXPECT_TRUE(unlabelledRows.count(std::lround(y))) << "mode " << (int) mode << " row " << y;
-            EXPECT_FALSE(labelledRows.count(std::lround(y))) << "mode " << (int) mode << " row " << y;
+            EXPECT_TRUE(unlabeledRows.count(std::lround(y))) << "mode " << (int) mode << " row " << y;
+            EXPECT_FALSE(labeledRows.count(std::lround(y))) << "mode " << (int) mode << " row " << y;
         }
-        // Each labelled tick that lies in the graph has a major line.
-        EXPECT_EQ(lines.major.size(), labelledRows.size()) << (int) mode;
+        // Each labeled tick that lies in the graph has a major line.
+        EXPECT_EQ(lines.major.size(), labeledRows.size()) << (int) mode;
     }
 
-    // The octave mode has fewer labelled ticks than the note mode.
+    // The octave mode has fewer labeled ticks than the note mode.
     const auto notes = makeFrequencyTicks(FrequencyTickMode::Notes, 0, lo, hi, toY, 14, 8);
     const auto octaves = makeFrequencyTicks(FrequencyTickMode::Octaves, 0, lo, hi, toY, 14, 8);
-    EXPECT_LT(labelledValues(octaves).size(), labelledValues(notes).size());
-    EXPECT_GE(labelledValues(octaves).size(), 3u);
+    EXPECT_LT(labeledValues(octaves).size(), labeledValues(notes).size());
+    EXPECT_GE(labeledValues(octaves).size(), 3u);
 }
 
 // A graph so short that the ticks are closer than 2 pixels has one line at most for each pixel row.
@@ -275,8 +275,8 @@ TEST(Axes, TP_PITCH_02_TheAutomaticFitUsesThePercentilesAMarginAndAMinimumSpan)
     for (int i = 0; i <= 100; ++i) narrow.push_back(200.0 + 0.02 * i);
     const PitchAxis n = fitPitchAxis(narrow);
     EXPECT_NEAR(semitonesBetween(n.low, n.high), 12.0 * 1.3, 1e-6);
-    const double centre = std::sqrt(n.low * n.high);
-    EXPECT_NEAR(centre, 201.0, 0.5);
+    const double center = std::sqrt(n.low * n.high);
+    EXPECT_NEAR(center, 201.0, 0.5);
 
     // Too few values give the fallback. A fallback that the caller gives is returned.
     EXPECT_EQ(fitPitchAxis({ 100, 110, 120, 130 }, { 70, 280 }).low, 70.0);
@@ -333,8 +333,8 @@ TEST(Axes, TP_ZONE_02_BadEdgeValuesGiveTheDefaultEdges)
     EXPECT_EQ(parseBandEdges("20,100,500,2000"), (BandEdges{ 20, 100, 500, 2000 }));
 }
 
-// The three zone colours differ for a person with red-green colour blindness.
-TEST(Axes, TP_ZONE_06_TheZoneColoursDifferForRedGreenColourBlindness)
+// The three zone colors differ for a person with red-green color blindness.
+TEST(Axes, TP_ZONE_06_TheZoneColorsDifferForRedGreenColorBlindness)
 {
     // The matrices of Machado, Oliveira, and Fernandes (2009) for a severity of 1, on linear RGB.
     const double protan[3][3] = { { 0.152286, 1.052583, -0.204868 }, { 0.114503, 0.786281, 0.099216 }, { -0.003882, -0.048116, 1.051998 } };

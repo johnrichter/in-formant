@@ -36,14 +36,14 @@ out vec4 FragColor;
 uniform sampler2D tex;
 uniform sampler2D header;
 
-// The colour map is a texture of 256 by 1 pixels.
+// The color map is a texture of 256 by 1 pixels.
 uniform sampler2D colorMap;
 
 uniform int frequencyScale; // Linear, Log, Mel, ERB
 uniform float minFrequency;
 uniform float maxFrequency;
 
-// Scale from the amplitude of the slice to the position in the colour map.
+// Scale from the amplitude of the slice to the position in the color map.
 uniform float gainScale;
 
 // 0 is the bilinear filter of the graphics card. 1 is the cubic filter.
@@ -52,7 +52,7 @@ uniform int quality;
 // The shape of the cubic filter. 0 is sharp, and 1 is the smoothest.
 uniform float blur;
 
-// The position of the centre of the newest column. The picture holds this column for the
+// The position of the center of the newest column. The picture holds this column for the
 // time between the newest slice and the end of the view.
 uniform float lastPosition;
 
@@ -222,7 +222,7 @@ void main()
         value = max(sum / weight, 0.0);
     }
 
-    // A little noise before the colour lookup hides the steps between the 256 colours.
+    // A little noise before the color lookup hides the steps between the 256 colors.
     float noise = (hash(gl_FragCoord.xy) + hash(gl_FragCoord.yx + 17.0) - 1.0) / 255.0;
     float adjusted = clamp(value * gainScale + noise, 0.0, 1.0);
 

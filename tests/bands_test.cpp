@@ -27,3 +27,16 @@ TEST(Bands, WrongTextsGiveTheDefaultEdges)
         EXPECT_TRUE(e == defaultBandEdges);
     }
 }
+
+// A text that separates the edges with a comma, a space, a semicolon, or a tab gives the four edges.
+TEST(Bands, TheEdgesCanBeSeparatedByCommasSpacesSemicolonsAndTabs)
+{
+    const BandEdges expected = { 60.0, 150.0, 180.0, 300.0 };
+    for (const char *text : { "60,150,180,300", "60 150 180 300", "60;150\t180 300", " 60 , 150 ; 180 , 300 " }) {
+        EXPECT_EQ(parseBandEdges(text), expected) << text;
+    }
+    // A text with one edge too many, an edge that is not a number, or edges that do not rise gives the defaults.
+    for (const char *text : { "60,150,180,300,400", "60,150,x,300", "60,150,150,300", "", "nan,1,2,3" }) {
+        EXPECT_EQ(parseBandEdges(text), defaultBandEdges) << text;
+    }
+}

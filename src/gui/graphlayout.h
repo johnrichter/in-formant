@@ -88,7 +88,7 @@ struct ReadoutLayout {
     double swatchWidth = 0.0;
     double debugWidth = 0.0;
     double debugHeight = 0.0;
-    // The bar at the top holds the legend and the frame timing, centred over the graph.
+    // The bar at the top holds the legend and the frame timing, centered over the graph.
     BoxPlacement legend;
     bool hasLegend = false;
     double debugX = 0.0;
@@ -244,7 +244,7 @@ inline GraphLayout computeGraphLayout(const RenderOptions &options, const std::v
     r.hasDebug = options.showDebug;
 
     // The bar at the top holds the legend and the frame timing. The two boxes stand side by side,
-    // centred over the graph. The padding of the graph lies above the bar, and a gap lies below it.
+    // centered over the graph. The padding of the graph lies above the bar, and a gap lies below it.
     double barHeight = 0.0;
     double barWidth = 0.0;
     if (r.hasLegend) {
@@ -283,7 +283,7 @@ inline GraphLayout computeGraphLayout(const RenderOptions &options, const std::v
         layout.plotLeft = (int) std::ceil(padding + (sizes.empty() ? 0.0 : total + padding) + left);
     }
 
-    // The bar is centred over the graph. A bar that is wider than the graph starts at the left edge of the graph.
+    // The bar is centered over the graph. A bar that is wider than the graph starts at the left edge of the graph.
     if (barHeight > 0.0) {
         const double plotWide = viewWidth - layout.plotLeft - layout.plotRight;
         double x = layout.plotLeft + std::max(0.0, 0.5 * (plotWide - barWidth));

@@ -31,7 +31,7 @@ public:
             return false;
         }
 
-        // About 0.07 bits for each pixel in each frame, which is enough for flat colours and thin lines.
+        // About 0.07 bits for each pixel in each frame, which is enough for flat colors and thin lines.
         const double bitrate = std::max(2.0e6, 0.07 * width * height * fps);
         NSDictionary *videoSettings = @{
             AVVideoCodecKey: AVVideoCodecTypeH264,

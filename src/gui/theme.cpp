@@ -20,8 +20,8 @@ QColor hex(unsigned int rgb)
     return QColor((rgb >> 16) & 0xff, (rgb >> 8) & 0xff, rgb & 0xff);
 }
 
-// Make 256 colours from the stops. The colours change in OKLab, so a gradient has no grey patch.
-// The saturation scales the chroma of each colour. A value of 1 leaves the colours as they are.
+// Make 256 colors from the stops. The colors change in OKLab, so a gradient has no gray patch.
+// The saturation scales the chroma of each color. A value of 1 leaves the colors as they are.
 QVector<QRgb> buildColormap(const std::vector<Stop> &stops, double saturation = 1.0)
 {
     std::vector<Lch> lch;
@@ -45,10 +45,10 @@ QVector<QRgb> buildColormap(const std::vector<Stop> &stops, double saturation = 
         wanted[i].C *= saturation;
     }
 
-    // A colour that is outside the gamut loses chroma, and the loss changes with the hue. A stop
-    // that fits keeps all its chroma, and the colours next to it do not. The stop then shows as a
+    // A color that is outside the gamut loses chroma, and the loss changes with the hue. A stop
+    // that fits keeps all its chroma, and the colors next to it do not. The stop then shows as a
     // thin line that is too vivid. The chroma of the map must change smoothly, so a stop never has
-    // more chroma than the average of its neighbours.
+    // more chroma than the average of its neighbors.
     std::vector<double> feasible(256);
     for (int i = 0; i < 256; ++i) {
         feasible[i] = labToLch(rgbToLab(labToRgb(lchToLab(wanted[i])))).C;
@@ -70,7 +70,7 @@ QVector<QRgb> buildColormap(const std::vector<Stop> &stops, double saturation = 
     return map;
 }
 
-// Make the colours of a table that is not in OKLab, for example the first theme, more or less saturated.
+// Make the colors of a table that is not in OKLab, for example the first theme, more or less saturated.
 void saturate(QVector<QRgb> &map, double saturation)
 {
     if (std::fabs(saturation - 1.0) < 1e-6) return;
@@ -107,12 +107,12 @@ struct Definition {
     unsigned int accent;
 };
 
-// The pride themes use the flag colours at full chroma. The lightness goes up in steps from near black
+// The pride themes use the flag colors at full chroma. The lightness goes up in steps from near black
 // to a light tint, and no stop is white. A loud sound then keeps a hue, and a quiet sound is dark.
 const std::vector<Definition> &definitions()
 {
     static const std::vector<Definition> defs = {
-        // Scientific themes. The first one uses the colour map of the original application.
+        // Scientific themes. The first one uses the color map of the original application.
         { "Magma", "Scientific", {}, 0x00ffff,
             { 0x00ff00, 0x91ee91, 0xff0000, 0xff99ff, 0xffcc00 }, 0x7c4dff },
         { "Viridis", "Scientific",
@@ -135,7 +135,7 @@ const std::vector<Definition> &definitions()
               {0.92, 0xffe08a}, {1.00, 0xfff8e0} },
             0x4dd0e1, { 0x7cff9a, 0x82b1ff, 0xffffff, 0xe1a8ff, 0xb0ff7c }, 0xd94a00 },
 
-        // Pride themes. A pitch colour of 0 means that the tracks take their colours from the table.
+        // Pride themes. A pitch color of 0 means that the tracks take their colors from the table.
         { "Trans (Dark)", "Pride", ramp({ { {0.03, 260}, {0.09, 255}, {0.14, 245}, {0.11, 225}, {0.19, 355}, {0.20, 350}, {0.17, 348} } },
                                                     // The top stops stay darker than the other themes, because a pink that is vivid needs less light.
                                                     { 0.07, 0.28, 0.48, 0.64, 0.72, 0.75, 0.79 }), 0, { 0, 0, 0, 0, 0 }, 0 },
@@ -158,9 +158,9 @@ const std::vector<Definition> &definitions()
     return defs;
 }
 
-// The colours of the tracks for a table with no hand-picked colours. The pitch has the hue that is
+// The colors of the tracks for a table with no hand-picked colors. The pitch has the hue that is
 // opposite to the loud part of the table. The five formants have hues that differ from the pitch
-// and from the loud part, and the lightness alternates, so that neighbours differ in two ways.
+// and from the loud part, and the lightness alternates, so that neighbors differ in two ways.
 void autoTracks(Theme &t)
 {
     double a = 0.0;
@@ -217,7 +217,7 @@ Theme fromDefinition(const Definition &d, double saturation)
         t.accent = hex(d.accent);
     }
 
-    // The oscilloscope and the synthesizer use the pitch colour and the first formant colour, so that
+    // The oscilloscope and the synthesizer use the pitch color and the first formant color, so that
     // each window matches the spectrogram.
     t.oscilloscope = t.pitch;
     t.oscilloscopeGrid = QColor(255, 255, 255, 40);

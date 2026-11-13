@@ -268,7 +268,7 @@ std::vector<Tick> Gui::makeFrequencyTicks(FrequencyTickMode mode, double step,
 
     // Powers of ten. A group of values with the same mantissa gets labels in all decades, or in none.
     // This keeps the pattern of the labels the same along the axis. The mantissa 1 comes first, then 5, 2, 3, 4, and 1.5.
-    std::vector<double> labelled;
+    std::vector<double> labeled;
     for (double m : labelMantissas(density)) {
         std::vector<double> values;
         for (double v : valuesOfMantissa(m, lo, hi)) {
@@ -287,14 +287,14 @@ std::vector<Tick> Gui::makeFrequencyTicks(FrequencyTickMode mode, double step,
 
         for (double v : values) {
             tryLabel(v, 0, formatNumber(v));
-            labelled.push_back(v);
+            labeled.push_back(v);
         }
     }
 
     // The other values of 1 to 9 (and 1.5) get small ticks, when they have room.
     for (double m : { 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0 }) {
         for (double v : valuesOfMantissa(m, lo, hi)) {
-            if (std::find_if(labelled.begin(), labelled.end(), [&](double x) { return std::fabs(x - v) < 1e-9 * std::max(1.0, v); }) != labelled.end()) continue;
+            if (std::find_if(labeled.begin(), labeled.end(), [&](double x) { return std::fabs(x - v) < 1e-9 * std::max(1.0, v); }) != labeled.end()) continue;
             tryMark(v, 2);
         }
     }

@@ -145,7 +145,7 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
     double timeEnd;
     if (live) {
         // Without the flip, the graph starts at time zero at the left, and it fills towards the right. After the
-        // sound fills the width, the graph scrolls. The stamp of a slice is the centre of its
+        // sound fills the width, the graph scrolls. The stamp of a slice is the center of its
         // window, so the newest slice is older than the newest sound by half a window. The view
         // ends at the time of the newest slice, so the picture reaches the right edge and shows
         // no repeated or empty part.
@@ -219,7 +219,7 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
     painter->beginPlot();
 
     if (showSpectrogram) {
-        // The quietest colour of the theme fills the graph, also where no sound exists yet. The quiet parts of
+        // The quietest color of the theme fills the graph, also where no sound exists yet. The quiet parts of
         // the picture then join the background, and the edge of the data does not show as a hard line.
         painter->fillPlotBackground();
         if (useReview) {

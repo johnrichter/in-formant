@@ -236,7 +236,7 @@ void OverviewItem::rebuildCache(const MapView &view, long long binSamples, const
             frequency[(size_t) i] = values[values.size() / 2];
         }
 
-        // The median of each value and its neighbours removes single bins that jump.
+        // The median of each value and its neighbors removes single bins that jump.
         std::vector<double> near;
         double lowest = 1e9, highest = 0.0;
         for (int i = 0; i < bins.count; ++i) {
@@ -341,7 +341,7 @@ void OverviewItem::paint(QPainter *painter)
     }
 
     // The pitch is a line. It breaks where the track has no pitch for more than 70 ms, and where
-    // a bin is empty. A bin that has no neighbour draws nothing.
+    // a bin is empty. A bin that has no neighbor draws nothing.
     const int maxGap = mapMaxGapBins(perBin);
     painter->setRenderHint(QPainter::Antialiasing, true);
     painter->setPen(QPen(mTheme.pitch, 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));

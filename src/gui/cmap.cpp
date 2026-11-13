@@ -259,7 +259,7 @@ QVector<QRgb> QPainterWrapper::cmap = {
     0xfffbfcbf,
 };
 
-// The colour map of the original application. It is here, next to the data, so a test can link it
+// The color map of the original application. It is here, next to the data, so a test can link it
 // without the rest of the painter.
 const QVector<QRgb>& QPainterWrapper::defaultColorMap()
 {

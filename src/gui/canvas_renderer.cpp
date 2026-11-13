@@ -360,7 +360,7 @@ void CanvasRenderer::drawSpectrogram(
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    // The colour map changes only when the colour table changes.
+    // The color map changes only when the color table changes.
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, mCmapTex);
     if (colorTable != mCmapCache && colorTable.size() == 256) {
@@ -391,9 +391,9 @@ void CanvasRenderer::drawSpectrogram(
     mSpecProgram->setUniformValue(mSpecLoc.frequencyScale, static_cast<int>(freqScale));
     mSpecProgram->setUniformValue(mSpecLoc.minFrequency, minFrequency);
     mSpecProgram->setUniformValue(mSpecLoc.maxFrequency, maxFrequency);
-    // The shader works on the amplitude of the slice. A power of 10^(maxGain/20) gives the top of the colour map.
+    // The shader works on the amplitude of the slice. A power of 10^(maxGain/20) gives the top of the color map.
     // The headroom keeps the loud harmonics of speech below the top of the map. Without it, half of the
-    // voiced area takes the last colour of the map, and the theme shows one flat colour there.
+    // voiced area takes the last color of the map, and the theme shows one flat color there.
     constexpr double headroomDb = 16.0;
     mSpecProgram->setUniformValue(mSpecLoc.gainScale, float(7.0 / std::sqrt(std::pow(10.0, (maxGain + headroomDb) / 20.0))));
     mSpecProgram->setUniformValue(mSpecLoc.quality, mSpecQuality);
@@ -402,7 +402,7 @@ void CanvasRenderer::drawSpectrogram(
     glActiveTexture(GL_TEXTURE0);
     glBindVertexArray(mSpecVao);
 
-    // The newest slice is centred on a time that is earlier than the end of the view. The picture
+    // The newest slice is centered on a time that is earlier than the end of the view. The picture
     // holds the newest slice up to holdTimeEnd, so that no black bar shows at the right edge.
     // In a flipped graph, the newest slice is at the left edge. The new edge of the picture is then
     // the left side of the quad, and the texture still runs from the oldest slice to the newest slice.
@@ -427,7 +427,7 @@ void CanvasRenderer::drawSpectrogram(
     }
     float texX1 = float(xEnd - totalSize) / float(spectrogramColumns);
     float texX2 = (float(xEnd) + holdColumns) / float(spectrogramColumns);
-    // The shader holds the position at the centre of the newest column.
+    // The shader holds the position at the center of the newest column.
     mSpecProgram->setUniformValue(mSpecLoc.lastPosition, float(xEnd) - 0.5f);
     float texY1 = 0.0f;
     float texY2 = 1.0f;
@@ -698,7 +698,7 @@ void CanvasRenderer::initShaders()
     mSpecLoc.quad = mSpecProgram->uniformLocation("quad");
     mSpecLoc.lastPosition = mSpecProgram->uniformLocation("lastPosition");
 
-    // The spectrogram texture is on unit 0, and the colour map is on unit 1.
+    // The spectrogram texture is on unit 0, and the color map is on unit 1.
     mSpecProgram->bind();
     mSpecProgram->setUniformValue("tex", 0);
     mSpecProgram->setUniformValue("colorMap", 1);
@@ -708,7 +708,7 @@ void CanvasRenderer::initShaders()
     glGenTextures(1, &mCmapTex);
     glBindTexture(GL_TEXTURE_2D, mCmapTex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-    // The colour map has a linear filter, so the colour changes smoothly between two entries.
+    // The color map has a linear filter, so the color changes smoothly between two entries.
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);

@@ -25,9 +25,11 @@ The first run downloads GoogleTest 1.18.0. The download is pinned with a hash. T
 
 - Put the test in `tests/`, in a file that ends in `_test.cpp`. Add the file to `tests/CMakeLists.txt` with `informant_add_test`.
 - Test pure logic. Move logic out of a class that needs a window, a file, or a sound device. The project keeps this logic in header files, for example `src/gui/maplayout.h` and `src/gui/oklab.h`.
-- Start the name of a test with the ID of its case in `docs/test-plan.md`, for example `TEST(Layout, TP_LAY_01_BoxesCentred)`. A test with no case in the plan has a plain name.
+- Start the name of a test with the ID of its case in `docs/test-plan.md`, for example `TEST(Layout, TP_LAY_01_BoxesCentered)`. A test with no case in the plan has a plain name.
 - Use `EXPECT_*` for a check that lets the test go on, and `ASSERT_*` for a check that makes the rest of the test pointless.
 - Use `QTemporaryDir` for files. Never write to the folder of the user.
+- A test with a time limit allows three times the limit of the plan, because a busy machine is slower.
+- Two tests need an opt-in. The test `TP_DOC_01` needs the variable `INFORMANT_STE_CHECK` with the path of the style script. The test `TP_DOC_02_EachSourceAddressAnswersWith200` needs the variable `INFORMANT_CHECK_LINKS` and the network.
 - Never leave a process running after a test. Never touch an installed `InFormant` application. Remove `informant.conf` after a test that starts the application.
 
 ## The test plan and the coverage check

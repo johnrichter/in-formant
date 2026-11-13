@@ -67,6 +67,8 @@ double semitones(double low, double high)
 QString csvField(const QString &text)
 {
     QString t = text;
+    // A spreadsheet runs a field that starts with one of these characters as a formula. A quote stops this.
+    if (!t.isEmpty() && QStringLiteral("=+-@\t\r").contains(t.at(0))) t.prepend('\'');
     t.replace('"', "\"\"");
     return "\"" + t + "\"";
 }
@@ -434,7 +436,7 @@ double Main::practiceMinimumSeconds(const QVariant &option)
     bool ok = false;
     const double value = option.toDouble(&ok);
     if (!ok || std::isnan(value)) return 1.0;
-    return std::max(1.0, value);
+    return std::clamp(value, 1.0, 3600.0);
 }
 
 bool Main::practiceTooShort(double lengthSeconds, double minimumSeconds)

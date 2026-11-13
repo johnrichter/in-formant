@@ -65,19 +65,20 @@ def main():
 
     errors = []
     for case in sorted(unit):
-        if case not in tests and case not in deferred:
-            errors.append(f"{case}: no test and no line in the deferred file")
+        active = case in tests and any(not d for _, d in tests[case])
+        if not active and case not in deferred:
+            errors.append(f"{case}: no active test and no line in the deferred file")
     for case in sorted(deferred):
         if case not in unit:
             errors.append(f"{case}: in the deferred file, but not a Unit case of the plan")
-        elif case in tests:
+        elif case in tests and any(not d for _, d in tests[case]):
             errors.append(f"{case}: has a test, so remove it from the deferred file")
     for case in sorted(tests):
         if case not in cases:
             errors.append(f"{case}: a test names an ID that is not in the plan")
 
-    covered = sorted(c for c in unit if c in tests)
-    disabled = sorted(c for c in covered if all(d for _, d in tests[c]))
+    covered = sorted(c for c in unit if c in tests and any(not d for _, d in tests[c]))
+    disabled = sorted(c for c in unit if c in tests and all(d for _, d in tests[c]))
     print(f"Unit cases: {len(unit)}, with a test: {len(covered)} ({len(disabled)} disabled), deferred: {len(deferred)}")
     if args.report:
         by_package = {}

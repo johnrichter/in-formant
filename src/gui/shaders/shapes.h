@@ -6,7 +6,7 @@ namespace Gui::Shaders {
 // The number of line segments that one draw call can draw.
 constexpr int segmentMaxSegments = 128;
 
-// Many line segments of the same width and colour in one draw call. The ends of the segments are
+// Many line segments of the same width and color in one draw call. The ends of the segments are
 // in a uniform array, because a buffer update for each draw call makes the Apple OpenGL driver
 // submit the command buffer to the GPU every time. The fragment shader gives each segment round ends,
 // so the joints of a polyline are round too.

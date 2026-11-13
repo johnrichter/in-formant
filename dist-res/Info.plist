@@ -25,6 +25,6 @@
         <key>NSHighResolutionCapable</key>
         <true/>
         <key>NSMicrophoneUsageDescription</key>
-        <string>This app uses the microphone to record and analyse speech sounds.</string>
+        <string>This app uses the microphone to record and analyze speech sounds.</string>
     </dict>
 </plist>

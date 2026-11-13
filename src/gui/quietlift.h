@@ -5,13 +5,13 @@
 #include <algorithm>
 #include <cmath>
 
-// The quietest colour of a colour map is often black. Black is the colour of the window around the
+// The quietest color of a color map is often black. Black is the color of the window around the
 // graph, so a quiet sound has no contrast with the window, and the loud parts look cut out. The
 // Viridis map has a dark purple at the quiet end. The purple frames the graph and shows every
 // quiet detail. This function gives each map the same property: it lifts the low end to a dark
 // tint of the map's own hue, and it leaves the upper part of the map as it was.
 //
-// The map is an array of 256 colours (0xAARRGGBB or 0x00RRGGBB). The function changes the array in place.
+// The map is an array of 256 colors (0xAARRGGBB or 0x00RRGGBB). The function changes the array in place.
 
 namespace Gui {
 
@@ -39,7 +39,7 @@ void liftQuietEnd(Array &map)
     const double lift = std::max(0.0, quietLightness - first.L);
     if (lift <= 0.0) return;     // The quiet end is already light enough, for example in Viridis.
 
-    // The hue of the quiet end: the first colour of the map that has a clear hue.
+    // The hue of the quiet end: the first color of the map that has a clear hue.
     double hue = 0.0;
     double chroma = 0.0;
     bool found = false;
@@ -56,12 +56,12 @@ void liftQuietEnd(Array &map)
     for (int i = 0; i < count; ++i) {
         const double t = i / double(count - 1);
         const double w = quietWeight(t);
-        if (w <= 0.0) continue;     // The upper part of the map keeps its exact colours.
+        if (w <= 0.0) continue;     // The upper part of the map keeps its exact colors.
         Lch c = labToLch(rgbToLab(map[i] & 0xffffff));
 
         c.L += lift * w;
         if (found) {
-            // A colour with little chroma takes the hue of the quiet end, and the chroma rises to the target.
+            // A color with little chroma takes the hue of the quiet end, and the chroma rises to the target.
             const double own = std::clamp(c.C / 0.04, 0.0, 1.0);
             double delta = c.h - hue;
             if (delta > 180.0) delta -= 360.0;

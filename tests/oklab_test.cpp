@@ -15,8 +15,8 @@ TEST(OkLab, WhiteAndBlackHaveTheRightLightnessAndNoChroma)
     EXPECT_NEAR(black.L, 0.0, 1e-6);
 }
 
-// A colour goes to OKLab and back to the same 8-bit value.
-TEST(OkLab, AColourGoesToOKLabAndBackToTheSame8BitValue)
+// A color goes to OKLab and back to the same 8-bit value.
+TEST(OkLab, AColorGoesToOKLabAndBackToTheSame8BitValue)
 {
     const unsigned int colors[] = { 0x5bcefa, 0xf5a9b8, 0x440154, 0xfde725, 0x123456, 0xff0000, 0x00ff00, 0x0000ff, 0x808080 };
     for (unsigned int c : colors) {
@@ -24,8 +24,8 @@ TEST(OkLab, AColourGoesToOKLabAndBackToTheSame8BitValue)
     }
 }
 
-// A colour outside the gamut keeps its lightness and hue, and loses only chroma.
-TEST(OkLab, AColourOutsideTheGamutKeepsItsLightnessAndHueAndLosesOnly)
+// A color outside the gamut keeps its lightness and hue, and loses only chroma.
+TEST(OkLab, AColorOutsideTheGamutKeepsItsLightnessAndHueAndLosesOnly)
 {
     const Lch wanted { 0.75, 0.40, 150.0 };
     const unsigned int rgb = labToRgb(lchToLab(wanted));
@@ -46,17 +46,17 @@ TEST(OkLab, ABlueToPinkGradientTakesTheWayThroughVioletAndItKeepsIts)
     EXPECT_NEAR(mid.L, 0.67, 1e-9);
 }
 
-// A colour with no chroma takes the hue of the other end, so a gradient to grey keeps its hue.
-TEST(OkLab, AColourWithNoChromaTakesTheHueOfTheOtherEndSoAGradientToGrey)
+// A color with no chroma takes the hue of the other end, so a gradient to gray keeps its hue.
+TEST(OkLab, AColorWithNoChromaTakesTheHueOfTheOtherEndSoAGradientToGray)
 {
-    const Lch grey { 0.5, 0.0, 0.0 };
+    const Lch gray { 0.5, 0.0, 0.0 };
     const Lch red { 0.6, 0.2, 30.0 };
-    const Lch mid = mixLch(grey, red, 0.5);
+    const Lch mid = mixLch(gray, red, 0.5);
     EXPECT_NEAR(mid.h, 30.0, 1e-9);
 }
 
-// The distance of equal colours is 0, and black to white is 1.
-TEST(OkLab, TheDistanceOfEqualColoursIs0AndBlackToWhiteIs1)
+// The distance of equal colors is 0, and black to white is 1.
+TEST(OkLab, TheDistanceOfEqualColorsIs0AndBlackToWhiteIs1)
 {
     EXPECT_NEAR(labDistance(rgbToLab(0x336699), rgbToLab(0x336699)), 0.0, 1e-12);
     EXPECT_NEAR(labDistance(rgbToLab(0x000000), rgbToLab(0xffffff)), 1.0, 1e-2);
@@ -100,8 +100,8 @@ TEST(OkLab, AMapThatHasALightQuietEndLikeViridisDoesNotChange)
     EXPECT_TRUE(map == original);
 }
 
-// A grey map stays grey, and it gets a lighter quiet end.
-TEST(OkLab, AGreyMapStaysGreyAndItGetsALighterQuietEnd)
+// A gray map stays gray, and it gets a lighter quiet end.
+TEST(OkLab, AGrayMapStaysGrayAndItGetsALighterQuietEnd)
 {
     std::array<unsigned int, 256> map;
     for (int i = 0; i < 256; ++i) {

@@ -149,7 +149,7 @@ void QPainterWrapper::drawFrequencyBands()
         QColor color;
         const char *name;
     };
-    // The colours are in gui/bands.h, so a test can check them.
+    // The colors are in gui/bands.h, so a test can check them.
     auto colorOf = [](int i) { return QColor(zoneColors[i].r, zoneColors[i].g, zoneColors[i].b); };
     const Zone zones[3] = {
         { mOptions.bandEdges[0], mOptions.bandEdges[1], colorOf(0), zoneColors[0].name },
@@ -172,7 +172,7 @@ void QPainterWrapper::drawFrequencyBands()
 
         // The name of the zone and its range, at the left, below the upper edge of the zone.
         const double digit = p->textBoundsOfSize(2, "0").height();
-        // A thin zone has no label, because the label would touch the label of its neighbour.
+        // A thin zone has no label, because the label would touch the label of its neighbor.
         if (bottom - top < 3.0 * digit) continue;
         QColor text = zone.color.lighter(150);
         const std::string label = std::string(zone.name) + " zone, " + std::to_string((int) std::lround(zone.low))
@@ -536,7 +536,7 @@ void QPainterWrapper::drawCursor(double time, const std::vector<CursorValue> &va
 {
     const double dpr = p->devicePixelRatio();
     const double x = std::round(mapTimeToX(time));
-    if (x < mPlotLeft || x > mPlotLeft + plotWidth()) return;
+    if (x < mPlotLeft || x >= mPlotLeft + plotWidth()) return;
 
     const double plotBottom = plotHeight();
     const QColor accent = mOptions.theme.accent;
@@ -636,7 +636,7 @@ void QPainterWrapper::drawHud(const std::vector<HudTrack> &tracks)
 
     const QColor fill(8, 8, 12, 200);
     const QColor border(255, 255, 255, 48);
-    const QColor greyText(170, 170, 185);
+    const QColor grayText(170, 170, 185);
 
     const double digit = p->textBoundsOfSize(0, "0").height();
     auto textRight = [&](const std::string &text) {
@@ -706,14 +706,14 @@ void QPainterWrapper::drawHud(const std::vector<HudTrack> &tracks)
             base += r.rowHeight;
             for (const auto &col : statColumns()) {
                 if (col.bit != bit) continue;
-                p->drawTextRotated(3, box.x + pad, base, 0.0f, greyText, col.title, outlineColor);
+                p->drawTextRotated(3, box.x + pad, base, 0.0f, grayText, col.title, outlineColor);
                 const std::string text = statText(*track, stats, bit, mOptions.rangeSemitones);
                 p->drawTextRotated(3, valueRight - monoRight(text), base, 0.0f, Qt::white, text, outlineColor);
             }
         }
     }
 
-    // The frame timing is a box at the top centre of the graph. It stays out of the list of boxes,
+    // The frame timing is a box at the top center of the graph. It stays out of the list of boxes,
     // and it has one size, so it does not move when the numbers change.
     if (r.hasDebug && !mOptions.hideDebug) {
         static QElapsedTimer clock;

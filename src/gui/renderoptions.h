@@ -37,7 +37,7 @@ namespace Gui {
         bool showBands = false;
         double bandEdges[4] = { 60.0, 150.0, 180.0, 300.0 };
 
-        // Horizontal grid lines across the graph. The major lines are at the labelled ticks of the frequency axis.
+        // Horizontal grid lines across the graph. The major lines are at the labeled ticks of the frequency axis.
         // The minor lines are at the ticks without a label.
         bool gridMajor = false;
         bool gridMinor = false;

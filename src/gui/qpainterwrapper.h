@@ -57,11 +57,11 @@ public:
 
     void drawTimeSeries(const rpm::vector<double> &y, double xstart, double xend, double ymin, double ymax); 
 
-    // The options of the display. They set the style of the tracks and the readouts, and the colours.
+    // The options of the display. They set the style of the tracks and the readouts, and the colors.
     void setOptions(const Gui::RenderOptions &options);
     const Gui::RenderOptions &options() const { return mOptions; }
 
-    // The colour map of the original application.
+    // The color map of the original application.
     static const QVector<QRgb>& defaultColorMap();
 
     // Draw a track as dots, as a line, or as both, as the options say.
@@ -92,12 +92,12 @@ public:
     void drawFrequencyBands();
     // Horizontal lines across the graph at the ticks of the frequency axis. They are behind the tracks.
     void drawFrequencyGrid();
-    // Fill the graph with the quietest colour of the theme. This is the first drawing of the graph.
+    // Fill the graph with the quietest color of the theme. This is the first drawing of the graph.
     void fillPlotBackground();
 
     // The ticks of the frequency axis for the current options. The axis and the grid use the same ticks.
     std::vector<Gui::Tick> frequencyTicks();
-    // The colour of a grid line, from the quiet colour of the theme. The scale changes the opacity.
+    // The color of a grid line, from the quiet color of the theme. The scale changes the opacity.
     QColor gridColor(double alphaScale) const;
     // The size index of every label on the axes. One size keeps the axes in balance.
     static constexpr int axisLabelSize = 4;
@@ -120,7 +120,6 @@ public:
     // The caller uses this when the slices come from another source or from another time.
     void invalidateSpectrogram();
 
-    static double mapTimeToX(double time, int width, double startTime, double endTime);
     static double mapFrequencyToY(double frequency, int height, FrequencyScale scale, double minFrequency, double maxFrequency);
     static double mapYToFrequency(double y, int height, FrequencyScale scale, double minFrequency, double maxFrequency);
 

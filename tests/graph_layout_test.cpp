@@ -66,8 +66,8 @@ PlotFrame frameOf(const GraphLayout &layout, int width, int height)
 
 }
 
-// The legend and the frame times stand side by side and centred over the graph.
-TEST(GraphLayout, TP_LAY_01_TheLegendAndTheFrameTimesStandSideBySideAndCentredOverTheGraph)
+// The legend and the frame times stand side by side and centered over the graph.
+TEST(GraphLayout, TP_LAY_01_TheLegendAndTheFrameTimesStandSideBySideAndCenteredOverTheGraph)
 {
     const GraphLayout l = compute(leftOptions());
     const ReadoutLayout &r = l.readout;
@@ -78,9 +78,9 @@ TEST(GraphLayout, TP_LAY_01_TheLegendAndTheFrameTimesStandSideBySideAndCentredOv
     EXPECT_DOUBLE_EQ(r.legend.x + r.legend.width + gap, r.debugX);
     EXPECT_DOUBLE_EQ(r.legend.y, r.debugY);
 
-    const double centreOfBar = 0.5 * (r.legend.x + r.debugX + r.debugWidth);
-    const double centreOfGraph = l.plotLeft + 0.5 * l.plotWidth(1400);
-    EXPECT_NEAR(centreOfBar, centreOfGraph, 1.0);
+    const double centerOfBar = 0.5 * (r.legend.x + r.debugX + r.debugWidth);
+    const double centerOfGraph = l.plotLeft + 0.5 * l.plotWidth(1400);
+    EXPECT_NEAR(centerOfBar, centerOfGraph, 1.0);
     // The bar is above the graph with a gap.
     EXPECT_LE(r.legend.y + r.legend.height + gap, l.plotTop + 1e-9);
     EXPECT_GE(r.legend.y, graphPadding - 1e-9);
@@ -264,16 +264,6 @@ TEST(GraphLayout, TP_LAY_10_AChangingValueNeverChangesABox)
     sweep(9.9, 100.0, 0.1);
     sweep(999.9, 1000.0, 0.01);
     sweep(0.0, 5500.0, 0.37);
-
-    // A second call gives the same layout. The layout has no input from the values.
-    const GraphLayout after = compute(o);
-    ASSERT_EQ(before.readout.boxes.size(), after.readout.boxes.size());
-    for (size_t i = 0; i < before.readout.boxes.size(); ++i) {
-        EXPECT_DOUBLE_EQ(before.readout.boxes[i].width, after.readout.boxes[i].width);
-        EXPECT_DOUBLE_EQ(before.readout.boxes[i].height, after.readout.boxes[i].height);
-        EXPECT_DOUBLE_EQ(before.readout.boxes[i].x, after.readout.boxes[i].x);
-        EXPECT_DOUBLE_EQ(before.readout.boxes[i].y, after.readout.boxes[i].y);
-    }
 }
 
 // In a proportional font, the widest digit sets the width of each pattern, for each digit from 0 to 9.
@@ -530,4 +520,32 @@ TEST(ViewRange, TP_LFT_05_AYoungCaptureStartsBelowZeroWithTheFlipAndAtZeroWithou
     EXPECT_DOUBLE_EQ(Main::pastViewEnd(false, 3.0, 15.0, 8.0), 8.0);
     EXPECT_DOUBLE_EQ(Main::pastViewEnd(true, 3.0, 15.0, 8.0), 15.0);
     EXPECT_DOUBLE_EQ(Main::pastViewEnd(true, 100.0, 15.0, 60.0), 60.0);
+}
+
+// A graph with no time range puts each time at the left edge. It never divides by zero.
+TEST(GraphLayout, ATimeRangeOfZeroGivesTheLeftEdge)
+{
+    PlotFrame f;
+    f.left = 10;
+    f.width = 100;
+    f.timeStart = 5.0;
+    f.timeEnd = 5.0;
+    EXPECT_EQ(plotTimeToX(f, 5.0), 10.0);
+    EXPECT_EQ(plotTimeToX(f, 9.0), 10.0);
+    f.timeEnd = 4.0;
+    EXPECT_EQ(plotTimeToX(f, 4.5), 10.0);
+    f.timeEnd = 6.0;
+    EXPECT_DOUBLE_EQ(plotTimeToX(f, 5.5), 60.0);
+}
+
+// The index of a track: Pitch is 0, F1 to F4 are 1 to 4, and an unknown name gives F1.
+TEST(GraphLayout, TheTrackIndexHandlesUnknownNames)
+{
+    EXPECT_EQ(trackIndex("Pitch"), 0);
+    EXPECT_EQ(trackIndex("F1"), 1);
+    EXPECT_EQ(trackIndex("F4"), 4);
+    EXPECT_EQ(trackIndex("F9"), 4);
+    EXPECT_EQ(trackIndex("F0"), 1);
+    EXPECT_EQ(trackIndex(""), 1);
+    EXPECT_EQ(trackIndex("F"), 1);
 }

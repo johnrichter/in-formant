@@ -24,7 +24,7 @@ uniform vec4 uvs[MAX_GLYPHS];
 uniform int glyphCount;
 
 // A draw call draws every glyph one time for each pass. The last pass uses the text
-// colour. The passes before it use the outline colour, and each one has its own offset.
+// color. The passes before it use the outline color, and each one has its own offset.
 uniform int passCount;
 uniform vec2 offsets[4];
 uniform vec4 textColor;

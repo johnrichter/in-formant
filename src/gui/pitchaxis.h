@@ -67,10 +67,10 @@ inline PitchAxis fitPitchAxis(std::vector<double> values, const PitchAxis &fallb
 
     double span = semitonesBetween(low, high);
     if (span < minPitchAxisSemitones) {
-        // Widen the range around its centre in the log domain.
-        const double centre = 0.5 * (std::log2(low) + std::log2(high));
-        low = std::exp2(centre - 0.5 * minPitchAxisSemitones / 12.0);
-        high = std::exp2(centre + 0.5 * minPitchAxisSemitones / 12.0);
+        // Widen the range around its center in the log domain.
+        const double center = 0.5 * (std::log2(low) + std::log2(high));
+        low = std::exp2(center - 0.5 * minPitchAxisSemitones / 12.0);
+        high = std::exp2(center + 0.5 * minPitchAxisSemitones / 12.0);
         span = minPitchAxisSemitones;
     }
 

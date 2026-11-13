@@ -97,24 +97,11 @@ std::string runCommand(const std::string &command, int *status = nullptr)
     return output;
 }
 
-// The style check of the writing rules. A developer can set INFORMANT_STE_CHECK to the path of the script.
-// Without it, the test looks in the plugin folder of the user.
+// The style check of the writing rules. The variable INFORMANT_STE_CHECK gives the path of the script. The test
+// runs only when the variable is set, so the result does not depend on the files of one machine.
 fs::path styleChecker()
 {
     if (const char *given = std::getenv("INFORMANT_STE_CHECK")) return given;
-    const char *home = std::getenv("HOME");
-    if (!home) return {};
-    const fs::path cache = fs::path(home) / ".claude/plugins/cache";
-    std::error_code ec;
-    if (!fs::is_directory(cache, ec)) return {};
-    for (const auto &market : fs::directory_iterator(cache, ec)) {
-        const fs::path plugin = market.path() / "style-simplified-technical-english-modern-software";
-        if (!fs::is_directory(plugin, ec)) continue;
-        for (const auto &version : fs::directory_iterator(plugin, ec)) {
-            const fs::path tool = version.path() / "rules/reference/tools/self_check.py";
-            if (fs::exists(tool, ec)) return tool;
-        }
-    }
     return {};
 }
 
@@ -155,7 +142,7 @@ std::vector<fs::path> prosePaths()
 TEST(Docs, TP_DOC_01_EachDocumentFollowsTheWritingRules)
 {
     const fs::path tool = styleChecker();
-    if (tool.empty()) GTEST_SKIP() << "The style check is not installed. Set INFORMANT_STE_CHECK to its path.";
+    if (tool.empty()) GTEST_SKIP() << "Set INFORMANT_STE_CHECK to the path of the style check script.";
 
     for (const fs::path &file : docFiles()) {
         EXPECT_EQ(styleViolations(tool, file), 0) << file.filename();
@@ -295,6 +282,29 @@ TEST(Docs, TP_DOC_11_NoBritishSpellingInTheDocumentsAndTheStringsOfTheWindows)
         for (const std::string &line : readLines(file)) {
             // The test plan quotes the words that it forbids.
             if (line.find("British spelling") != std::string::npos) continue;
+            std::smatch m;
+            EXPECT_FALSE(std::regex_search(line, m, british)) << file.filename() << ": " << m[0];
+        }
+    }
+
+    // The comments and the names in the source and in the tests use American spelling too. This file lists the
+    // words, so it is not in the scan.
+    std::vector<fs::path> code;
+    for (const char *folder : { "src", "tests", "dist-res" }) {
+        for (const auto &entry : fs::recursive_directory_iterator(root / folder)) {
+            if (!entry.is_regular_file()) continue;
+            const std::string extension = entry.path().extension().string();
+            if (extension != ".cpp" && extension != ".h" && extension != ".mm" && extension != ".plist" && extension != ".py") continue;
+            if (entry.path().filename() == "docs_test.cpp") continue;
+            // The code of the gci folder comes from a paper and has no caller. It leaves the program soon.
+            if (entry.path().string().find("/src/analysis/gci/") != std::string::npos) continue;
+            code.push_back(entry.path());
+        }
+    }
+    code.push_back(root / "CONTRIBUTING.md");
+    EXPECT_GT(code.size(), 100u);
+    for (const fs::path &file : code) {
+        for (const std::string &line : readLines(file)) {
             std::smatch m;
             EXPECT_FALSE(std::regex_search(line, m, british)) << file.filename() << ": " << m[0];
         }

@@ -15,10 +15,10 @@
 // - Each line height is a multiple of 4 pixels, between 1.3 and 1.5 times the size.
 // - A space inside a group is smaller than the space between groups, so a person sees the groups.
 // - The hierarchy has three levels in each window: a heading (17 pixels, bold), a field label (14 pixels,
-//   medium), and a hint (12 pixels, regular, in the secondary colour). Size, weight, and colour all
+//   medium), and a hint (12 pixels, regular, in the secondary color). Size, weight, and color all
 //   change from one level to the next, so the levels read at a glance.
 // - A line of text has at most about 70 characters (560 pixels at 14 pixels), because longer lines tire the eye.
-// - Each text colour has a contrast of at least 4.5 to 1 against the window and the surface colours.
+// - Each text color has a contrast of at least 4.5 to 1 against the window and the surface colors.
 
 namespace Gui::UiScale {
 
@@ -92,7 +92,7 @@ struct ColorToken {
     unsigned int rgb;
 };
 
-// The colours of the windows (the dark theme of Qt Material) and the colours of the text on them.
+// The colors of the windows (the dark theme of Qt Material) and the colors of the text on them.
 inline constexpr unsigned int windowBackground = 0x1C1B1F;
 inline constexpr unsigned int surfaceBackground = 0x2B2930;
 

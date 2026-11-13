@@ -71,6 +71,28 @@ void scramble(Config &c)
 }
 
 // A reset gives every option its default value. The folder of the practice sessions stays.
+namespace {
+
+// Set HOME for one test, and restore it at the end of the scope, also after a failed assertion.
+class HomeGuard {
+public:
+    explicit HomeGuard(const QString &path) : mOld(qgetenv("HOME")), mHadHome(qEnvironmentVariableIsSet("HOME"))
+    {
+        qputenv("HOME", path.toUtf8());
+    }
+    ~HomeGuard()
+    {
+        if (mHadHome) qputenv("HOME", mOld);
+        else qunsetenv("HOME");
+    }
+
+private:
+    QByteArray mOld;
+    bool mHadHome;
+};
+
+}
+
 TEST(ConfigReset, TP_RST_02_ResetGivesEveryOptionItsDefaultExceptThePracticeFolder)
 {
     Config c{toml::table{}};
@@ -146,13 +168,11 @@ TEST(ConfigReset, TP_RST_15_AConfigOnATableInMemoryNeverWritesTheFile)
 {
     QTemporaryDir home;
     ASSERT_TRUE(home.isValid());
-    const QByteArray oldHome = qgetenv("HOME");
-    qputenv("HOME", home.path().toUtf8());
+    HomeGuard homeGuard(home.path());
 
     // The path of the file follows the home folder on this system. Skip the test when it does not.
     const QString path = QString::fromStdString(getConfigPath().string());
     if (!path.startsWith(home.path())) {
-        qputenv("HOME", oldHome);
         GTEST_SKIP() << "The configuration path does not follow HOME: " << path.toStdString();
     }
 
@@ -161,7 +181,6 @@ TEST(ConfigReset, TP_RST_15_AConfigOnATableInMemoryNeverWritesTheFile)
         c.setOption("lineWidth", 5.0);
         c.save();
     }
-    qputenv("HOME", oldHome);
 
     EXPECT_FALSE(QFile::exists(path));
     EXPECT_FALSE(QFile::exists(QFileInfo(path).absolutePath()));
@@ -231,12 +250,10 @@ TEST(ConfigDefaults, TP_SET_18_ABrokenFileIsKeptAsABackupAndTheTableIsEmpty)
 {
     QTemporaryDir home;
     ASSERT_TRUE(home.isValid());
-    const QByteArray oldHome = qgetenv("HOME");
-    qputenv("HOME", home.path().toUtf8());
+    HomeGuard homeGuard(home.path());
 
     const QString path = QString::fromStdString(getConfigPath().string());
     if (!path.startsWith(home.path())) {
-        qputenv("HOME", oldHome);
         GTEST_SKIP() << "The configuration path does not follow HOME: " << path.toStdString();
     }
 
@@ -249,12 +266,59 @@ TEST(ConfigDefaults, TP_SET_18_ABrokenFileIsKeptAsABackupAndTheTableIsEmpty)
     }
 
     const toml::table tbl = getConfigTable();
-    qputenv("HOME", oldHome);
 
     EXPECT_TRUE(tbl.empty());
     QFile backup(path + ".broken");
     ASSERT_TRUE(backup.open(QIODevice::ReadOnly));
     EXPECT_EQ(backup.readAll(), text);
+}
+
+// When the backup of a broken file fails, the program must not write the settings. The broken file is the only copy.
+TEST(ConfigDefaults, AFailedBackupKeepsTheBrokenFileOnTheDisk)
+{
+    QTemporaryDir home;
+    ASSERT_TRUE(home.isValid());
+    HomeGuard homeGuard(home.path());
+
+    const QString path = QString::fromStdString(getConfigPath().string());
+    if (!path.startsWith(home.path())) GTEST_SKIP() << "The configuration path does not follow HOME: " << path.toStdString();
+
+    ASSERT_TRUE(QDir().mkpath(QFileInfo(path).absolutePath()));
+    const QByteArray text = "[options]\nlineWidth = 3.0\nthis line is not valid\n";
+    {
+        QFile file(path);
+        ASSERT_TRUE(file.open(QIODevice::WriteOnly));
+        file.write(text);
+    }
+    // A folder with the name of the backup makes the copy fail.
+    ASSERT_TRUE(QDir().mkpath(path + ".broken"));
+
+    {
+        Config config;
+        config.save();
+    }
+    QFile file(path);
+    ASSERT_TRUE(file.open(QIODevice::ReadOnly));
+    EXPECT_EQ(file.readAll(), text);
+}
+
+// A normal save writes the file in one step and leaves no temporary file.
+TEST(ConfigDefaults, ASaveLeavesTheFileAndNoTemporaryFile)
+{
+    QTemporaryDir home;
+    ASSERT_TRUE(home.isValid());
+    HomeGuard homeGuard(home.path());
+
+    const QString path = QString::fromStdString(getConfigPath().string());
+    if (!path.startsWith(home.path())) GTEST_SKIP() << "The configuration path does not follow HOME: " << path.toStdString();
+
+    {
+        Config config;
+        config.save();
+    }
+    EXPECT_TRUE(QFileInfo::exists(path));
+    EXPECT_FALSE(QFileInfo::exists(path + ".tmp"));
+    EXPECT_GT(QFileInfo(path).size(), 0);
 }
 
 // A sub-table with a value of the wrong kind (a number in place of a table) gives the defaults.

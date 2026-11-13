@@ -10,10 +10,10 @@ set(BUILD_GMOCK ON CACHE BOOL "" FORCE)
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
 # The release archive is pinned with its hash. A Git submodule is not used, because a submodule stops
-# "git worktree remove". With CMake 3.24 or newer, an installed GoogleTest wins over the download.
+# "git worktree remove". The pinned archive always applies. An installed GoogleTest never replaces it.
 set(GTEST_FETCH_ARGS)
 if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
-    list(APPEND GTEST_FETCH_ARGS DOWNLOAD_EXTRACT_TIMESTAMP TRUE FIND_PACKAGE_ARGS NAMES GTest)
+    list(APPEND GTEST_FETCH_ARGS DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
 endif()
 FetchContent_Declare(googletest
     URL https://github.com/google/googletest/releases/download/v1.18.0/googletest-1.18.0.tar.gz
@@ -72,7 +72,7 @@ informant_add_test(NAME config_tests
     LABELS config)
 target_include_directories(config_tests SYSTEM PRIVATE ${APP_HEADER_INCLUDES})
 
-# The colour themes, the quiet end of the colour maps, and the colour of the grid.
+# The color themes, the quiet end of the color maps, and the color of the grid.
 informant_add_test(NAME color_tests
     SOURCES color_test.cpp ${SRC}/gui/theme.cpp ${SRC}/gui/cmap.cpp
     LIBS ${APP_HEADER_LIBS}

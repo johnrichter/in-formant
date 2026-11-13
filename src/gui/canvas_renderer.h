@@ -54,11 +54,11 @@ namespace Gui {
 
         void drawLine(float x1, float y1, float x2, float y2, const QColor &color, float thickness);
 
-        // Many line segments of the same width and colour. segments has four floats for each
+        // Many line segments of the same width and color. segments has four floats for each
         // segment: x1, y1, x2, y2. The width is in pixels at 100 percent zoom.
         void drawSegments(const float *segments, int count, float width, const QColor &color);
 
-        // A line through the points. The line has an outline. An outline colour with no alpha
+        // A line through the points. The line has an outline. An outline color with no alpha
         // draws no outline.
         void drawPolyline(const rpm::vector<QPointF> &points, float width, const QColor &color, const QColor &outline);
 

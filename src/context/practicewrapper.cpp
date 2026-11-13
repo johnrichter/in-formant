@@ -176,7 +176,9 @@ void PracticeWrapper::writeBundle(const PracticeRecord &record, const QString &s
     const bool keepSound = mConfig->optionBool("practiceKeepAudio");
     const QStringList files = practiceBundleFiles(keepSound);
 
-    writeBundleText(sessionFolder, record, buildRecordingReport(*mConfig, *mSession->dataStore(), t0, t1, record.start, files));
+    if (!writeBundleText(sessionFolder, record, buildRecordingReport(*mConfig, *mSession->dataStore(), t0, t1, record.start, files))) {
+        mSession->showStatus(QStringLiteral("The practice files were not saved"));
+    }
 
     if (keepSound) {
         if (mSoundThread.joinable()) mSoundThread.join();

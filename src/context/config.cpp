@@ -104,8 +104,15 @@ toml::table Main::parseConfigStream(std::istream &stream, const std::string &sou
     }
 }
 
+namespace {
+// True when the last read found a broken file and could not keep a copy of it. The program then must not
+// write the file, because the broken file would be lost.
+bool gBackupFailed = false;
+}
+
 toml::table Main::getConfigTable()
 {
+    gBackupFailed = false;
     auto path = getConfigPath();
 
 #if defined(_WIN32) && defined(UNICODE)
@@ -128,6 +135,7 @@ toml::table Main::getConfigTable()
             backup += ".broken";
             std::error_code ec;
             fs::copy_file(path, backup, fs::copy_options::overwrite_existing, ec);
+            if (ec) gBackupFailed = true;
         }
         return tbl;
     }
@@ -148,7 +156,7 @@ Config::Config(toml::table table)
 
 Config::Config(toml::table table, bool persist)
     : mTbl(std::move(table)),
-      mPersist(persist),
+      mPersist(persist && !gBackupFailed),
       mPaused(true),
       mViewLive(true),
       mViewEnd(0.0),
@@ -208,7 +216,7 @@ QVariantMap Config::defaultOptions()
     m["flipTime"] = true;        // the newest sound is at the left edge and the graph scrolls to the right
     m["gridStrength"] = 0.6;     // the opacity of the grid lines from 0.1 to 1
     m["freqTickDensity"] = 1;    // labels of the automatic frequency axis: 0 sparse, 1 normal, 2 dense
-    m["gridMajor"] = false;      // draw a line across the graph at each labelled tick of the frequency axis
+    m["gridMajor"] = false;      // draw a line across the graph at each labeled tick of the frequency axis
     m["gridMinor"] = false;      // draw a fainter line at each tick without a label
     m["showBands"] = false;      // show the pitch zones in the graph
     m["bandsInExport"] = true;   // keep the zones on the screen while a recording runs
@@ -264,13 +272,13 @@ QVariantMap Config::defaultOptions()
     // The sound of the capture goes to a scratch file. It is deleted at the end of the run unless this is true.
     m["keepRecordings"] = false;
 
-    // Colour theme.
+    // Color theme.
     m["theme"] = QString("Magma");
     m["customColors"] = QString("#000004,#3b0f70,#b73779,#fc8961,#fcfdbf");
     m["customPitch"] = QString("#00e5ff");
     m["customFormants"] = QString("#00ff00,#91ee91,#ff0000,#ff99ff,#ffcc00");
     m["minVolumeBlack"] = false;  // false: the quietest sound has a dark tint of the theme. true: it is black.
-    m["colorSaturation"] = 1.0;  // the chroma of the colour map, from 0.5 to 1.5 times
+    m["colorSaturation"] = 1.0;  // the chroma of the color map, from 0.5 to 1.5 times
     return m;
 }
 
@@ -386,8 +394,21 @@ void Config::save()
     if (!mPersist) {
         return;
     }
-    std::ofstream stream(getConfigPath());
-    stream << mTbl;
+    // Write to a temporary file, and then rename it. A stop in the middle of the write leaves the old file.
+    const fs::path path = getConfigPath();
+    fs::path temporary = path;
+    temporary += ".tmp";
+    std::error_code ec;
+    {
+        std::ofstream stream(temporary);
+        stream << mTbl;
+        if (!stream) {
+            stream.close();
+            fs::remove(temporary, ec);
+            return;
+        }
+    }
+    fs::rename(temporary, path, ec);
 }
 
 Config::~Config()

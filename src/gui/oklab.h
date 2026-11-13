@@ -4,8 +4,8 @@
 #include <algorithm>
 #include <cmath>
 
-// Colour maths in the OKLab space. Equal steps in OKLab look like equal steps of colour, so a
-// gradient has no grey patch and no jump of brightness. The functions have no Qt types, so a test
+// Color maths in the OKLab space. Equal steps in OKLab look like equal steps of color, so a
+// gradient has no gray patch and no jump of brightness. The functions have no Qt types, so a test
 // can run them.
 
 namespace Gui {
@@ -51,7 +51,7 @@ inline Lab rgbToLab(unsigned int rgb)
     return lab;
 }
 
-// The linear sRGB value of a colour. A value outside 0 to 1 means the colour is outside the gamut.
+// The linear sRGB value of a color. A value outside 0 to 1 means the color is outside the gamut.
 inline void labToLinear(const Lab &lab, double out[3])
 {
     const double l_ = lab.L + 0.3963377774 * lab.a + 0.2158037573 * lab.b;
@@ -73,7 +73,7 @@ inline bool labInGamut(const Lab &lab)
     return c[0] >= -eps && c[0] <= 1 + eps && c[1] >= -eps && c[1] <= 1 + eps && c[2] >= -eps && c[2] <= 1 + eps;
 }
 
-// A colour outside the gamut loses chroma until it fits. The lightness and the hue stay the same.
+// A color outside the gamut loses chroma until it fits. The lightness and the hue stay the same.
 inline unsigned int labToRgb(Lab lab)
 {
     if (!labInGamut(lab)) {
@@ -123,9 +123,9 @@ inline Lab lchToLab(double L, double C, double h)
     return lchToLab(Lch { L, C, h });
 }
 
-// The colour at position u (0 to 1) between two colours. The lightness and the chroma change in a
+// The color at position u (0 to 1) between two colors. The lightness and the chroma change in a
 // straight line. The hue takes the shorter way round the circle, so a blue to pink gradient goes
-// through violet and not through grey. A colour with almost no chroma takes the hue of the other end.
+// through violet and not through gray. A color with almost no chroma takes the hue of the other end.
 inline Lch mixLch(const Lch &a, const Lch &b, double u)
 {
     constexpr double neutral = 0.01;
@@ -147,7 +147,7 @@ inline Lch mixLch(const Lch &a, const Lch &b, double u)
     return out;
 }
 
-// The distance of two colours. A distance below 0.1 is a weak contrast.
+// The distance of two colors. A distance below 0.1 is a weak contrast.
 inline double labDistance(const Lab &x, const Lab &y)
 {
     return std::sqrt((x.L - y.L) * (x.L - y.L) + (x.a - y.a) * (x.a - y.a) + (x.b - y.b) * (x.b - y.b));

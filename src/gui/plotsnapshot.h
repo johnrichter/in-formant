@@ -12,7 +12,7 @@ namespace Gui {
     struct PlotSeries {
         QString name;
 
-        // Which colour of the theme draws the line: 0 is the main colour, 1 is the second colour.
+        // Which color of the theme draws the line: 0 is the main color, 1 is the second color.
         int colorIndex = 0;
 
         QVector<QPointF> points;

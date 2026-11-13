@@ -22,7 +22,9 @@ struct PlotFrame {
 // The pixel column of a time. The column is a fraction when the time is between two pixels.
 inline double plotTimeToX(const PlotFrame &f, double time)
 {
-    const double offset = f.width * (time - f.timeStart) / (f.timeEnd - f.timeStart);
+    const double range = f.timeEnd - f.timeStart;
+    if (!(range > 0.0)) return f.left;
+    const double offset = f.width * (time - f.timeStart) / range;
     return f.left + (f.flipped ? f.width - offset : offset);
 }
 
