@@ -11,6 +11,9 @@
 #include "views/views.h"
 #include "config.h"
 #include <atomic>
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
 #include <thread>
 
 
@@ -108,6 +111,13 @@ namespace Main {
 
         std::thread mSynthesisThread;
         std::atomic_bool mSynthesisRunning;
+
+        // The synthesis loop and the loop of the plot data wait on this signal. A switch of the synthesizer, the
+        // start of a playback, and the end of the loops send it, so a long wait ends at once.
+        std::mutex mWakeMutex;
+        std::condition_variable mWake;
+        void waitForWork(std::chrono::milliseconds limit);
+        void wakeLoops();
 
         std::thread mDatavisThread;
 

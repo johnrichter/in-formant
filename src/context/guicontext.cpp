@@ -101,6 +101,12 @@ GuiContext::GuiContext(Config *config, RenderContext *renderContext, SynthWrappe
     auto canvasItem = window->findChild<Gui::CanvasItem *>("IfCanvas");
 
     canvasItem->setRenderContext(mRenderContext);
+    mInputWatcher.canvas = canvasItem;
+    mApp->installEventFilter(&mInputWatcher);
+    // The canvas draws at the rate of the screen while the capture or a playback runs.
+    canvasItem->setRunningProvider([config, sessionWrapper]() {
+        return !config->isPaused() || sessionWrapper->playing();
+    });
     sessionWrapper->setMainWindow(window);
 
     canvasItem->installEventFilter(this);
@@ -109,7 +115,33 @@ GuiContext::GuiContext(Config *config, RenderContext *renderContext, SynthWrappe
     window->show();
 }
 
-GuiContext::~GuiContext() = default;
+GuiContext::~GuiContext()
+{
+    // The engine deletes the canvas below. An event during the teardown must not reach it.
+    mInputWatcher.canvas = nullptr;
+    if (mApp) mApp->removeEventFilter(&mInputWatcher);
+}
+
+bool GuiContext::InputWatcher::eventFilter(QObject *, QEvent *event)
+{
+    // An input of the user, in any window, keeps the canvas at the rate of the screen for a moment. A change of a
+    // setting in the Settings window shows at once then.
+    switch (event->type()) {
+    case QEvent::MouseMove:
+    case QEvent::MouseButtonPress:
+    case QEvent::MouseButtonRelease:
+    case QEvent::HoverMove:
+    case QEvent::Wheel:
+    case QEvent::KeyPress:
+    case QEvent::KeyRelease:
+    case QEvent::TouchUpdate:
+        if (canvas != nullptr) canvas->noteInput();
+        break;
+    default:
+        break;
+    }
+    return false;
+}
 
 int GuiContext::exec()
 {

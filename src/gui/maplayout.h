@@ -176,6 +176,22 @@ inline double updateShownDuration(MapClock &clock, double duration, double now, 
     return clock.shown;
 }
 
+// The time between two checks of the map, in milliseconds. A check is cheap, but a check for each frame of the
+// screen wakes the program 60 times in a second, also when nothing moves. The map checks at the rate of the screen
+// while the sound runs, during a drag, and for a short time after a change. Then it slows down. A hidden map
+// checks rarely.
+constexpr int mapActiveIntervalMs = 16;
+constexpr int mapIdleIntervalMs = 100;
+constexpr int mapHiddenIntervalMs = 250;
+constexpr double mapIdleAfterSeconds = 0.5;
+
+inline int mapPollInterval(bool visible, bool active, double secondsSinceChange)
+{
+    if (!visible) return mapHiddenIntervalMs;
+    if (active || secondsSinceChange < mapIdleAfterSeconds) return mapActiveIntervalMs;
+    return mapIdleIntervalMs;
+}
+
 // The scale of the loudness of the map. A louder sound raises the scale at once, so no sound is cut off. A quieter
 // sound lowers it with a time constant of one second. The change follows the clock, and not the number of drawings,
 // so ten drawings in a second give the same scale as two drawings. The elapsed time is limited to 2 seconds.

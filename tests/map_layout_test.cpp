@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include "../src/gui/canvasactivity.h"
 #include "../src/gui/maplayout.h"
 #include <limits>
 
@@ -427,4 +428,49 @@ TEST(MapLayout, EdgeInputGivesAFiniteResult)
         EXPECT_GE(size, 1) << span;
         EXPECT_EQ(size & (size - 1), 0) << span;
     }
+}
+
+// The map checks at the rate of the screen only when something moves. Else it wakes the program less often.
+TEST(MapLayout, TP_MAP_27_TheMapChecksLessOftenWhenNothingChanges)
+{
+    // The sound runs or a drag goes on: the rate of the screen.
+    EXPECT_EQ(mapPollInterval(true, true, 100.0), mapActiveIntervalMs);
+    // A change a moment ago: the rate of the screen, so the end of a movement draws smoothly.
+    EXPECT_EQ(mapPollInterval(true, false, 0.1), mapActiveIntervalMs);
+    // Nothing changed for a while: a slow check.
+    EXPECT_EQ(mapPollInterval(true, false, 0.5), mapIdleIntervalMs);
+    EXPECT_EQ(mapPollInterval(true, false, 60.0), mapIdleIntervalMs);
+    // A hidden map checks rarely, also while the sound runs.
+    EXPECT_EQ(mapPollInterval(false, true, 0.0), mapHiddenIntervalMs);
+    EXPECT_GT(mapIdleIntervalMs, mapActiveIntervalMs);
+    EXPECT_GT(mapHiddenIntervalMs, mapIdleIntervalMs);
+}
+
+// The canvas draws a frame for each screen refresh only when something moves.
+TEST(CanvasActivity, TP_IDLE_02_TheCanvasDrawsAtTheRateOfTheScreenOnlyWhenSomethingMoves)
+{
+    using namespace Gui;
+    CanvasActivity activity;
+    const long long now = 1000000;
+
+    // At the start: no capture and no input. The canvas is idle.
+    EXPECT_FALSE(activity.busy(now));
+
+    // The capture or a playback runs: busy, however long ago the last input was.
+    activity.running = true;
+    EXPECT_TRUE(activity.busy(now));
+    EXPECT_TRUE(activity.busy(now + 3600000));
+    activity.running = false;
+    EXPECT_FALSE(activity.busy(now));
+
+    // An input holds the canvas busy for one second, and then it goes idle.
+    activity.lastInputMs = now;
+    EXPECT_TRUE(activity.busy(now));
+    EXPECT_TRUE(activity.busy(now + canvasInputHoldMs - 1));
+    EXPECT_FALSE(activity.busy(now + canvasInputHoldMs));
+
+    // An idle canvas still draws, five times in a second at most.
+    EXPECT_GE(canvasIdleFrameMs, 200);
+    EXPECT_GT(canvasIdleFrameMs, canvasTickMs);
+    EXPECT_GT(canvasNowMs(), 0);
 }

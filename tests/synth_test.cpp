@@ -138,3 +138,38 @@ TEST(Synth, TP_SYN_22_ThePresetTableIsTheTableOfPetersonAndBarney)
     }
     for (size_t i = 1; i < presetBandwidths.size(); ++i) EXPECT_GT(presetBandwidths[i], presetBandwidths[i - 1]);
 }
+
+// The loops wait long when they have no sound to make. This saves 40 wake-ups in a second.
+TEST(Synth, TP_SYN_31_TheLoopsWaitLongWhenTheyHaveNoWork)
+{
+    EXPECT_EQ(feedWait(PlaybackSource::Silence), feedIdleWait);
+    EXPECT_EQ(feedWait(PlaybackSource::Synthesizer), feedBusyWait);
+    EXPECT_EQ(feedWait(PlaybackSource::Session), feedBusyWait);
+    EXPECT_GT(feedIdleWait, feedBusyWait);
+
+    // The loop of the plot data has work when the synthesizer is on, a follow mode is on, or a plot is watched.
+    EXPECT_FALSE(synthLoopHasWork(false, false, false));
+    EXPECT_TRUE(synthLoopHasWork(true, false, false));
+    EXPECT_TRUE(synthLoopHasWork(false, true, false));
+    EXPECT_TRUE(synthLoopHasWork(false, false, true));
+}
+
+// An idle queue gets no feed on purpose. Its empty state is no underrun, so the blocks stay as long as they were.
+TEST(Synth, TP_SYN_32_AnIdleQueueKeepsItsBlockLength)
+{
+    Queue queue = makeQueue(0.5);
+    queue.setOutSampleRate(48000);
+    const float start = queue.blockDuration();
+
+    queue.setIdle(true);
+    for (int i = 0; i < 200; ++i) pullAll(queue, 480);
+    EXPECT_FLOAT_EQ(queue.blockDuration(), start);
+
+    // The pull of an empty queue gives silence, also while it is idle.
+    for (float x : pullAll(queue, 480)) EXPECT_EQ(x, 0.0f);
+
+    // A queue that is not idle grows its blocks after an underrun.
+    queue.setIdle(false);
+    pullAll(queue, 480);
+    EXPECT_GT(queue.blockDuration(), start);
+}

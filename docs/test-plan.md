@@ -109,6 +109,13 @@ The project never played the sound through a speaker. These cases use rendered s
 - **TP-SYN-28** (Qt, P3). Press "How to use". Expect the Help window to open on the tab "Synthesizer", also when the window is open on another tab.
 - **TP-SYN-29** (Qt, P3). Resize the window to the minimum. Expect no overlap of the hints and the controls.
 - **TP-SYN-30** (Audio, P2). Start and stop the synthesizer 100 times. Expect no click at the start, no leak, and no stuck thread.
+- **TP-SYN-31** (Unit, P2). The synthesis loop and the loop of the plot data wait 200 ms when they have no work, and 20 ms when they have work. The work is the synthesizer on, a follow mode on, or a plot on the screen.
+- **TP-SYN-32** (Unit, P2). An idle playback queue keeps its block length when it runs empty. A queue that is not idle makes its blocks longer after an underrun.
+- **TP-SYN-33** (Audio, P2). Leave the synthesizer off for a minute. Switch it on, and then press play on a stored sound. Expect the sound within 200 ms each time.
+- **TP-IDLE-01** (Manual, P2). Pause the capture, close the synthesizer window, and measure the wake-ups of the process for 10 s with `sample` or Activity Monitor. Expect fewer than 40 wake-ups in a second.
+- **TP-IDLE-02** (Unit, P1). The canvas draws the next frame at once only while the capture or a playback runs. It does the same for 1 s after an input of the user. Else it draws one frame for each 200 ms. An input in any window counts.
+- **TP-IDLE-03** (Manual, P1). Pause the capture, and measure the CPU use of the process for 30 s. Expect less than 3 percent of one core. Then move the mouse over the graph. Expect the cursor to follow with no lag, and the spectrogram to show the change of a setting at once.
+- **TP-IDLE-04** (Image, P2). Pause the capture. Change the theme, the scale, and the view range. Expect the graph to show each change at once. Press play, and then pause. Expect the last frame to stay on the screen.
 
 ## 2. Playback of a session
 
@@ -193,6 +200,7 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-MAP-24** (Manual, P3). Start the app with the render loop `threaded` (the variable `QSG_RENDER_LOOP`). The app stopped with a trap. Find the cause before a change to the render loop.
 - **TP-MAP-25** (Qt, P1). During a live capture, record the left and right edge of the frame in each drawing. Expect an edge that never moves back and a left edge that stays still while the map scrolls. The run had no step back after the fix.
 - **TP-MAP-26** (Unit, P2). The length of the map never goes back while the capture runs. It can go back after a reset of the graph or after a pause. Check the function with a fake clock.
+- **TP-MAP-27** (Unit, P2). The map checks at the rate of the screen while the sound runs, during a drag, and for 0.5 s after a change. Then it checks 10 times in a second. A hidden map checks 4 times in a second.
 - **TP-RGR-10** (Qt, P2). Find the button "Reset graph" in the top bar next to the play button. Expect a trash icon of the same visual size as the play icon and a tip on a hover. Expect a disabled state during a recording and a practice session.
 - **TP-RGR-11** (Image, P3). Compare the trash icon with the play icon and the stop icon at a scale of 100 and 200 percent. Expect the same visual size and the same weight. Check that the red is muted on the bar.
 

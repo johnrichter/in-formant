@@ -56,8 +56,9 @@ OverviewItem::OverviewItem(QQuickItem *parent)
     setAcceptedMouseButtons(Qt::LeftButton);
     setAcceptHoverEvents(true);
 
-    // One check for each frame of the screen. The check is cheap, and the map draws only when a value changed.
-    mTimer.setInterval(16);
+    // A check for each frame of the screen. The check is cheap, and the map draws only when a value changed.
+    // The check slows down when nothing changes. See mapPollInterval.
+    mTimer.setInterval(mapActiveIntervalMs);
     mTimer.setTimerType(Qt::PreciseTimer);
     connect(&mTimer, &QTimer::timeout, this, &OverviewItem::refresh);
     mTimer.start();
@@ -155,7 +156,11 @@ double OverviewItem::pitchEnd() const
 
 void OverviewItem::refresh()
 {
-    if (sConfig == nullptr || sDataStore == nullptr || !isVisible() || width() < 4) return;
+    const auto now = std::chrono::steady_clock::now();
+    if (sConfig == nullptr || sDataStore == nullptr || !isVisible() || width() < 4) {
+        setPollInterval(mapPollInterval(false, false, 0.0));
+        return;
+    }
 
     const MapView view = currentView();
     Key key;
@@ -173,15 +178,26 @@ void OverviewItem::refresh()
 
     // The picture of the sound can be older than the sound. The map then draws again until it is current.
     // The check reads the pitch track under a lock, so it runs a few times in a second only.
-    const auto now = std::chrono::steady_clock::now();
     if (now - mSoundCheck > std::chrono::milliseconds(100)) {
         mSoundCheck = now;
         mSoundDirty = key.version != mCacheVersion || pitchEnd() != mCachePitchEnd;
     }
 
-    if (key == mKey && !mSoundDirty) return;
+    const bool changed = !(key == mKey) || mSoundDirty;
+    if (changed) mLastChange = now;
+
+    // The map checks at the rate of the screen while the sound runs or a drag goes on. It slows down when idle.
+    const bool active = (sConfig->getSessionMode() == 0 && !sConfig->isPaused()) || mDrag != Drag::None;
+    setPollInterval(mapPollInterval(true, active, std::chrono::duration<double>(now - mLastChange).count()));
+
+    if (!changed) return;
     mKey = key;
     update();
+}
+
+void OverviewItem::setPollInterval(int milliseconds)
+{
+    if (mTimer.interval() != milliseconds) mTimer.setInterval(milliseconds);
 }
 
 void OverviewItem::rebuildCache(const MapView &view, long long binSamples, const MapBins &bins)

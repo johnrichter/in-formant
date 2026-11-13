@@ -13,6 +13,10 @@
 #include "synthwrapper.h"
 #include "dataviswrapper.h"
 
+namespace Gui {
+    class CanvasItem;
+}
+
 namespace Main {
 
     class RenderContext;
@@ -50,6 +54,15 @@ namespace Main {
         RenderContext *mRenderContext;
 
         GuiView *mSelectedView;
+
+        // Sees the input of the user in all windows. The canvas of the main window is owned by the engine.
+        class InputWatcher : public QObject {
+        public:
+            Gui::CanvasItem *canvas = nullptr;
+        protected:
+            bool eventFilter(QObject *obj, QEvent *event) override;
+        };
+        InputWatcher mInputWatcher;
 
         std::unique_ptr<QApplication> mApp;
         // The wrapper outlives the engine, so no binding reads it after it is gone.

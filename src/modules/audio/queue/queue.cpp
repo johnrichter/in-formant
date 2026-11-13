@@ -112,7 +112,10 @@ void Queue::pull(float *pOut, int outLength)
         for (; i < outLength; ++i) {
             pOut[i] = 0.0;
         }
-       
+
+        // An idle queue has no feed on purpose, so this is no underrun.
+        if (mIdle.load()) return;
+
         // Make the blocks longer, but not without a limit.
         constexpr float maxBlockDuration = 200.0f;
         const float newBlockDuration = mBlockDuration + 0.25f;

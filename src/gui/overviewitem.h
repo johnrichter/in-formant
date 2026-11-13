@@ -75,6 +75,8 @@ namespace Gui {
         void moveEnd(double end);
 
         QTimer mTimer;
+        std::chrono::steady_clock::time_point mLastChange;
+        void setPollInterval(int milliseconds);
 
         // The values that the picture shows. The map draws again when one of them changes.
         struct Key {

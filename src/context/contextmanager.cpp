@@ -48,6 +48,10 @@ ContextManager::ContextManager(
     createViews();
     loadConfig();
     mDataVisWrapper.setReview(mConfig.get(), &mDataStore->session());
+
+    // The loops of the synthesizer wait long when they have no work. These signals end the wait.
+    QObject::connect(&mSynthWrapper, &SynthWrapper::enabledChanged, [this](bool) { wakeLoops(); });
+    QObject::connect(mSessionWrapper.get(), &SessionWrapper::playingChanged, [this]() { wakeLoops(); });
     mDataStore->setFormantTrackCount(4);
     QObject::connect(mConfig.get(), &Config::pitchAlgorithmChanged,
             [this](int index) {
@@ -448,7 +452,9 @@ void ContextManager::datavisThreadLoop()
             mSynthWrapper.setSourceSpectrum(fftFrequencies, sourceSpectrum);
         }
 
-        std::this_thread::sleep_for(20ms);
+        // Wait long when the synthesizer is off and no plot is on the screen. A switch ends the wait at once.
+        const bool work = synthLoopHasWork(mSynthWrapper.enabled(), followPitch || followFormants, mSynthWrapper.watched());
+        waitForWork(work ? feedBusyWait : feedIdleWait);
     }
 }
 
@@ -458,6 +464,7 @@ void ContextManager::stopAnalysisThread()
 
     if (mAnalysisThread.joinable() || mDatavisThread.joinable()) {
         mAnalysisRunning = false;
+        wakeLoops();
         mAnalysisThread.join();
         mDatavisThread.join();
     }
@@ -487,15 +494,28 @@ void ContextManager::synthesisThreadLoop()
         // Generate sound only while the synthesizer is on. It ran all the time before, with the
         // volume at zero, and it used a few percent of a CPU core.
         const PlaybackSource source = choosePlaybackSource(playingSession, mSynthWrapper.enabled());
+        mPlaybackQueue->setIdle(source == PlaybackSource::Silence);
         feedPlaybackQueue(*mPlaybackQueue, source, mSynthesizer.get(), mSessionPlayer.get());
-        std::this_thread::sleep_for(20ms);
+        waitForWork(feedWait(source));
     }
+}
+
+void ContextManager::waitForWork(std::chrono::milliseconds limit)
+{
+    std::unique_lock<std::mutex> lock(mWakeMutex);
+    mWake.wait_for(lock, limit);
+}
+
+void ContextManager::wakeLoops()
+{
+    mWake.notify_all();
 }
 
 void ContextManager::stopSynthesisThread()
 {
     if (mSynthesisThread.joinable()) {
         mSynthesisRunning = false;
+        wakeLoops();
         if (mSynthesisThread.joinable()) {
             mSynthesisThread.join();
         }

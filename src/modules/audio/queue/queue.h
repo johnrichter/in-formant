@@ -28,11 +28,19 @@ namespace Module::Audio {
         void pushSilenceIfNeeded();
         void pull(float *pOut, int outLength);
 
-    private: 
+        // The length of one block, in milliseconds. It grows after an underrun.
+        float blockDuration() const { return mBlockDuration.load(); }
+
+        // While the queue is idle, nobody feeds it, and an empty queue plays silence. An empty queue then is
+        // no underrun, so the blocks do not grow.
+        void setIdle(bool idle) { mIdle = idle; }
+
+    private:
         void reportUnderrun();
 
         std::atomic<float> mBlockDuration;
         std::atomic<bool> mUnderrun {false};
+        std::atomic<bool> mIdle {false};
 
         Resampler mResampler;
         QueueCallback mCallback;
