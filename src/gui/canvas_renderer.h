@@ -113,6 +113,9 @@ namespace Gui {
         // origin, so its code counts from the top of the graph. A value of zero restores the canvas origin.
         void setOriginY(int pixels);
 
+        // Draw the time from the right edge to the left edge. The newest slice is then at the left edge.
+        void setTimeFlipped(bool flipped) { mTimeFlipped = flipped; }
+
         // Limit the drawing to a rectangle, in pixels from the top left corner, or remove the limit.
         void setClip(int x, int y, int width, int height);
         void clearClip();
@@ -131,6 +134,7 @@ namespace Gui {
         int mPlotLeft = 0;
         int mPlotBottom = 0;
         int mPlotTop = 0;
+        bool mTimeFlipped = false;
         int mOriginY = 0;
 
         void initFonts();

@@ -63,6 +63,9 @@ inline constexpr std::array<RadiusStep, 3> radiusSteps = { {
     { "lg", 12 },
 } };
 
+// The corner radius of every control and every box. The windows and the graph use the same value.
+inline constexpr int cornerRadius = radiusSteps[1].size;
+
 struct ColorToken {
     const char *name;
     unsigned int rgb;

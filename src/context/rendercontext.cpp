@@ -37,6 +37,9 @@ void RenderContext::render(QPainterWrapper *painter)
     options.timeTickStep = mConfig->optionDouble("timeTickStep");
     options.hideDebug = mConfig->isRecording();
     // The recorder grabs the whole window, so the zones on the screen are also in the video.
+    options.timeFlipped = mConfig->optionBool("flipTime");
+    options.gridMajor = mConfig->optionBool("gridMajor");
+    options.gridMinor = mConfig->optionBool("gridMinor");
     options.showBands = mConfig->optionBool("showBands") && (mConfig->optionBool("bandsInExport") || !mConfig->isRecording());
     const Gui::BandEdges bandEdges = Gui::parseBandEdges(mConfig->optionString("bandEdges").toStdString());
     for (int i = 0; i < 4; ++i) options.bandEdges[i] = bandEdges[i];

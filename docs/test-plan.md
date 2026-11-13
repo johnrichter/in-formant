@@ -120,6 +120,21 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-EDGE-03** (Image, P2). Repeat with a session shorter than the view.
 - **TP-EDGE-04** (Image, P2). Repeat while the canvas width changes.
 
+## 6b. Time direction, grid lines, and track switches
+
+- **TP-FLIP-01** (Image, P1). Load a file and capture the graph with the default settings. Expect time 0 at the right edge and the newest time at the left edge.
+- **TP-FLIP-02** (Image, P1). Turn off "Newest sound at the left". Expect time 0 at the left edge.
+- **TP-FLIP-03** (Qt, P1). In live mode with the flip on, speak. Expect the new sound at the left edge and the old sound to move to the right, with no black bar at the left edge.
+- **TP-FLIP-04** (Qt, P1). Click in the graph in both directions. Expect the cursor line and the time of the cursor to match the click.
+- **TP-FLIP-05** (Qt, P2). Scroll the wheel and the trackpad sideways in both directions. Expect the content to follow the fingers.
+- **TP-FLIP-06** (Image, P2). Check the pitch-only graph and a recording in both directions.
+- **TP-GRID-01** (Image, P1). Set each grid switch alone, then both. Expect lines at the labelled ticks for the major switch and at the other ticks for the minor switch.
+- **TP-GRID-02** (Image, P2). Change the frequency scale (linear, logarithmic, Mel, ERB) and the tick mode. Expect each line to stay on its tick.
+- **TP-GRID-03** (Image, P2). Check that the lines stay behind the tracks and that the lines are not in the minimap.
+- **TP-TRACK-01** (Qt, P1). Turn off each formant switch in turn. Expect only that track, its box, and its legend entry to go.
+- **TP-TRACK-02** (Unit, P1). Migrate a file with the old switch off. Expect all four new switches off, and a second run to change nothing.
+- **TP-TAB-01** (Image, P1). Look at the Full and Pitch only buttons. Expect the chosen button to have a solid fill and the other to have an outline.
+
 ## 7. Switching between modes while capture runs
 
 - **TP-MODE-01** (Qt, P1). Press "Pitch only" during live capture. Expect no stale spectrogram on the screen, and expect the pitch track to continue.

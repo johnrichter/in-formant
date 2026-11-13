@@ -24,6 +24,8 @@ ApplicationWindow {
 
     font.pixelSize: ui.type.body
     Material.theme: Material.Dark
+    // One corner radius for buttons, fields, lists, and popups. It is the medium radius of the design scale.
+    Material.roundedScale: Material.SmallScale
     Material.accent: Material.DeepPurple
 
     // The first three formants of ten vowels for an average adult man and an average adult woman (Peterson and
@@ -329,9 +331,9 @@ ApplicationWindow {
                         checked: true
                     }
                     Item { Layout.fillWidth: true }
-                    Button { text: "Apply"; highlighted: true; onClicked: synthWindow.applyPreset() }
-                    Button { text: "Reset all"; onClicked: synthWindow.resetAll() }
-                    Button { text: "How to use"; onClicked: helpWindow.showPage("synthesizer") }
+                    AppButton { text: "Apply"; highlighted: true; onClicked: synthWindow.applyPreset() }
+                    AppButton { text: "Reset all"; onClicked: synthWindow.resetAll() }
+                    AppButton { text: "How to use"; onClicked: helpWindow.showPage("synthesizer") }
                 }
 
                 MenuSeparator { Layout.fillWidth: true }

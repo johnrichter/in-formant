@@ -119,5 +119,23 @@ int main()
         CHECK(!tbl["options"]["readoutSide"]);
     }
 
+    // The old switch for all formant tracks becomes one switch for each track.
+    {
+        toml::table tbl = makeTable("[meta]\nversion = 7\n[view]\nshowFormants = false\n");
+        migrateConfig(tbl);
+        for (const char *key : { "showTrackF1", "showTrackF2", "showTrackF3", "showTrackF4" }) {
+            CHECK(tbl["options"][key].value<bool>() == false);
+        }
+        // The user turns F2 on after the migration. The next start keeps the choice.
+        tbl["options"].as_table()->insert_or_assign("showTrackF2", true);
+        migrateConfig(tbl);
+        CHECK(tbl["options"]["showTrackF2"].value<bool>() == true);
+    }
+    {
+        toml::table tbl = makeTable("[meta]\nversion = 7\n[view]\nshowFormants = true\n");
+        migrateConfig(tbl);
+        CHECK(!tbl["options"]["showTrackF1"]);
+    }
+
     return TEST_RESULT();
 }

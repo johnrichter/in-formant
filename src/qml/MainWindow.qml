@@ -13,6 +13,8 @@ ApplicationWindow {
     height: 900
 
     Material.theme: Material.Dark
+    // One corner radius for buttons, fields, lists, and popups. It is the medium radius of the design scale.
+    Material.roundedScale: Material.SmallScale
     Material.accent: Material.DeepPurple
 
     // The synthesizer window uses these two functions for its pitch slider.
@@ -59,7 +61,7 @@ ApplicationWindow {
 
                     spacing: -2
 
-                    ToolButton {
+                    AppToolButton {
                         Layout.alignment: Qt.AlignLeft
                         icon.source: "qrc:/icons/zoom_out.svg"
                         onPressed: if (config.viewZoom <= 2.0) config.viewZoom -= 0.1; else config.viewZoom -= 0.5
@@ -72,7 +74,7 @@ ApplicationWindow {
                         color: ui.color.secondary
                     }
 
-                    ToolButton {
+                    AppToolButton {
                         Layout.alignment: Qt.AlignRight
                         icon.source: "qrc:/icons/zoom_in.svg"
                         onPressed: if (config.viewZoom < 2.0) config.viewZoom += 0.1; else config.viewZoom += 0.5
@@ -81,29 +83,16 @@ ApplicationWindow {
                 }
 
                 // The graph shows the spectrogram and all tracks, or the pitch track alone.
-                Row {
+                SegmentedControl {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.leftMargin: 8
-                    Layout.rightMargin: 4
-                    spacing: 2
-
-                    Button {
-                        text: "Full"
-                        flat: true
-                        font.pixelSize: ui.type.caption
-                        highlighted: config.options.graphMode !== "pitch"
-                        onClicked: config.setOption("graphMode", "full")
-                    }
-                    Button {
-                        text: "Pitch only"
-                        flat: true
-                        font.pixelSize: ui.type.caption
-                        highlighted: config.options.graphMode === "pitch"
-                        onClicked: config.setOption("graphMode", "pitch")
-                    }
+                    Layout.rightMargin: 8
+                    model: [ "Full", "Pitch only" ]
+                    currentIndex: config.options.graphMode === "pitch" ? 1 : 0
+                    onActivated: (index) => config.setOption("graphMode", index === 1 ? "pitch" : "full")
                 }
 
-                ToolButton {
+                AppToolButton {
                     icon.source: config.paused ? "qrc:/icons/play_arrow.svg" : "qrc:/icons/stop.svg"
                     checked: config.paused 
                     onPressed: config.paused = !config.paused 
@@ -120,7 +109,7 @@ ApplicationWindow {
 
                 spacing: 1
 
-                Button {
+                AppButton {
                     text: "Help"
                     Material.background: Material.color(Material.BlueGrey, Material.Shade600)
                     Layout.alignment: Qt.AlignRight
@@ -128,7 +117,7 @@ ApplicationWindow {
                     onPressed: helpWindow.show()
                 }
 
-                Button {
+                AppButton {
                     text: "Progress"
                     Material.background: Material.color(Material.BlueGrey, Material.Shade600)
                     Layout.alignment: Qt.AlignRight
@@ -136,7 +125,7 @@ ApplicationWindow {
                     onPressed: progressWindow.show()
                 }
 
-                Button {
+                AppButton {
                     text: "Settings"
                     Material.background: Material.color(Material.BlueGrey, Material.Shade600)
                     Layout.alignment: Qt.AlignRight
@@ -144,7 +133,7 @@ ApplicationWindow {
                     onPressed: settingsWindow.show()
                 }
 
-                Button {
+                AppButton {
                     text: "Oscilloscope"
                     Material.background: Material.color(Material.DeepPurple, Material.ShadeA200)
                     Layout.alignment: Qt.AlignRight
@@ -152,7 +141,7 @@ ApplicationWindow {
                     onPressed: oscilloscopeWindow.show()
                 } 
 
-                Button {
+                AppButton {
                     visible: HAS_SYNTH
                     text: "Synthesizer"
                     Material.background: Material.color(Material.DeepPurple, Material.ShadeA200)
@@ -177,7 +166,7 @@ ApplicationWindow {
 
         WheelHandler {
             acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-            onWheel: (event) => sessionControl.scrollView(-(Math.abs(event.angleDelta.x) > Math.abs(event.angleDelta.y) ? event.angleDelta.x : event.angleDelta.y) / 120.0)
+            onWheel: (event) => sessionControl.scrollView((config.options.flipTime ? 1 : -1) * (Math.abs(event.angleDelta.x) > Math.abs(event.angleDelta.y) ? event.angleDelta.x : event.angleDelta.y) / 120.0)
         }
 
         // The application starts with the capture off. This hint shows on the empty graph.
@@ -240,7 +229,7 @@ ApplicationWindow {
                 Layout.rightMargin: 6
                 spacing: 4
 
-                component BarButton: Button {
+                component BarButton: AppButton {
                     flat: true
                     font.pixelSize: ui.type.caption
                     implicitHeight: 30

@@ -7,7 +7,7 @@
 namespace Main {
 
 // The version of the configuration file that this program writes.
-constexpr int64_t kConfigVersion = 7;
+constexpr int64_t kConfigVersion = 8;
 
 // The default values of the statistics before version 4, and the median bit that version 4 adds.
 constexpr int64_t kOldStatsMask = 0x1 | 0x2 | 0x8 | 0x40 | 0x80;
@@ -88,6 +88,18 @@ inline void migrateConfig(toml::table &tbl)
         toml::table &options = *tbl["options"].as_table();
         if (const auto side = options["readoutSide"].value<std::string>()) {
             if (*side == "bottom") options.insert_or_assign("readoutSide", "left");
+        }
+    }
+
+    if (fileVersion < 8) {
+        // One switch for all formant tracks becomes one switch for each track. The old switch "off" hides all four.
+        if (const auto shown = tbl["view"]["showFormants"].value<bool>()) {
+            if (!*shown) {
+                toml::table &options = *tbl["options"].as_table();
+                for (const char *key : { "showTrackF1", "showTrackF2", "showTrackF3", "showTrackF4" }) {
+                    options.insert_or_assign(key, false);
+                }
+            }
         }
     }
 

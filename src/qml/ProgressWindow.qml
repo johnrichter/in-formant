@@ -16,6 +16,8 @@ ApplicationWindow {
 
     font.pixelSize: ui.type.body
     Material.theme: Material.Dark
+    // One corner radius for buttons, fields, lists, and popups. It is the medium radius of the design scale.
+    Material.roundedScale: Material.SmallScale
     Material.accent: Material.DeepPurple
 
     // The measure is a track. The statistic is one value of that track in a session.

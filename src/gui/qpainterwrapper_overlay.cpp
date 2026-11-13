@@ -1,6 +1,7 @@
 #include "qpainterwrapper.h"
 #include "ticks.h"
 #include "readoutlayout.h"
+#include "uiscale.h"
 #include "../context/timings.h"
 #include <QElapsedTimer>
 #include <algorithm>
@@ -260,6 +261,7 @@ void QPainterWrapper::updateLayout(const std::vector<std::string> &trackNames)
     }
 
     p->setPlotMargins(mPlotLeft, mPlotBottom, mPlotTop);
+    p->setTimeFlipped(mOptions.timeFlipped);
     // The code of the graph counts from the top of the graph.
     p->setOriginY(mPlotTop);
 }
@@ -398,6 +400,39 @@ void QPainterWrapper::drawFrequencyBands()
     }
     if (!lines.empty()) {
         p->drawSegments(lines.data(), (int) lines.size() / 4, 1.0f, QColor(255, 255, 255, 70));
+    }
+}
+
+void QPainterWrapper::drawFrequencyGrid()
+{
+    if (!mOptions.gridMajor && !mOptions.gridMinor) return;
+
+    const double digitHeight = p->textBoundsOfSize(3, "0").height();
+
+    // The ticks are the same as the ticks of the axis, so each line is at a tick.
+    auto toPixel = [&](double f) { return mapFrequencyToY(f); };
+    const auto ticks = makeFrequencyTicks(static_cast<FrequencyTickMode>(mOptions.freqTickMode), mOptions.freqTickStep,
+                                          mMinFrequency, mMaxFrequency, toPixel, digitHeight, 0.9 * digitHeight);
+
+    std::vector<float> major, minor;
+    const double left = mPlotLeft;
+    const double right = mPlotLeft + plotWidth();
+
+    for (const Tick &tick : ticks) {
+        const double y = mapFrequencyToY(tick.value);
+        if (y < 0.0 || y > plotHeight()) continue;
+
+        const bool labeled = !tick.label.empty();
+        std::vector<float> &target = labeled ? major : minor;
+        target.insert(target.end(), { (float) left, (float) y, (float) right, (float) y });
+    }
+
+    // The lines are thin and light, so they stay behind the tracks. The major lines are brighter.
+    if (mOptions.gridMinor && !minor.empty()) {
+        p->drawSegments(minor.data(), (int) minor.size() / 4, 1.0f, QColor(255, 255, 255, 28));
+    }
+    if (mOptions.gridMajor && !major.empty()) {
+        p->drawSegments(major.data(), (int) major.size() / 4, 1.0f, QColor(255, 255, 255, 70));
     }
 }
 
@@ -695,7 +730,8 @@ bool QPainterWrapper::plotContains(double x, double y) const
 
 double QPainterWrapper::timeAtX(double x) const
 {
-    return mTimeStart + (x - mPlotLeft) / std::max(plotWidth(), 1) * (mTimeEnd - mTimeStart);
+    const double fraction = (x - mPlotLeft) / std::max(plotWidth(), 1);
+    return mTimeStart + (mOptions.timeFlipped ? 1.0 - fraction : fraction) * (mTimeEnd - mTimeStart);
 }
 
 void QPainterWrapper::drawCursor(double time, const std::vector<CursorValue> &values)
@@ -776,7 +812,7 @@ void QPainterWrapper::drawCursor(double time, const std::vector<CursorValue> &va
 
     for (const Label &l : labels) {
         const double left = right ? x + gap : x - gap - l.width;
-        p->drawRoundedRect((float) left, (float) l.top, (float) l.width, (float) l.height, 5.0f * (float) dpr,
+        p->drawRoundedRect((float) left, (float) l.top, (float) l.width, (float) l.height, (float) (UiScale::cornerRadius * dpr),
                            panel, core, (float) (1.4 * dpr));
         const double baseline = l.top + 0.5 * l.height + 0.5 * digit;
         p->drawTextRotated(3, (float) (left + padX), (float) baseline, 0.0f, l.color, l.text, outlineColor);
@@ -893,7 +929,7 @@ void QPainterWrapper::drawHud(const std::vector<HudTrack> &tracks)
     // The legend is a row of entries in the bar at the top.
     if (r.hasLegend) {
         const BoxPlacement &box = r.legend;
-        p->drawRoundedRect(box.x, box.y, box.width, box.height, 6.0 * dpr, fill, border, 1.0f);
+        p->drawRoundedRect(box.x, box.y, box.width, box.height, UiScale::cornerRadius * dpr, fill, border, 1.0f);
         const double entryGap = 14.0 * dpr;
         const double cy = box.y + 0.5 * box.height;
         double ex = box.x + pad;
@@ -907,7 +943,7 @@ void QPainterWrapper::drawHud(const std::vector<HudTrack> &tracks)
     for (const BoxPlacement &box : r.boxes) {
         if (!box.visible) continue;
 
-        p->drawRoundedRect(box.x, box.y, box.width, box.height, 6.0 * dpr, fill, border, 1.0f);
+        p->drawRoundedRect(box.x, box.y, box.width, box.height, UiScale::cornerRadius * dpr, fill, border, 1.0f);
 
         // A box of one track: a header with the name and the live value, and a line for each statistic.
         const auto content = r.content.find(box.key);
@@ -960,7 +996,7 @@ void QPainterWrapper::drawHud(const std::vector<HudTrack> &tracks)
 
         const double x = r.debugX;
         const double y = r.debugY;
-        p->drawRoundedRect(x, y, r.debugWidth, r.debugHeight, 6.0 * dpr, fill, border, 1.0f);
+        p->drawRoundedRect(x, y, r.debugWidth, r.debugHeight, UiScale::cornerRadius * dpr, fill, border, 1.0f);
         p->drawTextRotated(3, x + pad, y + pad + 0.5 * (r.debugHeight - 2.0 * pad) + 0.5 * digit, 0.0f, Qt::white, text, outlineColor);
     }
 

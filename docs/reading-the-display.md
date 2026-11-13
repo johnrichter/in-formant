@@ -4,10 +4,12 @@ This page explains what you see in InFormant. The other pages use these terms.
 
 ## What the graph shows
 
-- **Spectrogram.** Time goes from left to right. Frequency goes from bottom to top. The colour shows the loudness at that time and frequency.
+- **Spectrogram.** Frequency goes from bottom to top. The colour shows the loudness at that time and frequency. By default, the newest sound is at the left edge, and older sound moves to the right.
 - **Pitch track.** The dots and the line show the fundamental frequency (F0). F0 is the rate at which the vocal folds open and close. You hear F0 as the pitch of the voice.
 - **Formant tracks.** F1, F2, F3 and the higher formants are resonances of the vocal tract. The vocal tract is the space from the vocal folds to the lips. The shape of this space sets the formants.
-- **Axes.** Both axes lie outside the graph. Time zero is at the lower left. A new capture fills the graph from the left to the right. Then the graph scrolls.
+- **Axes.** Both axes lie outside the graph. By default, new sound appears at the left edge and the time axis counts back to the right. The switch "Newest sound at the left" in the Axes tab turns this off. The graph then fills from the left to the right, and time zero is at the lower left.
+
+- **Grid lines.** Two switches in the Axes tab draw thin horizontal lines across the graph. The major lines are at the numbers of the frequency axis. The minor lines are at the ticks between the numbers. Both are off by default.
 
 ## What a formant tells you
 
@@ -16,6 +18,9 @@ A formant is a frequency where the vocal tract amplifies the sound. Each formant
 - **F1** goes up when the jaw opens and the tongue goes down. Say "ee", then "ah". F1 goes up.
 - **F2** goes up when the tongue moves to the front. Say "oo", then "ee". F2 goes up.
 - **F3** goes up when the lips spread, and it goes down when the lips round.
+- **F4** goes up when the vocal tract is shorter.
+
+The Display tab has one switch for each formant track (F1 to F4). Turn off a track that you do not need. The box of that track in the readouts has its own switch in the Readouts tab.
 
 A shorter vocal tract gives higher formants. A longer vocal tract gives lower formants. This is the main reason why many voices of men and women sound different. The page "The math" gives the formula.
 

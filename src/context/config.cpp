@@ -165,6 +165,9 @@ QVariantMap Config::defaultOptions()
     m["practiceMinSeconds"] = 5;             // a session shorter than this time is dropped
     m["graphMode"] = QString("full");  // "full" for the spectrogram and all tracks, "pitch" for the pitch track alone
     m["rangeSemitones"] = false; // show the Range statistic in semitones and not in Hz
+    m["flipTime"] = true;        // the newest sound is at the left edge and the graph scrolls to the right
+    m["gridMajor"] = false;      // draw a line across the graph at each labelled tick of the frequency axis
+    m["gridMinor"] = false;      // draw a fainter line at each tick without a label
     m["showBands"] = false;      // show the pitch zones in the graph
     m["bandsInExport"] = true;   // keep the zones on the screen while a recording runs
     m["bandEdges"] = QString("60,150,180,300");  // Hz: the edges of the three zones
@@ -174,6 +177,10 @@ QVariantMap Config::defaultOptions()
     m["readoutOrder"] = QString("legend,pitch,f1,f2,f3,f4");
     m["readoutSide"] = QString("left");
     m["showBoxPitch"] = true;
+    m["showTrackF1"] = true;     // draw the track of the formant F1 in the graph
+    m["showTrackF2"] = true;
+    m["showTrackF3"] = true;
+    m["showTrackF4"] = true;
     m["showBoxF1"] = true;
     m["showBoxF2"] = true;
     m["showBoxF3"] = true;

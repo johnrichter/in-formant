@@ -404,8 +404,14 @@ void CanvasRenderer::drawSpectrogram(
 
     // The newest slice is centred on a time that is earlier than the end of the view. The picture
     // holds the newest slice up to holdTimeEnd, so that no black bar shows at the right edge.
-    float x2 = mPlotLeft + w * (std::max(sliceTimeEnd, holdTimeEnd) - timeStart) / (timeEnd - timeStart);
-    float x1 = mPlotLeft + w * (sliceTimeStart - timeStart) / (timeEnd - timeStart);
+    // In a flipped graph, the newest slice is at the left edge. The new edge of the picture is then
+    // the left side of the quad, and the texture still runs from the oldest slice to the newest slice.
+    auto timeToX = [&](float time) {
+        const float fraction = (time - timeStart) / (timeEnd - timeStart);
+        return mPlotLeft + w * (mTimeFlipped ? 1.0f - fraction : fraction);
+    };
+    float xNew = timeToX(std::max(sliceTimeEnd, holdTimeEnd));
+    float xOld = timeToX(sliceTimeStart);
     float y2 = h;
     float y1 = 0;
 
@@ -427,10 +433,10 @@ void CanvasRenderer::drawSpectrogram(
     float texY2 = 1.0f;
 
     const QVector4D quad[4] = {
-        { x2, y1, texX2, texY2 },
-        { x2, y2, texX2, texY1 },
-        { x1, y2, texX1, texY1 },
-        { x1, y1, texX1, texY2 },
+        { xNew, y1, texX2, texY2 },
+        { xNew, y2, texX2, texY1 },
+        { xOld, y2, texX1, texY1 },
+        { xOld, y1, texX1, texY2 },
     };
 
     mSpecProgram->setUniformValueArray(mSpecLoc.quad, quad, 4);

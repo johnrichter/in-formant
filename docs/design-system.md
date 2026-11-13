@@ -43,6 +43,16 @@ All spaces are multiples of 4 pixels.
 
 The radii are 4, 8, and 12 pixels.
 
+## One shape for all controls
+
+All controls and boxes use the same corner radius: 8 pixels (the medium radius). This covers buttons, text fields, lists, the chosen tab, the groups of choices, and the boxes in the graph. A unit test checks the value. Four parts of the design follow from this rule:
+
+- **Groups of choices** (the component `SegmentedControl`) have an outline in the accent colour. The chosen segment has a solid accent fill and white bold text. The other segments have plain text.
+- **Tabs** (the components `AppTabBar` and `AppTabButton`) follow the same rule. The chosen tab has the accent fill, and the bar has no line under it.
+- **Windows** set `Material.roundedScale: Material.SmallScale`, so the fields and lists of Qt Material take the radius of 8 pixels.
+- **Buttons** use the components `AppButton` and `AppToolButton`. A plain Qt button has fully round ends, so these components set the radius.
+- **The graph** draws its boxes and labels with the same radius (`UiScale::cornerRadius`). The frame in the session map uses the small radius of 4 pixels, because the frame is a thin line.
+
 ## The rules
 
 1. **Three levels in each window.** A heading, a field label, and a hint. Each level differs in size, in weight, and in colour. The heading is 17 pixels and bold. The field label is 14 pixels and medium. The hint is 12 pixels in the secondary colour.

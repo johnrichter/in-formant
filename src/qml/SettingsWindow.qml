@@ -15,6 +15,8 @@ ApplicationWindow {
 
     font.pixelSize: ui.type.body
     Material.theme: Material.Dark
+    // One corner radius for buttons, fields, lists, and popups. It is the medium radius of the design scale.
+    Material.roundedScale: Material.SmallScale
     Material.accent: Material.DeepPurple
 
     function mel(f) {
@@ -118,16 +120,16 @@ ApplicationWindow {
         onToggled: config.setOption("statsMask", checked ? (config.options.statsMask | bit) : (config.options.statsMask & ~bit))
     }
 
-    header: TabBar {
+    header: AppTabBar {
         id: tabs
         objectName: "settingsTabs"
-        TabButton { text: "General" }
-        TabButton { text: "Display" }
-        TabButton { text: "Input" }
-        TabButton { text: "Axes" }
-        TabButton { text: "Tracks" }
-        TabButton { text: "Readouts" }
-        TabButton { text: "Theme" }
+        AppTabButton { text: "General" }
+        AppTabButton { text: "Display" }
+        AppTabButton { text: "Input" }
+        AppTabButton { text: "Axes" }
+        AppTabButton { text: "Tracks" }
+        AppTabButton { text: "Readouts" }
+        AppTabButton { text: "Theme" }
     }
 
     StackLayout {
@@ -168,8 +170,8 @@ ApplicationWindow {
                     hint: "When this is off, a session keeps only the statistics, the marks, and the report. This saves disk space."
                 }
                 RowLayout {
-                    Button { text: "Open the folder"; onClicked: practice.openFolder() }
-                    Button { text: "Export all sessions"; onClicked: practice.exportAll() }
+                    AppButton { text: "Open the folder"; onClicked: practice.openFolder() }
+                    AppButton { text: "Export all sessions"; onClicked: practice.exportAll() }
                 }
                 Hint {
                     text: "Each session has its own folder with the statistics, a report, the marks, and the sound. The statistics always stay. The first write to the Documents folder can show a privacy question of macOS."
@@ -207,12 +209,22 @@ ApplicationWindow {
                     onToggled: config.viewShowPitch = checked
                 }
                 Hint { text: "The line and the dots of the pitch."; Layout.topMargin: -ui.space.xs; Layout.leftMargin: ui.space.xs }
-                Switch {
-                    text: "Formant tracks"
-                    checked: config.viewShowFormants
-                    onToggled: config.viewShowFormants = checked
+                OptionSwitch {
+                    key: "showTrackF1"; text: "Formant track F1"
+                    hint: "Jaw opening. It goes up when the mouth opens."
                 }
-                Hint { text: "The lines and the dots of the formants F1 to F4."; Layout.topMargin: -ui.space.xs; Layout.leftMargin: ui.space.xs }
+                OptionSwitch {
+                    key: "showTrackF2"; text: "Formant track F2"
+                    hint: "Tongue position. It goes up when the tongue moves forward."
+                }
+                OptionSwitch {
+                    key: "showTrackF3"; text: "Formant track F3"
+                    hint: "Lip shape. It goes up when the lips spread."
+                }
+                OptionSwitch {
+                    key: "showTrackF4"; text: "Formant track F4"
+                    hint: "Vocal tract length. It goes up when the tract is shorter."
+                }
 
 
                 Heading { text: "Pitch-only graph" }
@@ -419,6 +431,14 @@ ApplicationWindow {
                 Hint {
                     text: "Automatic mode labels the roundest values first (1000, 500, 200, 100) and fills the free space with finer values. The labels never overlap, at any window height."
                 }
+                OptionSwitch {
+                    key: "gridMajor"; text: "Grid lines at the labelled values"
+                    hint: "A thin line across the graph at each number of the frequency axis."
+                }
+                OptionSwitch {
+                    key: "gridMinor"; text: "Grid lines at the values between"
+                    hint: "A fainter line at each tick that has no number."
+                }
 
 
                 Heading { text: "Time axis (horizontal)" }
@@ -429,6 +449,10 @@ ApplicationWindow {
                     onActivated: config.setOption("timeTickMode", currentIndex)
                 }
                 Hint { text: "How the program chooses the ticks and the numbers of the time axis." }
+                OptionSwitch {
+                    key: "flipTime"; text: "Newest sound at the left"
+                    hint: "When this is on, new values appear at the left edge and old values move to the right. When it is off, the graph scrolls to the left as before."
+                }
                 RowLayout {
                     visible: config.options.timeTickMode === 1
                     Label { text: "Step (seconds)" }
@@ -525,12 +549,12 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         required property string modelData
                         required property int index
-                        ToolButton {
+                        AppToolButton {
                             text: "\u25B2"
                             enabled: index > 0
                             onClicked: settingsWindow.moveReadout(index, -1)
                         }
-                        ToolButton {
+                        AppToolButton {
                             text: "\u25BC"
                             enabled: index < 4
                             onClicked: settingsWindow.moveReadout(index, 1)

@@ -15,6 +15,8 @@ ApplicationWindow {
     minimumHeight: 360
 
     Material.theme: Material.Dark
+    // One corner radius for buttons, fields, lists, and popups. It is the medium radius of the design scale.
+    Material.roundedScale: Material.SmallScale
     Material.accent: Material.DeepPurple
 
     readonly property var pages: [
@@ -36,12 +38,12 @@ ApplicationWindow {
         raise()
     }
 
-    header: TabBar {
+    header: AppTabBar {
         id: tabs
         objectName: "helpTabs"
         Repeater {
             model: helpWindow.pages
-            TabButton { text: modelData.title }
+            AppTabButton { text: modelData.title }
         }
     }
 

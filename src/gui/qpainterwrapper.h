@@ -87,6 +87,8 @@ public:
     double mapTimeToX(double time);
     // The pitch zones as bands behind the tracks. The bands follow the frequency scale.
     void drawFrequencyBands();
+    // Horizontal lines across the graph at the ticks of the frequency axis. They are behind the tracks.
+    void drawFrequencyGrid();
 
     double mapFrequencyToY(double frequency);
 

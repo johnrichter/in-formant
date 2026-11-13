@@ -312,7 +312,7 @@ void OverviewItem::paint(QPainter *painter)
         frameEdges(left, right);
         painter->fillRect(QRectF(left, 0, right - left, plotH), QColor(255, 255, 255, 40));
         painter->setPen(QPen(mTheme.accent, 2));
-        painter->drawRect(QRectF(left + 1, 1, right - left - 2, plotH - 2));
+        painter->drawRoundedRect(QRectF(left + 1, 1, right - left - 2, plotH - 2), 4, 4);
         painter->fillRect(QRectF(left, 0, 4, plotH), mTheme.accent);
         painter->fillRect(QRectF(right - 4, 0, 4, plotH), mTheme.accent);
     }

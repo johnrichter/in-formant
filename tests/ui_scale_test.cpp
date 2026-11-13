@@ -76,6 +76,9 @@ int main()
         }
     }
 
+    // One corner radius serves all controls and boxes. It is the medium radius.
+    CHECK(cornerRadius == 8);
+
     // Each text colour reads on the window and on the surface with a contrast of at least 4.5 to 1.
     // The primary colour has more contrast than the secondary colour, and the secondary more than the tertiary.
     {

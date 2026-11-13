@@ -105,7 +105,12 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
     // The pitch-only mode shows the pitch track alone, on an axis that fits the pitch.
     const bool pitchOnly = config->optionString("graphMode") == "pitch";
     const bool showSpectrogram = config->getViewShowSpectrogram() && !pitchOnly;
-    const bool showFormants = config->getViewShowFormants() && !pitchOnly;
+    // Each formant track has its own switch. The pitch-only mode hides all of them.
+    const int formantTotal = std::min(config->getViewFormantCount(), 4);
+    bool formantShown[4] = { false, false, false, false };
+    for (int i = 0; i < formantTotal; ++i) {
+        formantShown[i] = !pitchOnly && config->optionBool(("showTrackF" + std::to_string(i + 1)).c_str());
+    }
 
     // Remove the old live slices about once for each second. Removing from the front of a vector
     // moves every element after it, and the write lock stops the analysis thread while it runs.
@@ -193,8 +198,8 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
 
     std::vector<std::string> trackNames;
     if (config->getViewShowPitch()) trackNames.push_back("Pitch");
-    if (showFormants) {
-        for (int i = 0; i < config->getViewFormantCount(); ++i) trackNames.push_back("F" + std::to_string(i + 1));
+    for (int i = 0; i < formantTotal; ++i) {
+        if (formantShown[i]) trackNames.push_back("F" + std::to_string(i + 1));
     }
     painter->updateLayout(trackNames);
 
@@ -265,6 +270,7 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
     }
 
     painter->drawFrequencyBands();
+    painter->drawFrequencyGrid();
 
     const Gui::RenderOptions &options = painter->options();
     std::vector<Gui::HudTrack> hud;
@@ -310,10 +316,9 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
         collect("Pitch", options.theme.pitch, true, pitchTrack);
     }
 
-    if (showFormants) {
-        const int formantCount = config->getViewFormantCount();
-
-        for (int i = 0; i < formantCount; ++i) {
+    {
+        for (int i = 0; i < formantTotal; ++i) {
+            if (!formantShown[i]) continue;
             auto& fi = dataStore->getFormantTrack(i);
             const QColor color = options.theme.formant(i);
 
@@ -365,8 +370,9 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
         };
 
         if (config->getViewShowPitch()) sample("Pitch", options.theme.pitch, true, pitchTrack);
-        if (showFormants) {
-            for (int i = 0; i < config->getViewFormantCount(); ++i) {
+        {
+            for (int i = 0; i < formantTotal; ++i) {
+                if (!formantShown[i]) continue;
                 sample(("F" + std::to_string(i + 1)).c_str(), options.theme.formant(i), false, dataStore->getFormantTrack(i));
             }
         }

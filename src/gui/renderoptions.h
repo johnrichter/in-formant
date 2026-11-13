@@ -37,6 +37,14 @@ namespace Gui {
         bool showBands = false;
         double bandEdges[4] = { 60.0, 150.0, 180.0, 300.0 };
 
+        // Horizontal grid lines across the graph. The major lines are at the labelled ticks of the frequency axis.
+        // The minor lines are at the ticks without a label.
+        bool gridMajor = false;
+        bool gridMinor = false;
+
+        // The newest sound is at the left edge and the older sound is to the right.
+        bool timeFlipped = true;
+
         // The readout boxes: the keys in their order, the side of the graph, and the box of each track.
         // Index 0 is the pitch. Indexes 1 to 4 are the formants F1 to F4.
         std::string readoutOrder = "legend,pitch,f1,f2,f3,f4";
