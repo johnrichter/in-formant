@@ -106,8 +106,8 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
     const bool pitchOnly = config->optionString("graphMode") == "pitch";
     const bool showSpectrogram = config->getViewShowSpectrogram() && !pitchOnly;
     // Each formant track has its own switch. The pitch-only mode hides all of them.
-    const int formantTotal = std::min(config->getViewFormantCount(), 4);
-    bool formantShown[4] = { false, false, false, false };
+    const int formantTotal = config->getViewFormantCount();
+    bool formantShown[Config::kFormantTracks] = {};
     for (int i = 0; i < formantTotal; ++i) {
         formantShown[i] = !pitchOnly && config->optionBool(("showTrackF" + std::to_string(i + 1)).c_str());
     }

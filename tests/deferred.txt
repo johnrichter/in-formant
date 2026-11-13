@@ -4,25 +4,6 @@
 
 TP-PITCH-05 | NOTBUILT | tests a feature that does not exist, so write a DISABLED_ test when the feature exists
 TP-PITCH-06 | NOTBUILT | needs a feature that does not exist and a CPU measure
-TP-CAP-08 | WP2 | planned in WP2
-TP-FLIP-16 | WP2 | planned in WP2
-TP-RST-02 | WP2 | planned in WP2
-TP-RST-03 | WP2 | planned in WP2
-TP-RST-04 | WP2 | planned in WP2
-TP-RST-10 | WP2 | planned in WP2
-TP-RST-15 | WP2 | planned in WP2
-TP-SET-04 | WP2 | planned in WP2
-TP-SET-05 | WP2 | planned in WP2
-TP-SET-06 | WP2 | planned in WP2
-TP-SET-07 | WP2 | planned in WP2
-TP-SET-08 | WP2 | planned in WP2
-TP-SET-13 | WP2 | planned in WP2
-TP-SET-15 | WP2 | planned in WP2
-TP-SET-16 | WP2 | planned in WP2
-TP-SET-17 | WP2 | planned in WP2
-TP-TRACK-02 | WP2 | planned in WP2
-TP-TRACK-03 | WP2 | planned in WP2
-TP-TRACK-08 | WP2 | planned in WP2
 TP-PRA-04 | WP3 | planned in WP3
 TP-PRA-05 | WP3 | planned in WP3
 TP-PRA-09 | WP3 | planned in WP3

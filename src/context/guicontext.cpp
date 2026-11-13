@@ -170,7 +170,3 @@ void GuiContext::setShowPitch(bool b)
     mConfig->setViewShowPitch(b);
 }
 
-void GuiContext::setShowFormants(bool b)
-{
-    mConfig->setViewShowFormants(b);
-}

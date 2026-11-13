@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 #include "../src/context/configmigration.h"
+#include <sstream>
+#include <string>
 
 using namespace Main;
 
@@ -76,14 +78,14 @@ TEST(ConfigMigration, TheOldStyleOfAllTracksBecomesAStyleForEachTrack)
     EXPECT_TRUE(tbl["options"]["trackStyleF4"].value<int64_t>() == 2);
 }
 
-TEST(ConfigMigration, Block)
+TEST(ConfigMigration, TheOldTrackStyleDotsOnlyBecomesTheNewDotsStyle)
 {
     toml::table tbl = makeTable("[meta]\nversion = 4\n[options]\ntrackStyle = 0\n");
     migrateConfig(tbl);
     EXPECT_TRUE(tbl["options"]["trackStylePitch"].value<int64_t>() == 1);
 }
 
-TEST(ConfigMigration, Block2)
+TEST(ConfigMigration, TheOldTrackStyleLineAndDotsBecomesTheNewLineAndDotsStyle)
 {
     toml::table tbl = makeTable("[meta]\nversion = 4\n[options]\ntrackStyle = 2\n");
     migrateConfig(tbl);
@@ -91,7 +93,7 @@ TEST(ConfigMigration, Block2)
 }
 
 // The statistics boxes show by default. A file with the old default "off" turns them on one time.
-TEST(ConfigMigration, TheStatisticsBoxesShowByDefaultAFileWithTheOldDefaultOff)
+TEST(ConfigMigration, TP_SET_05_AFileWithTheOldShowStatsOffTurnsItOnOneTime)
 {
     toml::table tbl = makeTable("[meta]\nversion = 5\n[options]\nshowStats = false\n");
     migrateConfig(tbl);
@@ -103,15 +105,18 @@ TEST(ConfigMigration, TheStatisticsBoxesShowByDefaultAFileWithTheOldDefaultOff)
 }
 
 // A file with no value for the statistics keeps no value, so the default of the program applies.
-TEST(ConfigMigration, AFileWithNoValueForTheStatisticsKeepsNoValueSoTheDefaultOf)
+TEST(ConfigMigration, TP_SET_06_AFileWithNoShowStatsKeepsNoValue)
 {
     toml::table tbl = makeTable("[meta]\nversion = 5\n");
+    migrateConfig(tbl);
+    EXPECT_TRUE(!tbl["options"]["showStats"]);
+    // The next run changes nothing.
     migrateConfig(tbl);
     EXPECT_TRUE(!tbl["options"]["showStats"]);
 }
 
 // The boxes stand at the left by default. A file with the old default "bottom" changes one time.
-TEST(ConfigMigration, TheBoxesStandAtTheLeftByDefaultAFileWithTheOldDefaultBottom)
+TEST(ConfigMigration, TP_SET_15_AFileWithTheOldSideBottomChangesToLeftOneTime)
 {
     toml::table tbl = makeTable("[meta]\nversion = 6\n[options]\nreadoutSide = \"bottom\"\n");
     migrateConfig(tbl);
@@ -131,7 +136,7 @@ TEST(ConfigMigration, AFileWithNoValueKeepsNoValueSoTheDefaultOfTheProgramApplie
 }
 
 // The old switch for all formant tracks becomes one switch for each track.
-TEST(ConfigMigration, TheOldSwitchForAllFormantTracksBecomesOneSwitchForEachTrack)
+TEST(ConfigMigration, TP_TRACK_02_TheOldSwitchForAllFormantTracksBecomesOneSwitchForEachTrack)
 {
     toml::table tbl = makeTable("[meta]\nversion = 7\n[view]\nshowFormants = false\n");
     migrateConfig(tbl);
@@ -144,9 +149,52 @@ TEST(ConfigMigration, TheOldSwitchForAllFormantTracksBecomesOneSwitchForEachTrac
     EXPECT_TRUE(tbl["options"]["showTrackF2"].value<bool>() == true);
 }
 
-TEST(ConfigMigration, Block3)
+TEST(ConfigMigration, AnOldSwitchThatIsOnLeavesTheNewSwitchesAlone)
 {
     toml::table tbl = makeTable("[meta]\nversion = 7\n[view]\nshowFormants = true\n");
     migrateConfig(tbl);
     EXPECT_TRUE(!tbl["options"]["showTrackF1"]);
+}
+
+// A file of each version from 0 to 7 ends at the current version, with the defaults of the program.
+TEST(ConfigMigration, TP_SET_04_AFileOfEachVersionFromZeroToSevenEndsAtTheCurrentVersion)
+{
+    ASSERT_EQ(kConfigVersion, 8);
+    for (int version = 0; version <= 7; ++version) {
+        toml::table tbl = makeTable(("[meta]\nversion = " + std::to_string(version) + "\n").c_str());
+        migrateConfig(tbl);
+        EXPECT_TRUE(tbl["meta"]["version"].value<int64_t>() == kConfigVersion) << "version " << version;
+        // The file keeps no value for an option, so the defaults of the program apply.
+        EXPECT_TRUE(!tbl["options"]["lineWidth"]) << "version " << version;
+        EXPECT_TRUE(!tbl["options"]["showStats"]) << "version " << version;
+        EXPECT_TRUE(!tbl["options"]["readoutSide"]) << "version " << version;
+
+        // The versions before 2 get the new timing values. The versions before 3 get the new scope spacing.
+        EXPECT_EQ(tbl["analysis"]["granularity"].value<double>().has_value(), version < 2) << "version " << version;
+        EXPECT_EQ(tbl["analysis"]["pitchSpacing"].value<double>().has_value(), version < 2) << "version " << version;
+        EXPECT_EQ(tbl["view"]["timeSpan"].value<double>().has_value(), version < 2) << "version " << version;
+        EXPECT_EQ(tbl["analysis"]["oscilloscopeSpacing"].value<double>().has_value(), version < 3) << "version " << version;
+        if (version < 2) {
+            EXPECT_EQ(*tbl["analysis"]["granularity"].value<double>(), 10.0);
+            EXPECT_EQ(*tbl["analysis"]["pitchSpacing"].value<double>(), 20.0);
+            EXPECT_EQ(*tbl["analysis"]["formantSpacing"].value<double>(), 40.0);
+            EXPECT_EQ(*tbl["view"]["timeSpan"].value<double>(), 15.0);
+        }
+        if (version < 3) {
+            EXPECT_EQ(*tbl["analysis"]["oscilloscopeSpacing"].value<double>(), 20.0);
+        }
+
+        // A second run changes nothing.
+        toml::table again = tbl;
+        migrateConfig(again);
+        std::ostringstream first, second;
+        first << tbl;
+        second << again;
+        EXPECT_EQ(first.str(), second.str()) << "version " << version;
+    }
+
+    // A file with no version at all counts as version 0.
+    toml::table none = makeTable("");
+    migrateConfig(none);
+    EXPECT_TRUE(none["meta"]["version"].value<int64_t>() == kConfigVersion);
 }

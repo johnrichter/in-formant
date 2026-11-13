@@ -59,6 +59,14 @@ add_library(tomlpp_for_tests STATIC ${SRC}/tomlplusplus.cpp)
 target_include_directories(tomlpp_for_tests SYSTEM PUBLIC ${PROJECT_SOURCE_DIR}/${TOMLPP_INCLUDE_DIR})
 informant_add_test(NAME config_migration_tests SOURCES config_migration_test.cpp LIBS tomlpp_for_tests LABELS config_migration)
 
+# The settings. The configuration class needs the theme code and the TOML library. The audio backend
+# lookup lives in the audio code, so the test program supplies a stand-in for it.
+informant_add_test(NAME config_tests
+    SOURCES config_test.cpp ${SRC}/context/config.cpp ${SRC}/gui/theme.cpp
+    LIBS tomlpp_for_tests Eigen3::Eigen rpcxx_only Qt6::Quick Qt6::QuickControls2 Qt6::QuickTemplates2 Qt6::Qml Qt6::Widgets Qt6::OpenGL Qt6::Svg Qt6::Gui Qt6::Core freetype lsr
+    LABELS config)
+target_include_directories(config_tests SYSTEM PRIVATE ${ARMADILLO_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/external/libsamplerate/src)
+
 # The practice library uses QDir, QFile, and QDateTime, and the tests use QTemporaryDir for the files.
 informant_add_test(NAME practice_tests SOURCES practice_test.cpp ${SRC}/context/practicelib.cpp LIBS Qt6::Core LABELS practice)
 

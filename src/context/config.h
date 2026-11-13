@@ -19,6 +19,9 @@ namespace Main {
 
     fs::path getConfigPath();
     toml::table getConfigTable();
+    // Read a configuration from a stream. A file with a syntax error gives an empty table, so the
+    // program starts with the defaults. The text of the error goes to *error when the pointer is set.
+    toml::table parseConfigStream(std::istream &stream, const std::string &source, std::string *error = nullptr);
 
     class Config : public QObject {
         Q_OBJECT
@@ -39,7 +42,6 @@ namespace Main {
         Q_PROPERTY(int viewFrequencyScale   READ getViewFrequencyScaleNumeric   WRITE setViewFrequencyScale     NOTIFY viewFrequencyScaleChanged)
         Q_PROPERTY(bool viewShowSpectrogram READ getViewShowSpectrogram         WRITE setViewShowSpectrogram    NOTIFY viewShowSpectrogramChanged)
         Q_PROPERTY(bool viewShowPitch       READ getViewShowPitch               WRITE setViewShowPitch          NOTIFY viewShowPitchChanged)
-        Q_PROPERTY(bool viewShowFormants    READ getViewShowFormants            WRITE setViewShowFormants       NOTIFY viewShowFormantsChanged)
         Q_PROPERTY(bool viewLive            READ getViewLive                    WRITE setViewLive               NOTIFY viewLiveChanged)
         Q_PROPERTY(double viewEnd           READ getViewEnd                     WRITE setViewEnd                NOTIFY viewEndChanged)
         Q_PROPERTY(int sessionMode          READ getSessionMode                 WRITE setSessionMode            NOTIFY sessionModeChanged)
@@ -66,7 +68,6 @@ namespace Main {
         void viewFrequencyScaleChanged(int);
         void viewShowSpectrogramChanged(bool);
         void viewShowPitchChanged(bool);
-        void viewShowFormantsChanged(bool);
         void pausedChanged(bool);
         void viewLiveChanged(bool);
         void viewEndChanged(double);
@@ -75,7 +76,10 @@ namespace Main {
         void audioCaptureDevicesChanged();
 
     public:
+        // The settings of the user. The program reads the configuration file, and it writes the file at the end.
         Config();
+        // The settings from a table in memory. The object never reads or writes the file. The tests use it.
+        explicit Config(toml::table table);
         virtual ~Config();
 
         // The options are a store of named values for the display, the readouts, and the themes.
@@ -196,6 +200,9 @@ namespace Main {
         int getViewFrequencyScaleNumeric();
         void setViewFrequencyScale(int scale);
 
+        // The number of formant tracks that the display draws, from 0 to kFormantTracks. A file with a
+        // larger number gets kFormantTracks, because the display has one switch for each of these tracks.
+        static constexpr int kFormantTracks = 4;
         int getViewFormantCount();
         std::tuple<double, double, double> getViewFormantColor(int i);
 
@@ -204,9 +211,6 @@ namespace Main {
 
         bool getViewShowPitch();
         void setViewShowPitch(bool b);
-
-        bool getViewShowFormants();
-        void setViewShowFormants(bool b);
 
         int getAnalysisMaxFrequency();
         int getAnalysisLpOffset();
@@ -241,8 +245,12 @@ namespace Main {
         void setPaused(bool p);
 
     private:
+        Config(toml::table table, bool persist);
+
         toml::table mTbl;
         QVariantMap mOptions;
+        // False for a configuration in memory. Then save() does nothing.
+        const bool mPersist;
     
         // WILL NOT BE SERIALIZED
         bool mPaused;

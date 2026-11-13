@@ -44,7 +44,6 @@ namespace Main {
     public slots:
         void setShowSpectrogram(bool b);
         void setShowPitch(bool b);
-        void setShowFormants(bool b);
 
     private:
         void setWidth(int width);

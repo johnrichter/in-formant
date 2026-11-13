@@ -93,6 +93,17 @@ fs::path Main::getConfigPath()
     return fs::path(cfgdir);
 }
 
+toml::table Main::parseConfigStream(std::istream &stream, const std::string &source, std::string *error)
+{
+    try {
+        return toml::parse(stream, source);
+    }
+    catch (const toml::parse_error &e) {
+        if (error) *error = e.what();
+        return toml::table();
+    }
+}
+
 toml::table Main::getConfigTable()
 {
     auto path = getConfigPath();
@@ -107,12 +118,18 @@ toml::table Main::getConfigTable()
 
     if (fs::exists(path) && fs::is_regular_file(path)) {
         std::ifstream ifs(path, std::ios_base::binary);
-#if defined(_WIN32) && defined(UNICODE)
-        const auto pathString = path.wstring();
-#else
-        const auto pathString = path.string();
-#endif
-        return toml::parse(ifs, pathString);
+        std::string error;
+        toml::table tbl = parseConfigStream(ifs, path.string(), &error);
+        if (!error.empty()) {
+            // Keep the broken file next to the new one, so the user can repair it.
+            std::cout << "Config is broken, using defaults: " << error << std::endl;
+            ifs.close();
+            fs::path backup = path;
+            backup += ".broken";
+            std::error_code ec;
+            fs::copy_file(path, backup, fs::copy_options::overwrite_existing, ec);
+        }
+        return tbl;
     }
 
     std::cout << "Config not found, using defaults..." << std::endl;
@@ -120,7 +137,18 @@ toml::table Main::getConfigTable()
 }
 
 Config::Config()
-    : mTbl(getConfigTable()),
+    : Config(getConfigTable(), true)
+{
+}
+
+Config::Config(toml::table table)
+    : Config(std::move(table), false)
+{
+}
+
+Config::Config(toml::table table, bool persist)
+    : mTbl(std::move(table)),
+      mPersist(persist),
       mPaused(true),
       mViewLive(true),
       mViewEnd(0.0),
@@ -338,7 +366,6 @@ void Config::resetAll()
     setViewFrequencyScale(FrequencyScale::ERB);
     setViewShowSpectrogram(true);
     setViewShowPitch(true);
-    setViewShowFormants(true);
 
     setPitchAlgorithm(PitchAlgorithm::RAPT);
     setLinpredAlgorithm(LinpredAlgorithm::Burg);
@@ -356,6 +383,9 @@ QString Config::optionString(const QString &name) const { return mOptions.value(
 
 void Config::save()
 {
+    if (!mPersist) {
+        return;
+    }
     std::ofstream stream(getConfigPath());
     stream << mTbl;
 }
@@ -653,7 +683,8 @@ void Config::setViewFrequencyScale(int scale)
 
 int Config::getViewFormantCount()
 {
-    return integerField(mTbl["view"], "formantCount", 4);
+    const int64_t count = integerField(mTbl["view"], "formantCount", kFormantTracks);
+    return (int) std::clamp<int64_t>(count, 0, kFormantTracks);
 }
 
 std::tuple<double, double, double> Config::getViewFormantColor(int i)
@@ -723,17 +754,6 @@ void Config::setViewShowPitch(bool b)
 {
     mTbl["view"].as_table()->insert_or_assign("showPitch", static_cast<bool>(b));
     emit viewShowPitchChanged(b);
-}
-
-bool Config::getViewShowFormants()
-{
-    return boolField(mTbl["view"], "showFormants", true);
-}
-
-void Config::setViewShowFormants(bool b)
-{
-    mTbl["view"].as_table()->insert_or_assign("showFormants", static_cast<bool>(b));
-    emit viewShowFormantsChanged(b);
 }
 
 int Config::getAnalysisMaxFrequency()

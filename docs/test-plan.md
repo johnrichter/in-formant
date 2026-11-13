@@ -62,7 +62,6 @@ Each "Limits" block in a report named things that the project did not test. This
 - **The session map stays in the old direction.** TP-FLIP-08.
 - **The Record sheet and the keep dialog were not checked for the new corner radius.** TP-SHAPE-03.
 - **The grid lines have a fixed brightness.** TP-GRID-04.
-- **The old setting `viewShowFormants` stays in the code.** TP-TRACK-03.
 - **The reset button got one script test, with one set of odd values.** TP-RST-01 to TP-RST-12.
 - **Only the Pitch "?" box got a screenshot check.** TP-HLP-05 to TP-HLP-07.
 - **The start time was checked with one default device.** TP-STP-02 to TP-STP-04.
@@ -233,7 +232,7 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-GRID-09** (Unit, P3). Test a graph so short that the ticks are closer than 2 pixels. Expect no more than one line for each pixel row.
 - **TP-TRACK-01** (Qt, P1). Turn off each formant switch in turn. Expect only that track, its box, and its legend entry to go.
 - **TP-TRACK-02** (Unit, P1). Migrate a file with the old switch off. Expect all four new switches off, and a second run to change nothing.
-- **TP-TRACK-03** (Unit, P3). Remove the old setting `viewShowFormants` and its property in `config.h`, or test that nothing reads it.
+- **TP-TRACK-03** (Unit, P3). Remove the old setting `viewShowFormants` and its property in `config.h`, or test that nothing reads it. Done in 3.2.2: the property is gone and only the migration reads the old key.
 - **TP-TRACK-04** (Qt, P1). Turn off one formant track in the pitch-only graph and turn the graph back to Full. Expect the choice to stay.
 - **TP-TRACK-05** (Qt, P2). Turn off all four formant tracks. Expect the legend and the boxes to show the pitch only, and expect no empty gap in the left column.
 - **TP-TRACK-06** (Qt, P2). Turn off F2 during a practice session. Expect the statistics of the session to keep F2, because the analysis does not stop.
@@ -409,6 +408,7 @@ The scroll views of the settings, the help pages, the help boxes, the Synthesize
 - **TP-SET-13** (Unit, P2). Check that the Range in semitones is 12 times log2(P95 / P5). Test P5 of 0 or negative. Expect a safe text.
 - **TP-SET-14** (Qt, P3). Check the grey hint under each control of each tab. Expect the text to wrap, to stay inside the window, and not to overlap.
 - **TP-SET-16** (Unit, P2). Check that every setter in `config.cpp` works when the file has no key for it. A setter crashed the app once for this reason (`showFormants`).
+- **TP-SET-18** (Unit, P1). Start with a file that has a syntax error. Expect the defaults and a copy of the file named `informant.conf.broken`. Before 3.2.2 the program stopped at launch.
 - **TP-SET-17** (Unit, P2). Check that each default value outside the option map has one definition (the `kDefault` constants). The getter and the reset must use the same one.
 
 ## 12b. The reset button
@@ -581,8 +581,15 @@ These items need a person.
 Some cases need a small change in the code. Do these changes first, because they make many cases cheap.
 
 - **A free function for the time mapping.** `mapTimeToX` and `timeAtX` are members of the painter, and they read the options. A free function with the plot size, the time range, and the flip as arguments makes TP-FLIP-07 and TP-FLIP-13 plain unit tests.
-- **A `Config` on a table in memory.** The class reads a file in its constructor and writes a file in its destructor. A constructor that takes a table makes TP-RST-02 to TP-RST-04, TP-SET-16, and TP-SET-17 plain unit tests.
+- **A `Config` on a table in memory.** Done. The constructor `Config(toml::table)` never reads or writes the file. TP-RST-02 to TP-RST-04, TP-SET-16, and TP-SET-17 use it.
 - **The layout of the graph without a window.** The functions `updateLayout` and `drawFrequencyGrid` need a renderer. A function that returns the list of lines (a plain list of numbers) makes TP-GRID-01 to TP-GRID-09 unit tests.
 - **A hook for tests that stays out of release builds.** The project used a temporary hook in `src/context/guicontext.cpp` for each screenshot. A test-only target with its own entry point replaces it, so no test depends on a hook that must never be committed.
 - **Names for objects in QML.** Give an `objectName` to each control that a test must press (the reset button, the reset dialog, the segmented control, and the tabs).
 - Whether the warm-up ranks are right for a given voice.
+
+## 24. Bugs found by the unit tests
+
+Each entry names the case, the bug, the version of the fix, and the test that guards it.
+
+- **A file with a syntax error stopped the program at launch (3.2.2).** The parser threw an error that no code caught, so the user could not start the program until the file was removed. Now the program starts with the defaults and keeps the broken file as `informant.conf.broken`. TP-SET-08 and TP-SET-18.
+- **A file with a formant count above 4 could read past the four track switches (3.2.2).** The getter now clamps the count to 0 to 4. TP-TRACK-08.

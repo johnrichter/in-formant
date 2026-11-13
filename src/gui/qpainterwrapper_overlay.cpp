@@ -2,6 +2,7 @@
 #include "ticks.h"
 #include "readoutlayout.h"
 #include "uiscale.h"
+#include "statformat.h"
 #include "../context/timings.h"
 #include <QElapsedTimer>
 #include <algorithm>
@@ -913,7 +914,7 @@ std::string statText(const HudTrack &t, const TrackStats &s, int bit, bool range
     case StatP95: return number(s.p95);
     case StatMax: return number(s.sorted.back());
     case StatRange:
-        if (rangeSemitones) return s.p5 > 0 && s.p95 >= s.p5 ? format("%.1fst", 12.0 * std::log2(s.p95 / s.p5)) : "-";
+        if (rangeSemitones) return rangeSemitonesText(s.p5, s.p95);
         return number(s.p95 - s.p5);
     case StatCV: return s.mean > 0 ? format("%.1f%%", 100.0 * s.sd / s.mean) : "-";
     case StatCount: return std::to_string(t.count > 0 ? t.count : s.sorted.size());

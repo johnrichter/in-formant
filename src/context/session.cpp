@@ -1,4 +1,5 @@
 #include "session.h"
+#include "sessionfile.h"
 
 #include <algorithm>
 #include <cmath>
@@ -28,8 +29,7 @@ int16_t toInt16(double v)
 std::unique_ptr<QTemporaryFile> makeFile()
 {
     // The process number in the name lets a later run find the files of a run that ended in a crash.
-    const QString name = QStringLiteral("/informant-session-%1-XXXXXX.raw").arg(QCoreApplication::applicationPid());
-    auto file = std::make_unique<QTemporaryFile>(QDir::tempPath() + name);
+    auto file = std::make_unique<QTemporaryFile>(QDir::tempPath() + "/" + sessionFileTemplate(QCoreApplication::applicationPid()));
     file->open();
     return file;
 }
@@ -102,10 +102,8 @@ void Session::recoverOrphans(const QString &keepFolder)
     for (const QFileInfo &info : files) {
         // The name is informant-session-<process>-<random>.raw. A name from an older version has no
         // process number. Such a file counts as left over after one hour without a change.
-        const QStringList parts = info.completeBaseName().split('-');
-        bool hasProcess = false;
         qint64 pid = 0;
-        if (parts.size() >= 4) pid = parts[2].toLongLong(&hasProcess);
+        const bool hasProcess = sessionFilePid(info.completeBaseName(), pid);
 
         if (hasProcess) {
             if (processRuns(pid)) continue;
