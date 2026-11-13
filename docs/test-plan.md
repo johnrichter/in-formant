@@ -56,6 +56,12 @@ Each "Limits" block in a report named things that the project did not test. This
 - **The grid lines have a fixed brightness.** TP-GRID-04.
 - **The old setting `viewShowFormants` stays in the code.** TP-TRACK-03.
 - **The reset button got one script test, with one set of odd values.** TP-RST-01 to TP-RST-12.
+- **Only the Pitch "?" box got a screenshot check.** TP-HLP-05 to TP-HLP-07.
+- **The start time was checked with one default device.** TP-STP-02 to TP-STP-04.
+- **"Reset graph" got one live test and no stress test.** TP-RGR-07 to TP-RGR-09.
+- **The synthesizer stop on close got no test with each way to close.** TP-WIN-03, TP-WIN-04.
+- **The lifted quiet color got an eye check on a few themes.** TP-QUI-06, TP-QUI-07.
+- **The edits of the peer review got no expert check.** TP-DOC-11 to TP-DOC-13.
 - **The scratch folders `mig` and `fresh` in the working area of the session cannot be removed by the shell gate.** This is not a product test. Remove them by hand.
 
 ## 1. Playback and synthesizer sound
@@ -257,6 +263,23 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-GDE-01** (Manual, P2). A speech-language pathologist reads the page "Settings". Check each claim about a method, and check the advice for each goal.
 - **TP-GDE-02** (Unit, P2). Check the numbers of the FFT table on the page (window time and line distance) against the formula for a view up to 5500 Hz.
 - **TP-STP-01** (Manual, P1). Measure the time from the start of the app to the line "Input device" in the log. The time must be under 3 seconds on each input device. A first build of the help styling took 12 seconds, and one edit block fixed it. The audio device was not the cause.
+- **TP-HLP-05** (Qt, P1). Press each of the 37 "?" buttons in a window of 700 by 900 pixels. Expect a box fully inside the window and a scroll bar for a long text. Expect a close on Escape, on an outside press, and on a second press. Only the Pitch button got a screenshot check.
+- **TP-HLP-06** (Qt, P2). Press a "?" button near the bottom edge and near the right edge of a narrow window of 420 pixels. Expect a box that stays inside the window.
+- **TP-HLP-07** (Qt, P2). A test that presses a "?" button must press a visible button of the open tab. The test hook of the first run pressed a button of a hidden tab, and the box showed in a wrong place.
+- **TP-STP-02** (Unit, P1). Time `HelpStyle::apply` on all help pages. Expect less than 200 ms in total. Without one edit block, the start of the app took 12 seconds.
+- **TP-STP-03** (Manual, P2). Start the app for the first time, with the microphone permission not yet given. Expect the window in less than 3 seconds and the permission box without a freeze.
+- **TP-STP-04** (Qt, P2). Start the app with the default input device on a camera microphone, on a USB device, and on the built-in microphone. Expect less than 3 seconds to the line "Input device" on each.
+- **TP-LFT-06** (Qt, P1). Start a live capture with a view of 2 seconds and an FFT size of 4096. Expect the newest sound at the left edge from the first column. Expect no jump when the sound fills the view.
+- **TP-RGR-07** (Qt, P1). Press "Reset graph" 100 times during a live capture, with a pause of 50 ms. Expect no crash, no stale track, and no frozen analysis.
+- **TP-RGR-08** (Qt, P2). Press "Reset graph" with more than 10 seconds of data. Cancel the question and expect the data to stay. Accept it and expect an empty graph and the status "The graph is clear".
+- **TP-RGR-09** (Qt, P2). Press "Reset graph", and then use "Export window" and "Play window". Expect a clear message and no file of old data.
+- **TP-WIN-03** (Qt, P1). Close the synthesizer window with the red button, with the key combination for the window, and with Escape. Expect `synth.enabled` false each time.
+- **TP-WIN-04** (Qt, P2). Change a setting, press quit with the key combination for the app, and start the app again. Expect the new setting.
+- **TP-QUI-06** (Unit, P2). For each theme with the lift, compute the contrast of the grid color and of each track color against the quiet color. Expect a contrast ratio of at least 3 to 1.
+- **TP-QUI-07** (Image, P3). Compare the lifted and the black quiet color on a bright monitor in a bright room. Expect that the lifted color is not too light.
+- **TP-DOC-11** (Unit, P3). A script lists British spellings (for example "colour", "centre", "practise") in `docs`, in `README.md`, and in the strings of `src/qml`. Expect none. The check keeps the UI and the help pages in one spelling.
+- **TP-DOC-12** (Manual, P2). A speech-language pathologist checks the edits of the peer review. Check the F1 statement in the guides for feminization and masculinization, and check the range of 8 to 18 percent.
+- **TP-DOC-13** (Unit, P3). Check that each page name in the text of a page matches the title that the Help window shows. The page "Settings" has the title "Choosing your settings".
 
 ## 7. Switching between modes while capture runs
 
