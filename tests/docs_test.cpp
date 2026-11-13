@@ -520,9 +520,17 @@ TEST(Release, TP_REL_09_TheBuildScriptPinsAndChecksItsDownloads)
             EXPECT_NE(line.find("_SHA256\""), std::string::npos) << line;
         }
     }
-    EXPECT_EQ(fetches, 3);
+    EXPECT_EQ(fetches, 6);
 
-    for (const char *name : { "FFTW_SHA256=", "PORTAUDIO_SHA256=", "EIGEN_SHA256=" }) {
+    // FreeType, libsamplerate, and toml++ come from the pinned downloads, and no copy stays in the source tree.
+    const std::string cmake = readFile(root / "CMakeLists.txt");
+    for (const char *vendored : { "external/freetype", "external/libsamplerate", "external/tomlplusplus" }) {
+        EXPECT_EQ(cmake.find(vendored), std::string::npos) << vendored;
+        EXPECT_FALSE(std::filesystem::exists(root / vendored)) << vendored;
+    }
+
+    for (const char *name : { "FFTW_SHA256=", "PORTAUDIO_SHA256=", "EIGEN_SHA256=", "FREETYPE_SHA256=",
+                              "SAMPLERATE_SHA256=", "TOMLPP_SHA256=" }) {
         const size_t at = build.find(name);
         ASSERT_NE(at, std::string::npos) << name;
         const std::string sum = build.substr(at + std::string(name).size(), 64);

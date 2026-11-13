@@ -142,6 +142,84 @@ TEST(Ticks, ALinearAxisUsesEqualStepsAndNotPowersOfTen)
     EXPECT_TRUE(step == 20 || step == 50 || step == 25 || step == 100 || step == 10);
 }
 
+// The fault: the automatic axis of the pitch-only graph, for example 95 to 235 Hz, had the labels 100 and 200 only,
+// because a range under two octaves has few powers of ten. The axis now uses equal steps of 1, 2, or 5 times a
+// power of ten at the positions of the log axis.
+TEST(Ticks, TP_AXT_09_ANarrowLogarithmicAxisHasEqualStepsAndMoreThanTwoLabels)
+{
+    const double lo = 95, hi = 235;
+    auto toPixel = [&](double f) { return 450.0 * (1.0 - std::log(f / lo) / std::log(hi / lo)); };
+    for (TickDensity d : { TickDensity::Sparse, TickDensity::Normal, TickDensity::Dense }) {
+        const auto values = labeled(makeFrequencyTicks(FrequencyTickMode::Automatic, 0, lo, hi, toPixel, 14, 8, false, d));
+        ASSERT_GE(values.size(), 3u) << (int) d;
+
+        std::vector<double> sorted = values;
+        std::sort(sorted.begin(), sorted.end());
+        const double step = sorted[1] - sorted[0];
+        for (size_t i = 1; i < sorted.size(); ++i) EXPECT_NEAR(sorted[i] - sorted[i - 1], step, 1e-6) << (int) d;
+
+        // The step is 1, 2, or 5 times a power of ten.
+        const double m = mantissaOf(step);
+        EXPECT_TRUE(std::fabs(m - 1) < 1e-6 || std::fabs(m - 2) < 1e-6 || std::fabs(m - 5) < 1e-6) << step;
+
+        // Each label is inside the range, and the labels do not overlap.
+        for (double v : sorted) EXPECT_TRUE(v >= lo && v <= hi) << v;
+        std::vector<double> positions;
+        for (double v : values) positions.push_back(toPixel(v));
+        std::sort(positions.begin(), positions.end());
+        for (size_t i = 1; i < positions.size(); ++i) EXPECT_GE(positions[i] - positions[i - 1], 14.0);
+    }
+
+    // A denser axis has at least as many labels as a sparser axis.
+    const auto sparse = labeled(makeFrequencyTicks(FrequencyTickMode::Automatic, 0, lo, hi, toPixel, 14, 8, false, TickDensity::Sparse));
+    const auto dense = labeled(makeFrequencyTicks(FrequencyTickMode::Automatic, 0, lo, hi, toPixel, 14, 8, false, TickDensity::Dense));
+    EXPECT_LE(sparse.size(), dense.size());
+}
+
+// Many narrow ranges and heights. The labels never overlap, none lies outside the axis, and the result is the same
+// at each call. A small axis can have fewer labels, and an axis of a normal height has at least three.
+TEST(Ticks, TP_AXT_09_NarrowLogarithmicAxesNeverOverlapAtAnyRangeOrHeight)
+{
+    for (double lo : { 40.0, 80.0, 95.0, 100.0, 130.0, 250.0, 500.0 }) {
+        for (double ratio : { 1.05, 1.2, 1.5, 2.0, 2.4, 3.0, 3.9 }) {
+            const double hi = lo * ratio;
+            for (double height : { 60.0, 150.0, 300.0, 450.0, 700.0 }) {
+                auto toPixel = [&](double f) { return height * (1.0 - std::log(f / lo) / std::log(hi / lo)); };
+                const auto ticks = makeFrequencyTicks(FrequencyTickMode::Automatic, 0, lo, hi, toPixel, 14, 8);
+                const auto again = makeFrequencyTicks(FrequencyTickMode::Automatic, 0, lo, hi, toPixel, 14, 8);
+                ASSERT_EQ(ticks.size(), again.size());
+
+                std::vector<double> positions;
+                for (double v : labeled(ticks)) {
+                    EXPECT_TRUE(v >= lo - 1e-9 && v <= hi + 1e-9) << lo << " " << ratio << " " << v;
+                    positions.push_back(toPixel(v));
+                }
+                std::sort(positions.begin(), positions.end());
+                for (size_t i = 1; i < positions.size(); ++i) EXPECT_GE(positions[i] - positions[i - 1], 14.0 - 1e-9);
+
+                // Ranges of 1.2 to 3 on an axis of 300 pixels or more have three labels or more. A range near two
+                // octaves can have two labels, because the step of 200 does not fit and the step of 500 gives two.
+                if (ratio >= 1.2 && ratio <= 3.0 && height >= 300.0) {
+                    EXPECT_GE(positions.size(), 3u) << lo << " " << ratio << " " << height;
+                }
+            }
+        }
+    }
+}
+
+// A range of two octaves or more keeps the powers of ten. The pitch-only axis of a wide voice range is unchanged.
+TEST(Ticks, TP_AXT_09_ARangeOfTwoOctavesOrMoreKeepsThePowersOfTen)
+{
+    const double lo = 60, hi = 480;
+    auto toPixel = [&](double f) { return 500.0 * (1.0 - std::log(f / lo) / std::log(hi / lo)); };
+    const auto values = labeled(makeFrequencyTicks(FrequencyTickMode::Automatic, 0, lo, hi, toPixel, 14, 8));
+    ASSERT_FALSE(values.empty());
+    for (double v : values) {
+        const double m = mantissaOf(v);
+        EXPECT_TRUE(std::fabs(m - 1) < 1e-6 || std::fabs(m - 2) < 1e-6 || std::fabs(m - 3) < 1e-6 || std::fabs(m - 5) < 1e-6 || std::fabs(m - 1.5) < 1e-6) << v;
+    }
+}
+
 // The ticks of the automatic mode do not change when the call repeats.
 TEST(Ticks, TheTicksOfTheAutomaticModeDoNotChangeWhenTheCallRepeats)
 {

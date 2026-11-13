@@ -39,19 +39,13 @@ These changes live in the `johnrichter/in-formant` fork. The `in-formant/in-form
 
 ### Build steps
 
-1. Initialize the submodule that the build needs.
-
-```sh
-git submodule update --init external/tomlplusplus
-```
-
-2. Run the build script from the project root. The first build downloads Qt and builds two libraries, so it takes longer than the next builds.
+1. Run the build script from the project root. The first build downloads Qt and builds five libraries, so it takes longer than the next builds.
 
 ```sh
 ./build-macos.sh
 ```
 
-3. Check the result. The disk image is `dist/InFormant-<version>-macOS-arm64.dmg`. A good disk image is about 66 MB.
+2. Check the result. The disk image is `dist/InFormant-<version>-macOS-arm64.dmg`. A good disk image is about 66 MB.
 
 To check the content, mount the disk image.
 
@@ -89,11 +83,11 @@ The script `tests/check_plan_coverage.py` checks that each case of type Unit in 
 
 Build system:
 
-* **Native build:** The script `build-macos.sh` installs Qt with `aqtinstall` in a Python virtual environment. It builds FFTW 3.3.10 and PortAudio 19.7, and it installs Eigen 3.4.0, in a local folder. Then it builds the application with CMake and Ninja.
-* **Pinned downloads:** The script checks a SHA-256 checksum for FFTW, PortAudio, and Eigen, and it downloads over https only. It pins the versions of `aqtinstall`, CMake, and Ninja. It deletes the build folder when the Qt version changes. It needs the macOS 27 SDK.
+* **Native build:** The script `build-macos.sh` installs Qt with `aqtinstall` in a Python virtual environment. It builds FFTW 3.3.10, PortAudio 19.7, FreeType 2.15.0, and libsamplerate 0.2.2, and it installs Eigen 5.0.1 and toml++ 3.4.0, in a local folder. Then it builds the application with CMake and Ninja.
+* **Pinned downloads:** The script checks a SHA-256 checksum for each of the six libraries, and it downloads over https only. It pins the versions of `aqtinstall`, CMake, and Ninja. It deletes the build folder when the Qt version changes. It needs the macOS 27 SDK.
 * **Minimum version:** The deployment target is macOS 27.0. The CMake file sets it, and `LSMinimumSystemVersion` in `dist-res/Info.plist` states it.
 * **AGL framework:** The macOS 27 SDK has no AGL framework, but Qt 6.12.0 links it. The CMake file replaces it with the OpenGL framework.
-* **Libraries:** The script gives the `macdeployqt` tool the folders of FreeType and libsamplerate, so the bundle has both libraries. The search for packages ignores `/opt/homebrew`, so the build never mixes in other versions.
+* **Libraries:** The source tree has no copy of FreeType, libsamplerate, or toml++. The script gives the `macdeployqt` tool the library folder of its local prefix, so the bundle has the libraries. To change a version, change the version, the address, and the checksum together. The search for packages ignores `/opt/homebrew`, so the build never mixes in other versions.
 * **Signature:** The `macdeployqt` tool changes library paths, and this invalidates the signatures. Apple silicon refuses to run an arm64 file with an invalid signature. The script signs the whole bundle again and verifies it. The script always signs, with the hardened runtime and the entitlements in `dist-res/InFormant.entitlements`. It uses the first valid Developer ID identity of the keychain, and then the first valid Apple Development identity. With neither, the script stops before the build. Set `SIGN_IDENTITY` to choose another identity. Set `NOTARY_PROFILE` to a profile of `notarytool` to notarize the application and the disk image.
 * **Disk image:** The script makes a compressed disk image with `hdiutil`.
 * **One platform:** The Docker images, the x86_64 build, and the builds for Linux, Windows, and Android are gone. The code for these systems and the optional libraries (Armadillo, Oboe, ALSA, PulseAudio, Torch) are gone too. PortAudio with CoreAudio is the only audio module.

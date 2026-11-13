@@ -266,6 +266,51 @@ std::vector<Tick> Gui::makeFrequencyTicks(FrequencyTickMode mode, double step,
         return ticks;
     }
 
+    // A narrow range (under two octaves) has too few powers of ten in view. The automatic pitch axis of the pitch-only
+    // graph, for example 95 to 235 Hz, then had only the labels 100 and 200. Use equal steps of 1, 2, or 5 times a
+    // power of ten at the positions of this axis. The step is the smallest one whose labels all have room. The
+    // labels of a sparser density need more room, so they get a larger step.
+    if (lo > 0.0 && hi / lo < 4.0) {
+        static const double room[3] = { 2.0, 1.4, 1.0 };
+        const double roomHalf = half * room[(int) density];
+        const double decade = std::pow(10.0, std::floor(std::log10((hi - lo) / 60.0)));
+
+        double labelStep = 0.0;
+        std::vector<double> values;
+        for (int round = 0; round < 12 && labelStep == 0.0; ++round) {
+            const double candidate = decade * (round % 3 == 0 ? 1.0 : round % 3 == 1 ? 2.0 : 5.0) * std::pow(10.0, round / 3);
+            std::vector<double> trial;
+            Occupancy test;
+            bool fits = true;
+            for (double i = std::ceil(lo / candidate - 1e-9); i * candidate <= hi + 1e-9 && fits; i += 1.0) {
+                const double value = i * candidate;
+                if (!inside(value)) continue;
+                const double p = toPixel(value);
+                if (!test.free(p - roomHalf, p + roomHalf)) fits = false;
+                else test.add(p - roomHalf, p + roomHalf);
+                trial.push_back(value);
+            }
+            if (fits && !trial.empty()) {
+                labelStep = candidate;
+                values = trial;
+            }
+        }
+
+        if (labelStep > 0.0) {
+            for (double v : values) tryLabel(v, 0, formatNumber(v));
+
+            // Four small steps between two labels when the step starts with 2, and five for the others.
+            const double mantissa = labelStep / std::pow(10.0, std::floor(std::log10(labelStep) + 1e-9));
+            const double fineStep = std::fabs(mantissa - 2.0) < 1e-6 ? labelStep / 4.0 : labelStep / 5.0;
+            for (double i = std::ceil(lo / fineStep - 1e-9); i * fineStep <= hi + 1e-9; i += 1.0) {
+                const double ratio = i * fineStep / labelStep;
+                if (std::fabs(ratio - std::round(ratio)) < 1e-6) continue;
+                tryMark(i * fineStep, 2);
+            }
+            return ticks;
+        }
+    }
+
     // Powers of ten. A group of values with the same mantissa gets labels in all decades, or in none.
     // This keeps the pattern of the labels the same along the axis. The mantissa 1 comes first, then 5, 2, 3, 4, and 1.5.
     std::vector<double> labeled;

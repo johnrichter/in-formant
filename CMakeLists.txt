@@ -8,7 +8,7 @@ elseif(NOT CMAKE_OSX_DEPLOYMENT_TARGET)
 endif()
 
 if("x${CUR_VERSION}" STREQUAL "x")
-    set(CUR_VERSION "3.4.0")
+    set(CUR_VERSION "3.4.1")
 endif()
 
 string(FIND "${CUR_VERSION}" "-" dash_pos)
@@ -226,6 +226,12 @@ pkg_check_modules(portaudio REQUIRED portaudio-2.0)
 
 find_package(Eigen3 REQUIRED NO_MODULE)
 
+# The script build-macos.sh builds FreeType, libsamplerate, and toml++ from pinned releases into its prefix. The calls
+# come before the test folder, so that the tests see the targets.
+find_package(Freetype CONFIG REQUIRED)
+find_package(SampleRate CONFIG REQUIRED)
+find_package(tomlplusplus CONFIG REQUIRED)
+
 # The finder of Qt for OpenGL also links the AGL framework, and the macOS SDK 27 has no AGL. The
 # finder skips its search when this value exists, so give it a framework that exists.
 set(WrapOpenGL_AGL "-framework OpenGL" CACHE STRING "Replacement for the AGL framework" FORCE)
@@ -242,8 +248,6 @@ endforeach()
 qt6_add_resources(RESOURCES_OBJ resources/qml.qrc)
 qt6_add_big_resources(RESOURCES_OBJ resources/other.qrc)
 set_property(SOURCE "${RESOURCES_OBJ}" PROPERTY SKIP_AUTOMOC ON)
-
-set(TOMLPP_INCLUDE_DIR external/tomlplusplus/include)
 
 ### AUDIO MODULE
 
@@ -269,23 +273,14 @@ if(INFORMANT_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
-target_include_directories(in-formant SYSTEM PRIVATE ${FFTW_INCLUDE_DIRS} ${portaudio_INCLUDE_DIRS} ${TOMLPP_INCLUDE_DIR})
-target_link_libraries(in-formant PRIVATE Eigen3::Eigen ${FFTW_LIBRARIES} ${portaudio_LIBRARIES} Qt6::Quick Qt6::QuickControls2 Qt6::QuickTemplates2 Qt6::Qml Qt6::Widgets Qt6::OpenGL Qt6::Svg Qt6::Gui Qt6::Core)
+target_include_directories(in-formant SYSTEM PRIVATE ${FFTW_INCLUDE_DIRS} ${portaudio_INCLUDE_DIRS})
+target_link_libraries(in-formant PRIVATE Eigen3::Eigen tomlplusplus::tomlplusplus Freetype::Freetype SampleRate::samplerate ${FFTW_LIBRARIES} ${portaudio_LIBRARIES} Qt6::Quick Qt6::QuickControls2 Qt6::QuickTemplates2 Qt6::Qml Qt6::Widgets Qt6::OpenGL Qt6::Svg Qt6::Gui Qt6::Core)
 target_link_directories(in-formant PRIVATE ${FFTW_LIBRARY_DIRS} ${portaudio_LIBRARY_DIRS})
 target_link_libraries(in-formant PRIVATE "-framework AudioToolbox" "-framework CoreAudio" "-framework CoreFoundation" "-framework AVFoundation" "-framework CoreMedia" "-framework CoreVideo" "-framework Foundation")
 
 
-set(BUILD_SHARED_LIBS TRUE)
-add_subdirectory(external/freetype EXCLUDE_FROM_ALL)
-target_link_libraries(in-formant PRIVATE freetype)
-set(BUILD_SHARED_LIBS)
-
 add_subdirectory(external/rpmalloc EXCLUDE_FROM_ALL)
 target_link_libraries(in-formant PRIVATE rpcxx_only)
-
-add_subdirectory(external/libsamplerate)
-target_link_libraries(in-formant PRIVATE lsr)
-target_include_directories(in-formant PRIVATE external/libsamplerate/src)
 
 target_compile_definitions(in-formant PRIVATE
     -DINFORMANT_VERSION=${CUR_VERSION}

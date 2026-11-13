@@ -57,13 +57,14 @@ informant_add_test(NAME track_runs_tests SOURCES track_runs_test.cpp LABELS trac
 
 # The migration of the settings file needs the TOML library.
 add_library(tomlpp_for_tests STATIC ${SRC}/tomlplusplus.cpp)
-target_include_directories(tomlpp_for_tests SYSTEM PUBLIC ${PROJECT_SOURCE_DIR}/${TOMLPP_INCLUDE_DIR})
+target_link_libraries(tomlpp_for_tests PUBLIC tomlplusplus::tomlplusplus)
+target_compile_definitions(tomlpp_for_tests PUBLIC TOML_HEADER_ONLY=0)
 informant_add_test(NAME config_migration_tests SOURCES config_migration_test.cpp LIBS tomlpp_for_tests LABELS config_migration)
 
 # The code that includes config.h or qpainterwrapper.h needs the headers of all Qt modules of the program.
 set(APP_HEADER_LIBS tomlpp_for_tests Eigen3::Eigen rpcxx_only Qt6::Quick Qt6::QuickControls2 Qt6::QuickTemplates2
-    Qt6::Qml Qt6::Widgets Qt6::OpenGL Qt6::Svg Qt6::Gui Qt6::Core freetype lsr)
-set(APP_HEADER_INCLUDES ${FFTW_INCLUDE_DIRS} ${portaudio_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/external/libsamplerate/src)
+    Qt6::Qml Qt6::Widgets Qt6::OpenGL Qt6::Svg Qt6::Gui Qt6::Core Freetype::Freetype SampleRate::samplerate)
+set(APP_HEADER_INCLUDES ${FFTW_INCLUDE_DIRS} ${portaudio_INCLUDE_DIRS})
 
 # The settings. The configuration class needs the theme code and the TOML library.
 informant_add_test(NAME config_tests
@@ -101,9 +102,9 @@ informant_add_test(NAME voice_tests
         ${SRC}/analysis/filter/butterworth.cpp ${SRC}/analysis/filter/zpk2sos.cpp
         ${SRC}/analysis/filter/sosfilter.cpp ${SRC}/analysis/filter/filter.cpp
         ${SRC}/analysis/freqz/sosfreqz.cpp ${SRC}/analysis/util/eval_polynomial.cpp
-    LIBS Eigen3::Eigen rpcxx_only Qt6::Core
+    LIBS Eigen3::Eigen rpcxx_only Qt6::Core SampleRate::samplerate
     LABELS voice)
-target_include_directories(voice_tests SYSTEM PRIVATE ${FFTW_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/external/libsamplerate/src)
+target_include_directories(voice_tests SYSTEM PRIVATE ${FFTW_INCLUDE_DIRS})
 
 # The check that each case of type Unit in docs/test-plan.md has a test or a recorded reason.
 add_test(NAME plan_coverage
@@ -118,14 +119,14 @@ set(AUDIO_SOURCES ${SRC}/modules/audio/queue/queue.cpp ${SRC}/modules/audio/resa
     ${SRC}/modules/audio/base/base.cpp ${SRC}/modules/audio/buffer/buffer.cpp)
 informant_add_test(NAME synth_tests
     SOURCES synth_test.cpp ${AUDIO_SOURCES}
-    LIBS rpcxx_only lsr
+    LIBS rpcxx_only SampleRate::samplerate
     LABELS synth)
 target_include_directories(synth_tests SYSTEM PRIVATE ${APP_HEADER_INCLUDES})
 
 # The streams of the audio context, with a stand-in for the sound backend.
 informant_add_test(NAME audio_context_tests
     SOURCES audio_context_test.cpp ${SRC}/context/audiocontext_streams.cpp ${AUDIO_SOURCES}
-    LIBS rpcxx_only lsr
+    LIBS rpcxx_only SampleRate::samplerate
     LABELS audio_context)
 target_include_directories(audio_context_tests SYSTEM PRIVATE ${APP_HEADER_INCLUDES})
 
@@ -147,7 +148,7 @@ informant_add_test(NAME scope_trace_tests SOURCES scope_trace_test.cpp LABELS sc
 # The capture buffer. The audio thread of the system pushes into it, so it must not allocate memory.
 informant_add_test(NAME buffer_tests
     SOURCES buffer_test.cpp ${AUDIO_SOURCES}
-    LIBS rpcxx_only lsr
+    LIBS rpcxx_only SampleRate::samplerate
     LABELS buffer)
 target_include_directories(buffer_tests SYSTEM PRIVATE ${APP_HEADER_INCLUDES})
 

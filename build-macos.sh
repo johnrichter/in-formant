@@ -27,15 +27,21 @@ NOTARY_PROFILE=${NOTARY_PROFILE:-}
 QT_VERSION=${QT_VERSION:-6.12.0}
 FFTW_VERSION=3.3.10
 PORTAUDIO_URL=https://files.portaudio.com/archives/pa_stable_v190700_20210406.tgz
-EIGEN_VERSION=3.4.0
+EIGEN_VERSION=5.0.1
+FREETYPE_VERSION=2.15.0
+SAMPLERATE_VERSION=0.2.2
+TOMLPP_VERSION=3.4.0
 
 # Each download has a pinned SHA-256 checksum. A file with another checksum stops the build. To change a
 # version, change the version, the address, and the checksum together.
 FFTW_SHA256=56c932549852cddcfafdab3820b0200c7742675be92179e59e6215b340e26467
 PORTAUDIO_SHA256=47efbf42c77c19a05d22e627d42873e991ec0c1357219c0d74ce6a2948cb2def
-EIGEN_SHA256=8586084f71f9bde545ee7fa6d00288b264a2b7ac3607b974e54d13e7162c1c72
+EIGEN_SHA256=e9c326dc8c05cd1e044c71f30f1b2e34a6161a3b6ecf445d56b53ff1669e3dec
+FREETYPE_SHA256=93cd47eb719c325107f2d3cf087d06299e944c3b48a40b55537302304dea1dd5
+SAMPLERATE_SHA256=3258da280511d24b49d6b08615bbe824d0cacc9842b0e4caf11c52cf2b043893
+TOMLPP_SHA256=8517f65938a4faae9ccf8ebb36631a38c1cadfb5efa85d9a72e15b9e97d25155
 
-# The versions of the Python tools. CMake 4 does not accept the old CMake files of FreeType and libsamplerate.
+# The versions of the Python tools. Some libraries can need an older CMake than the newest one.
 AQT_VERSION=3.3.0
 CMAKE_VERSION=3.31.10
 NINJA_VERSION=1.13.2
@@ -159,13 +165,66 @@ if [ ! -f "$prefix/lib/libportaudio.dylib" ]; then
     cmake --install "$src/portaudio/build"
 fi
 
-if [ ! -d "$prefix/include/eigen3" ]; then
+# A stamp file in the prefix records each library that has a version. A change of the version makes a new stamp
+# name, so the script builds the library again.
+stamps=$prefix/stamps
+mkdir -p "$stamps"
+
+if [ ! -f "$stamps/eigen-$EIGEN_VERSION" ]; then
     step "Install Eigen $EIGEN_VERSION"
     fetch "https://gitlab.com/libeigen/eigen/-/archive/$EIGEN_VERSION/eigen-$EIGEN_VERSION.tar.gz" "$src/eigen.tar.gz" "$EIGEN_SHA256"
     rm -rf "$src/eigen" && mkdir "$src/eigen"
     tar -xzf "$src/eigen.tar.gz" -C "$src/eigen" --strip-components=1
-    cmake -S "$src/eigen" -B "$src/eigen/build" -G Ninja -DCMAKE_INSTALL_PREFIX="$prefix"
+    # An old version leaves headers that the new version does not own, so delete the old install first.
+    rm -rf "$prefix/include/eigen3" "$prefix/share/eigen3"
+    cmake -S "$src/eigen" -B "$src/eigen/build" -G Ninja -DCMAKE_INSTALL_PREFIX="$prefix" \
+        -DBUILD_TESTING=OFF -DEIGEN_BUILD_DOC=OFF -DEIGEN_BUILD_DEMOS=OFF \
+        -DEIGEN_BUILD_BLAS=OFF -DEIGEN_BUILD_LAPACK=OFF
     cmake --install "$src/eigen/build"
+    touch "$stamps/eigen-$EIGEN_VERSION"
+fi
+
+# FreeType draws the text of the graph. The program needs no PNG, zlib, bzip2, Brotli, or HarfBuzz support.
+if [ ! -f "$stamps/freetype-$FREETYPE_VERSION" ]; then
+    step "Build FreeType $FREETYPE_VERSION"
+    fetch "https://download.savannah.gnu.org/releases/freetype/freetype-$FREETYPE_VERSION.tar.xz" "$src/freetype.tar.xz" "$FREETYPE_SHA256"
+    rm -rf "$src/freetype" && mkdir "$src/freetype"
+    tar -xJf "$src/freetype.tar.xz" -C "$src/freetype" --strip-components=1
+    cmake -S "$src/freetype" -B "$src/freetype/build" -G Ninja \
+        -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" \
+        -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET="$MIN_MACOS" \
+        -DBUILD_SHARED_LIBS=ON -DFT_DISABLE_ZLIB=ON -DFT_DISABLE_BZIP2=ON -DFT_DISABLE_PNG=ON \
+        -DFT_DISABLE_HARFBUZZ=ON -DFT_DISABLE_BROTLI=ON
+    cmake --build "$src/freetype/build" --parallel "$jobs"
+    cmake --install "$src/freetype/build"
+    touch "$stamps/freetype-$FREETYPE_VERSION"
+fi
+
+# libsamplerate changes the sample rate of the sound.
+if [ ! -f "$stamps/samplerate-$SAMPLERATE_VERSION" ]; then
+    step "Build libsamplerate $SAMPLERATE_VERSION"
+    fetch "https://github.com/libsndfile/libsamplerate/releases/download/$SAMPLERATE_VERSION/libsamplerate-$SAMPLERATE_VERSION.tar.xz" "$src/samplerate.tar.xz" "$SAMPLERATE_SHA256"
+    rm -rf "$src/samplerate" && mkdir "$src/samplerate"
+    tar -xJf "$src/samplerate.tar.xz" -C "$src/samplerate" --strip-components=1
+    cmake -S "$src/samplerate" -B "$src/samplerate/build" -G Ninja \
+        -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" \
+        -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET="$MIN_MACOS" \
+        -DBUILD_SHARED_LIBS=ON -DBUILD_TESTING=OFF -DLIBSAMPLERATE_EXAMPLES=OFF
+    cmake --build "$src/samplerate/build" --parallel "$jobs"
+    cmake --install "$src/samplerate/build"
+    touch "$stamps/samplerate-$SAMPLERATE_VERSION"
+fi
+
+# toml++ reads the settings file. The library is a set of headers, and the program compiles the code one time.
+if [ ! -f "$stamps/tomlplusplus-$TOMLPP_VERSION" ]; then
+    step "Install toml++ $TOMLPP_VERSION"
+    fetch "https://github.com/marzer/tomlplusplus/archive/refs/tags/v$TOMLPP_VERSION.tar.gz" "$src/tomlplusplus.tar.gz" "$TOMLPP_SHA256"
+    rm -rf "$src/tomlplusplus" && mkdir "$src/tomlplusplus"
+    tar -xzf "$src/tomlplusplus.tar.gz" -C "$src/tomlplusplus" --strip-components=1
+    cmake -S "$src/tomlplusplus" -B "$src/tomlplusplus/build" -G Ninja \
+        -DCMAKE_INSTALL_PREFIX="$prefix" -Dtomlplusplus_BUILD_TESTS=OFF -Dtomlplusplus_BUILD_EXAMPLES=OFF
+    cmake --install "$src/tomlplusplus/build"
+    touch "$stamps/tomlplusplus-$TOMLPP_VERSION"
 fi
 
 # --- InFormant -----------------------------------------------------------------------------------
@@ -199,13 +258,9 @@ sed "s/@VERSION@/$version/g" "$root/dist-res/Info.plist" > "$app/Contents/Info.p
 cp "$build/in-formant" "$app/Contents/MacOS/InFormant"
 cp "$root/resources/icons/in-formant.icns" "$app/Contents/Resources/"
 
-# macdeployqt copies Qt and the other libraries into the bundle. The libraries that the build made
-# (FreeType and libsamplerate) are in the build folder, so give their folders as search paths.
-libpaths=()
-while IFS= read -r dir; do
-    libpaths+=("-libpath=$dir")
-done < <(find "$build" -name '*.dylib' -exec dirname {} \; | sort -u)
-"$qt_dir/bin/macdeployqt" "$app" -qmldir="$root/src/qml" "${libpaths[@]}"
+# macdeployqt copies Qt and the other libraries into the bundle. The script made FFTW, PortAudio, FreeType, and
+# libsamplerate in the prefix, so give the library folder of the prefix as a search path.
+"$qt_dir/bin/macdeployqt" "$app" -qmldir="$root/src/qml" "-libpath=$prefix/lib"
 
 # The deployment step changes library paths, and that breaks the signatures. Apple silicon refuses to
 # run an arm64 file with an invalid signature, so sign the whole bundle again. Each build is signed with the
