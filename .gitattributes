@@ -267,8 +267,5 @@ go.mod text=auto eol=lf diff merge -filter
 *.air filter=lfs diff=lfs merge=lfs -text
 # Submodules keep the files of their own repositories. Copies of external code that are not
 # submodules follow the rules above.
-external/oboe/** !filter !diff !merge
 external/tomlplusplus/** !filter !diff !merge
-docker/windeployqt/** !filter !diff !merge
-docker/MSVCDocker/** !filter !diff !merge
 speech_analysis filter=lfs diff=lfs merge=lfs -text

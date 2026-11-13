@@ -62,10 +62,9 @@ informant_add_test(NAME config_migration_tests SOURCES config_migration_test.cpp
 # The code that includes config.h or qpainterwrapper.h needs the headers of all Qt modules of the program.
 set(APP_HEADER_LIBS tomlpp_for_tests Eigen3::Eigen rpcxx_only Qt6::Quick Qt6::QuickControls2 Qt6::QuickTemplates2
     Qt6::Qml Qt6::Widgets Qt6::OpenGL Qt6::Svg Qt6::Gui Qt6::Core freetype lsr)
-set(APP_HEADER_INCLUDES ${ARMADILLO_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/external/libsamplerate/src)
+set(APP_HEADER_INCLUDES ${FFTW_INCLUDE_DIRS} ${portaudio_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/external/libsamplerate/src)
 
-# The settings. The configuration class needs the theme code and the TOML library. The audio backend
-# lookup lives in the audio code, so the test program supplies a stand-in for it.
+# The settings. The configuration class needs the theme code and the TOML library.
 informant_add_test(NAME config_tests
     SOURCES config_test.cpp ${SRC}/context/config.cpp ${SRC}/gui/theme.cpp ${SRC}/gui/cmap.cpp
     LIBS ${APP_HEADER_LIBS}
@@ -103,7 +102,7 @@ informant_add_test(NAME voice_tests
         ${SRC}/analysis/freqz/sosfreqz.cpp ${SRC}/analysis/util/eval_polynomial.cpp
     LIBS Eigen3::Eigen rpcxx_only Qt6::Core
     LABELS voice)
-target_include_directories(voice_tests SYSTEM PRIVATE ${ARMADILLO_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/external/libsamplerate/src)
+target_include_directories(voice_tests SYSTEM PRIVATE ${FFTW_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/external/libsamplerate/src)
 
 # The check that each case of type Unit in docs/test-plan.md has a test or a recorded reason.
 add_test(NAME plan_coverage

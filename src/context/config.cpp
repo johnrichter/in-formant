@@ -115,11 +115,7 @@ toml::table Main::getConfigTable()
     gBackupFailed = false;
     auto path = getConfigPath();
 
-#if defined(_WIN32) && defined(UNICODE)
-    std::wcout << "Reading configuration from: " << path << std::endl;
-#else
     std::cout << "Reading configuration from: " << path << std::endl;
-#endif
 
     fs::create_directories(path.parent_path());
 
@@ -416,17 +412,6 @@ Config::~Config()
     save();
 }
 
-Module::Audio::Backend Config::getAudioBackend()
-{
-    return enumField(toml::node_view(mTbl), "audioBackend", Main::getDefaultAudioBackend());
-}
-
-void Config::setAudioBackend(Module::Audio::Backend b)
-{
-    mTbl.insert_or_assign("audioBackend", static_cast<int64_t>(enumInt(b)));
-    emit audioBackendChanged(enumInt(b));
-}
-
 QString Config::getAudioCaptureDevice()
 {
     return QString::fromStdString(valueField<std::string>(mTbl["audio"], "captureDevice", std::string()));
@@ -499,11 +484,9 @@ void Config::setLinpredAlgorithm(int alg)
 
 FormantAlgorithm Config::getFormantAlgorithm(bool internal)
 {
-#ifndef ENABLE_TORCH
     if (!internal && getFormantAlgorithm(true) == FormantAlgorithm::Deep) {
         setFormantAlgorithm(FormantAlgorithm::Filtered);
     }
-#endif
     return enumField(mTbl["solvers"], "formant", FormantAlgorithm::Filtered);
 }
 

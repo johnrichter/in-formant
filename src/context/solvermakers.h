@@ -24,6 +24,7 @@ namespace Main {
     enum class FormantAlgorithm : int64_t {
         Simple,
         Filtered,
+        // The value stays only to read old settings files. The program maps it to Filtered.
         Deep,
     };
 

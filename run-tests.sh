@@ -54,7 +54,6 @@ cmake -S "$root" -B "$build" -G Ninja \
     -DCMAKE_OSX_DEPLOYMENT_TARGET="$MIN_MACOS" \
     -DCMAKE_PREFIX_PATH="$qt_dir;$prefix" \
     -DCMAKE_IGNORE_PREFIX_PATH=/opt/homebrew \
-    -DENABLE_TORCH=0 \
     -DCUR_VERSION="$(cat "$root/version")" \
     -DINFORMANT_BUILD_TESTS=ON \
     -DINFORMANT_SANITIZE_TESTS="$sanitize"

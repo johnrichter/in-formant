@@ -13,16 +13,6 @@
 #include <QVector2D>
 #include <QVector4D>
 
-#ifdef _WIN32
-/**
- * Export these symbols to signal to use dedicated graphics card on laptops.
- */
-extern "C"
-{
-    __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
-    __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
-}
-#endif
 
 using namespace Gui;
 

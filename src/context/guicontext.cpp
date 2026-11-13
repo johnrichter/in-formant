@@ -18,11 +18,7 @@
 using namespace Main;
 using namespace std::chrono_literals;
 
-#ifndef WITHOUT_SYNTH
 GuiContext::GuiContext(Config *config, RenderContext *renderContext, SynthWrapper *synthWrapper, DataVisWrapper *dataVisWrapper, SessionWrapper *sessionWrapper)
-#else
-GuiContext::GuiContext(Config *config, RenderContext *renderContext, DataVisWrapper *dataVisWrapper, SessionWrapper *sessionWrapper)
-#endif
     : mConfig(config),
       mRenderContext(renderContext),
       mSelectedView(nullptr)
@@ -52,9 +48,7 @@ GuiContext::GuiContext(Config *config, RenderContext *renderContext, DataVisWrap
 
     mQmlEngine = std::make_unique<QQmlApplicationEngine>();
     mQmlEngine->addImportPath(QCoreApplication::applicationDirPath() + "/qml");
-#ifdef __APPLE__
     mQmlEngine->addImportPath(QCoreApplication::applicationDirPath() + "/../Resources/qml");
-#endif
 
     mQmlEngine->rootContext()->setContextProperty("appName", "InFormant " INFORMANT_VERSION_STR);
 
@@ -96,21 +90,10 @@ GuiContext::GuiContext(Config *config, RenderContext *renderContext, DataVisWrap
     mPractice = std::make_unique<PracticeWrapper>(mConfig, sessionWrapper);
     mQmlEngine->rootContext()->setContextProperty("practice", mPractice.get());
 
-#ifndef WITHOUT_SYNTH
     Gui::PlotItem::setProvider(Gui::PlotItem::Filter, synthWrapper);
     Gui::PlotItem::setProvider(Gui::PlotItem::Source, synthWrapper);
     Gui::PlotItem::setProvider(Gui::PlotItem::Spectrum, synthWrapper);
     mQmlEngine->rootContext()->setContextProperty("synth", synthWrapper);
-    mQmlEngine->rootContext()->setContextProperty("HAS_SYNTH", true);
-#else
-    mQmlEngine->rootContext()->setContextProperty("HAS_SYNTH", false);
-#endif
-
-#ifdef ENABLE_TORCH
-    mQmlEngine->rootContext()->setContextProperty("HAS_TORCH", true);
-#else
-    mQmlEngine->rootContext()->setContextProperty("HAS_TORCH", false);
-#endif
 
     mQmlEngine->load(QUrl("qrc:/MainWindow.qml"));
    

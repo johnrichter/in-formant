@@ -13,9 +13,6 @@
 #include <atomic>
 #include <thread>
 
-#ifdef ENABLE_TORCH
-#include "../analysis/formant/deepformants/df.h"
-#endif
 
 #include "synthwrapper.h"
 #include "dataviswrapper.h"
@@ -26,11 +23,6 @@
 #define STR(arg) STR_(arg)
 #define INFORMANT_VERSION_STR STR(INFORMANT_VERSION)
 
-#ifdef _WIN32
-#include <windows.h>
-LONG WINAPI TopLevelExceptionHandler(PEXCEPTION_POINTERS pExceptionInfo);
-void StdExceptionHandler(const std::exception& e);
-#endif
 
 namespace Main {
 
@@ -75,11 +67,9 @@ namespace Main {
         void analysisThreadLoop();
         void stopAnalysisThread();
 
-#ifndef WITHOUT_SYNTH
         void startSynthesisThread();
         void synthesisThreadLoop();
         void stopSynthesisThread();
-#endif
         
         void datavisThreadLoop();
 
@@ -92,9 +82,6 @@ namespace Main {
         std::shared_ptr<Analysis::FormantSolver> mFormantSolver;
         std::shared_ptr<Analysis::InvglotSolver> mInvglotSolver;
 
-#ifdef ENABLE_TORCH
-        DFModelHolder *mDfModelHolder;
-#endif
         
         std::unique_ptr<Audio::Buffer> mCaptureBuffer;
         std::unique_ptr<Audio::Queue> mPlaybackQueue;
@@ -107,10 +94,8 @@ namespace Main {
         
         std::unique_ptr<App::Pipeline> mPipeline;
        
-#ifndef WITHOUT_SYNTH
         std::unique_ptr<App::Synthesizer> mSynthesizer;
         SynthWrapper mSynthWrapper;
-#endif
 
         std::unique_ptr<AudioContext> mAudioContext;
         std::unique_ptr<RenderContext> mRenderContext;
@@ -121,10 +106,8 @@ namespace Main {
         std::thread mAnalysisThread;
         std::atomic_bool mAnalysisRunning;
 
-#ifndef WITHOUT_SYNTH
         std::thread mSynthesisThread;
         std::atomic_bool mSynthesisRunning;
-#endif
 
         std::thread mDatavisThread;
 

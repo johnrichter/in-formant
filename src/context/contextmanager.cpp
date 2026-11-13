@@ -37,24 +37,13 @@ ContextManager::ContextManager(
                   &mDataVisWrapper,
                   mPitchSolver, mLinpredSolver,
                   mFormantSolver, mInvglotSolver)),
-#ifndef WITHOUT_SYNTH
       mSynthesizer(std::make_unique<App::Synthesizer>(mPlaybackQueue.get())),
-#endif
       mAudioContext(std::make_unique<AudioContext>(
-                  mConfig->getAudioBackend(),
                   mCaptureBuffer.get(),
                   mPlaybackQueue.get())),
       mRenderContext(std::make_unique<RenderContext>(mConfig.get(), mDataStore.get())),
-#ifndef WITHOUT_SYNTH
       mGuiContext(std::make_unique<GuiContext>(mConfig.get(), mRenderContext.get(), &mSynthWrapper, &mDataVisWrapper, mSessionWrapper.get()))
-#else
-      mGuiContext(std::make_unique<GuiContext>(mConfig.get(), mRenderContext.get(), &mDataVisWrapper, mSessionWrapper.get()))
-#endif
 {
-#ifdef ENABLE_TORCH
-    // Load the DF model.
-    DFModelHolder::initialize(&mDfModelHolder);
-#endif
 
     createViews();
     loadConfig();
@@ -75,14 +64,6 @@ ContextManager::ContextManager(
     QObject::connect(mConfig.get(), &Config::invglotAlgorithmChanged,
             [this](int index) {
                 mInvglotSolver.reset(makeInvglotSolver(static_cast<InvglotAlgorithm>(index)));
-            });
-    QObject::connect(mConfig.get(), &Config::audioBackendChanged,
-            [this](int index) {
-                mAudioContext = std::make_unique<AudioContext>(
-                        static_cast<Module::Audio::Backend>(index),
-                        mCaptureBuffer.get(),
-                        mPlaybackQueue.get());
-                openAndStartAudioStreams();
             });
     QObject::connect(mConfig.get(), &Config::audioCaptureDeviceChanged,
             [this](QString) {
@@ -159,16 +140,12 @@ int ContextManager::exec()
         mConfig->setPaused(true);
     }
     startAnalysisThread();
-#ifndef WITHOUT_SYNTH
     startSynthesisThread();
-#endif
 
     int retCode = mGuiContext->exec();
 
     stopAnalysisThread();
-#ifndef WITHOUT_SYNTH
     stopSynthesisThread();
-#endif
 
     keepScratchRecording();
 
@@ -238,10 +215,8 @@ void ContextManager::openAndStartAudioStreams()
     if (!mConfig->isPaused()) {
         mAudioContext->startCaptureStream();
     }
-#ifndef WITHOUT_SYNTH
     mAudioContext->openPlaybackStream(nullptr);
     mAudioContext->startPlaybackStream();
-#endif
 }
 
 void ContextManager::reinitializeAudio(bool startCapture)
@@ -256,10 +231,8 @@ void ContextManager::reinitializeAudio(bool startCapture)
         publishCaptureDevices();
         mAudioContext->openCaptureStream(findCaptureDevice());
         mOpenedDefaultInputId = systemDefaultInputDeviceId();
-#ifndef WITHOUT_SYNTH
         mAudioContext->openPlaybackStream(nullptr);
         mAudioContext->startPlaybackStream();
-#endif
         if (startCapture) {
             mAudioContext->startCaptureStream();
         }
@@ -317,16 +290,7 @@ void ContextManager::analysisThreadLoop()
     while (mAnalysisRunning) {
         mAudioContext->tickAudio();
         
-#ifdef _WIN32
-        try {
-            mPipeline->processAll();
-        }
-        catch (const std::exception& e) {
-            StdExceptionHandler(e);
-        }
-#else
         mPipeline->processAll();
-#endif
 
         while (mConfig->isPaused() && mAnalysisRunning) {
             std::this_thread::sleep_for(0.5s);
@@ -336,11 +300,6 @@ void ContextManager::analysisThreadLoop()
 
 void ContextManager::datavisThreadLoop()
 {
-#ifdef WITHOUT_SYNTH
-    while (mAnalysisRunning) {
-        std::this_thread::sleep_for(100ms);
-    }
-#else // WITHOUT_SYNTH
     using Synth = Module::App::Synthesizer;
 
     // The pitch and the voicing go to the synthesizer from this loop, because it reads the pitch
@@ -383,8 +342,6 @@ void ContextManager::datavisThreadLoop()
     auto lastUiUpdate = std::chrono::steady_clock::now();
 
     while (mAnalysisRunning && mSynthesisRunning) {
-#endif // WITHOUT_SYNTH
-#ifndef WITHOUT_SYNTH
         const bool followPitch = mSynthWrapper.followPitch();
         const bool followFormants = mSynthWrapper.followFormants();
 
@@ -493,7 +450,6 @@ void ContextManager::datavisThreadLoop()
 
         std::this_thread::sleep_for(20ms);
     }
-#endif // !WITHOUT_SYNTH
 }
 
 void ContextManager::stopAnalysisThread()
@@ -507,7 +463,6 @@ void ContextManager::stopAnalysisThread()
     }
 }
 
-#ifndef WITHOUT_SYNTH
 
 void ContextManager::startSynthesisThread()
 {
@@ -532,16 +487,7 @@ void ContextManager::synthesisThreadLoop()
         // Generate sound only while the synthesizer is on. It ran all the time before, with the
         // volume at zero, and it used a few percent of a CPU core.
         const PlaybackSource source = choosePlaybackSource(playingSession, mSynthWrapper.enabled());
-#ifdef _WIN32
-        try {
-            feedPlaybackQueue(*mPlaybackQueue, source, mSynthesizer.get(), mSessionPlayer.get());
-        }
-        catch (const std::exception& e) {
-            StdExceptionHandler(e);
-        }
-#else
         feedPlaybackQueue(*mPlaybackQueue, source, mSynthesizer.get(), mSessionPlayer.get());
-#endif
         std::this_thread::sleep_for(20ms);
     }
 }
@@ -556,7 +502,6 @@ void ContextManager::stopSynthesisThread()
     }
 }
 
-#endif // !WITHOUT_SYNTH
 
 void ContextManager::setView(const std::string &name)
 {

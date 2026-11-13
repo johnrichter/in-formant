@@ -1,4 +1,3 @@
-#ifndef WITHOUT_SYNTH
 
 #include "../../../analysis/analysis.h"
 #include "../../../context/timings.h"
@@ -241,4 +240,3 @@ void Synthesizer::audioCallback(double *output, int length, void *userdata)
     }
 }
 
-#endif // !WITHOUT_SYNTH

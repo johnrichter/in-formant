@@ -22,15 +22,6 @@ void PrintTo(const QString &text, std::ostream *os)
 
 using namespace Main;
 
-// The audio code is not part of this test program. The configuration asks for the default backend
-// only when the file has no value, and the tests never use that value.
-namespace Main {
-Module::Audio::Backend getDefaultAudioBackend()
-{
-    return Module::Audio::Backend::Dummy;
-}
-}
-
 namespace {
 
 toml::table parseTable(const char *text)
@@ -404,9 +395,6 @@ TEST(ConfigSetters, TP_SET_16_EverySetterWorksWhenTheFileHasNoKey)
     EXPECT_FALSE(c.getViewShowSpectrogram());
     c.setViewShowPitch(false);
     EXPECT_FALSE(c.getViewShowPitch());
-
-    c.setAudioBackend(Module::Audio::Backend::PortAudio);
-    EXPECT_EQ(c.getAudioBackend(), Module::Audio::Backend::PortAudio);
 
     c.setAnalysisGranularity(11.0);
     EXPECT_EQ(c.getAnalysisGranularity(), 11.0);

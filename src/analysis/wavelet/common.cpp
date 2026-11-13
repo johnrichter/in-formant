@@ -17,17 +17,6 @@
  * Undefined for x = 0
  */
 static int size_log2(size_t x){
-#if defined(_MSC_VER)
-    unsigned long i;
-#if SIZE_MAX == 0xFFFFFFFF
-    _BitScanReverse(&i, x);
-#elif SIZE_MAX == 0xFFFFFFFFFFFFFFFF
-    _BitScanReverse64(&i, x);
-#else
-#error "Unrecognized SIZE_MAX"
-#endif /* SIZE_MAX */
-    return i;
-#else
     // GCC and clang
     // Safe cast: 0 <= clzl < arch_bits (64) where result is defined
 #if SIZE_MAX == UINT_MAX
@@ -40,7 +29,6 @@ static int size_log2(size_t x){
 #error "Unrecognized SIZE_MAX"
 #endif /* SIZE_MAX */
     return sizeof(size_t) * 8 - leading_zeros - 1;
-#endif /* _MSC_VER */
 }
 
 /* buffers and max levels params */

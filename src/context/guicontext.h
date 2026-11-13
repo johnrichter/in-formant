@@ -26,11 +26,7 @@ namespace Main {
         Q_OBJECT
 
     public:
-#ifndef WITHOUT_SYNTH
         GuiContext(Config *config, RenderContext *renderContext, SynthWrapper *synthWrapper, DataVisWrapper *dataVisWrapper, SessionWrapper *sessionWrapper);
-#else
-        GuiContext(Config *config, RenderContext *renderContext, DataVisWrapper *dataVisWrapper, SessionWrapper *sessionWrapper);
-#endif
 
         ~GuiContext();
 

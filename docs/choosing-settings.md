@@ -73,7 +73,6 @@ The formant method finds F1 to F4 from the sound. A formant track is a good gues
 
 - **Simple LPC.** It takes every resonance that the LPC model finds. It is fast. It can show a false formant or miss a real one.
 - **Filtered LPC.** It removes weak resonances, and it checks large gaps for a formant that the first step missed. The tracks are steadier. This is the default.
-- **DeepFormants.** A neural network, trained on speech, finds the formants without LPC. This choice shows only in builds that have the Torch library. Its authors report fewer errors than common LPC tools on their test data.
 
 ## Linear prediction (LPC) method
 

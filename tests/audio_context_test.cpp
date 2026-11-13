@@ -93,7 +93,7 @@ private:
 
     State &s;
     rpm::vector<Audio::Device> captureDevices, playbackDevices;
-    Audio::Device defaultDevice { Audio::Backend::Dummy };
+    Audio::Device defaultDevice;
 };
 
 size_t indexOf(const std::vector<std::string> &log, const std::string &name)

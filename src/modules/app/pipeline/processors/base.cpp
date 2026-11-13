@@ -35,16 +35,7 @@ void BaseProcessor::process(const rpm::vector<double>& slidingWindow, double sam
     std::copy(std::prev(slidingWindow.end(), frameSamples), slidingWindow.end(),
             mData.begin());
 
-#ifdef _WIN32
-    try {
-        processData(mData, sampleRate);
-    }
-    catch (const std::exception& e) {
-        StdExceptionHandler(e);
-    }
-#else
     processData(mData, sampleRate);
-#endif
 
     mTime = timeNow;
 }

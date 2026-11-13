@@ -8,13 +8,10 @@ namespace Main {
 
     using namespace Module;
 
-    Audio::Backend getDefaultAudioBackend();
-    rpm::vector<Audio::Backend> getSupportedAudioBackends();
-    std::string getAudioBackendName(Audio::Backend type);
-
     class AudioContext {
     public:
-        AudioContext(Audio::Backend type, Audio::Buffer *captureBuffer, Audio::Queue *playbackQueue);
+        // The context uses PortAudio, the sound system of macOS.
+        AudioContext(Audio::Buffer *captureBuffer, Audio::Queue *playbackQueue);
         // The backend comes from the caller. The tests use this form with a stand-in.
         AudioContext(std::unique_ptr<Audio::AbstractBase> backend, Audio::Buffer *captureBuffer, Audio::Queue *playbackQueue);
         virtual ~AudioContext();

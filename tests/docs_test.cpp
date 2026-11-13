@@ -476,6 +476,36 @@ TEST(Release, TP_REL_05_TheTestHookIsNotInTheSource)
     EXPECT_TRUE(fs::exists(root / "src/context/guicontext.cpp"));
 }
 
+// The program runs on macOS only. The code of the app has no condition for another system, no choice of
+// audio backend, and no optional library. The files of other authors in `src` keep their own conditions.
+TEST(Release, TP_REL_08_TheSourceHasNoCodeForOtherSystems)
+{
+    const std::vector<std::string> vendored = { "atomicops.h", "readerwriterqueue.h" };
+    const std::vector<std::string> banned = { "_WIN32", "__ANDROID__", "__linux__", "__EMSCRIPTEN__",
+        "ENABLE_TORCH", "WITHOUT_SYNTH", "AUDIO_USE_", "Backend::", "SYSTEM_WINDOWS", "SYSTEM_LINUX" };
+    int checked = 0;
+    for (const auto &entry : fs::recursive_directory_iterator(root / "src")) {
+        const std::string extension = entry.path().extension().string();
+        if (extension != ".cpp" && extension != ".h" && extension != ".mm" && extension != ".qml") continue;
+        if (std::find(vendored.begin(), vendored.end(), entry.path().filename().string()) != vendored.end()) continue;
+        const std::string text = readFile(entry.path());
+        for (const std::string &word : banned) {
+            EXPECT_EQ(text.find(word), std::string::npos) << entry.path() << " has " << word;
+        }
+        ++checked;
+    }
+    EXPECT_GT(checked, 50);
+
+    // The files of the other systems are gone, and the build file stops on any other system.
+    for (const char *gone : { "docker", "src/windows_debug.cpp", "src/android_redirect_log.cpp", "cmake_support", "build.sh" }) {
+        EXPECT_FALSE(fs::exists(root / gone)) << gone;
+    }
+    const std::string cmake = readFile(root / "CMakeLists.txt");
+    EXPECT_NE(cmake.find("InFormant builds on macOS only"), std::string::npos);
+    EXPECT_EQ(cmake.find("ANDROID"), std::string::npos);
+    EXPECT_EQ(cmake.find("MSVC"), std::string::npos);
+}
+
 namespace {
 
 struct Block {

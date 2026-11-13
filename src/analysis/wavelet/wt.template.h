@@ -15,11 +15,7 @@
 
 #include "wt.h"
 
-#if defined _MSC_VER
-#define restrict __restrict
-#elif defined __GNUC__
 #define restrict __restrict__
-#endif
 
 namespace Wt {
 

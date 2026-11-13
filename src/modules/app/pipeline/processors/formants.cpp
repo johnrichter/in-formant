@@ -29,10 +29,6 @@ void Formants::processData(const rpm::vector<double>& data, double sampleRate)
     constexpr double fsLPC = 11000;
     mResamplerLPC.setRate(sampleRate, fsLPC);
 
-#ifdef ENABLE_TORCH
-    constexpr double fs16k = 16000;
-    mResampler16k.setRate(sampleRate, fs16k);
-#endif
 
     auto data2 = data;
     for (int i = (int) data.size() - 1; i >= 1; --i) {
@@ -45,18 +41,8 @@ void Formants::processData(const rpm::vector<double>& data, double sampleRate)
     
     rpm::vector<double> lpc;
 
-#ifdef ENABLE_TORCH
-    if (auto dfSolver = dynamic_cast<Analysis::Formant::DeepFormants *>(mFormantSolver.get())) {
-        auto m16k = mResampler16k.process(data2);
-        dfSolver->setFrameAudio(m16k);
-    }
-    else {
-#endif
         double gain;
         lpc = mLinpredSolver->solve(mLPC.data(), (int) mLPC.size(), 10, &gain);
-#ifdef ENABLE_TORCH
-    }
-#endif
 
     auto formantResult = mFormantSolver->solve(lpc.data(), (int) lpc.size(), fsLPC);
 

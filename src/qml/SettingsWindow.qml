@@ -434,17 +434,13 @@ ApplicationWindow {
                 }
                 ConfigCombo {
                     hint: "The method that finds the resonances of your vocal tract (F1 to F4). Try another method when the formant tracks look wrong."
-                    choiceHints: HAS_TORCH ? [
-                        "Simple LPC: fast. It can show a false formant or miss a real one.",
-                        "Filtered LPC: removes weak resonances and checks large gaps for a missed formant. The tracks are steadier. This is the default.",
-                        "DeepFormants: a neural network finds the formants without LPC. It needs more computer power."
-                    ] : [
+                    choiceHints: [
                         "Simple LPC: fast. It can show a false formant or miss a real one.",
                         "Filtered LPC: removes weak resonances and checks large gaps for a missed formant. The tracks are steadier. This is the default."
                     ]
                     more: "A formant is a peak in the spectrum that the vocal tract makes. The LPC methods fit a smooth curve and read its peaks. The Simple method reads every peak. The Filtered method drops weak peaks and checks for a missed peak. A formant track is an estimate, and it is less exact for a high pitch. Compare a track with the spectrogram."
                     title: "Formants"
-                    model: HAS_TORCH ? [ "Simple LPC", "Filtered LPC", "DeepFormants" ] : [ "Simple LPC", "Filtered LPC" ]
+                    model: [ "Simple LPC", "Filtered LPC" ]
                     index: config.formantAlgorithm
                     onPicked: (i) => config.formantAlgorithm = i
                 }

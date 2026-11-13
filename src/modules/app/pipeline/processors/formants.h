@@ -30,9 +30,6 @@ namespace Module::App::Processors {
 
         rpm::vector<double> mWindow;
         Module::Audio::Resampler mResamplerLPC;
-#ifdef ENABLE_TORCH
-        Module::Audio::Resampler mResampler16k;
-#endif
 
         double mLastSample;
     };

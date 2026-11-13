@@ -1,4 +1,3 @@
-#ifndef WITHOUT_SYNTH
 
 #include "synthwrapper.h"
 #include <algorithm>
@@ -350,4 +349,3 @@ bool SynthWrapper::fillPlot(int kind, const Gui::PlotRequest &, Gui::PlotSnapsho
     return true;
 }
 
-#endif // !WITHOUT_SYNTH

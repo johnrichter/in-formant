@@ -18,11 +18,7 @@
 #include "wt.h"
 #include <cstring>
 
-#if defined _MSC_VER
-#define restrict __restrict
-#elif defined __GNUC__
 #define restrict __restrict__
-#endif
 
 /* Decomposition of input with lowpass filter */
 

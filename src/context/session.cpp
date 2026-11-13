@@ -11,10 +11,8 @@
 #include <QFile>
 #include <QFileInfo>
 
-#ifndef _WIN32
 #include <cerrno>
 #include <csignal>
-#endif
 
 using namespace Main;
 
@@ -36,13 +34,8 @@ std::unique_ptr<QTemporaryFile> makeFile()
 
 bool processRuns(qint64 pid)
 {
-#ifdef _WIN32
-    (void) pid;
-    return true;
-#else
     if (pid <= 0) return false;
     return ::kill((pid_t) pid, 0) == 0 || errno == EPERM;
-#endif
 }
 
 // The header of a mono WAV file with 16-bit samples at the stored sample rate.

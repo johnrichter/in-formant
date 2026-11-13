@@ -37,15 +37,7 @@ void PortAudio::refreshDevices()
     }
 
     PaHostApiIndex defaultHostApi;
-#if defined(__linux__)
-    defaultHostApi = Pa_HostApiTypeIdToHostApiIndex(paALSA);
-#elif defined(_WIN32)
-    defaultHostApi = Pa_HostApiTypeIdToHostApiIndex(paMME);
-#elif defined(__APPLE__)
     defaultHostApi = Pa_HostApiTypeIdToHostApiIndex(paCoreAudio);
-#else
-    defaultHostApi = Pa_GetDefaultHostApi();
-#endif
 
     const PaHostApiInfo *hostApiInfo = Pa_GetHostApiInfo(defaultHostApi);
 
@@ -65,12 +57,12 @@ void PortAudio::refreshDevices()
             throw std::runtime_error("Audio::PortAudio] Device index out of range");
         }
 
-        Device device(Backend::PortAudio);
+        Device device;
 
-        device.portaudio.index = i;
-        device.portaudio.inputLatency = deviceInfo->defaultHighInputLatency;
-        device.portaudio.outputLatency = deviceInfo->defaultHighOutputLatency;
-        device.portaudio.sampleRate = deviceInfo->defaultSampleRate;
+        device.index = i;
+        device.inputLatency = deviceInfo->defaultHighInputLatency;
+        device.outputLatency = deviceInfo->defaultHighOutputLatency;
+        device.sampleRate = deviceInfo->defaultSampleRate;
         device.name = deviceInfo->name;
 
         if (deviceInfo->maxInputChannels > 0) {
@@ -117,16 +109,16 @@ void PortAudio::openCaptureStream(const Device *pDevice)
 
     PaStreamParameters params;
     params.channelCount = 1;
-    params.device = pDevice->portaudio.index;
+    params.device = pDevice->index;
     params.hostApiSpecificStreamInfo = nullptr;
     params.sampleFormat = paFloat32;
-    params.suggestedLatency = pDevice->portaudio.inputLatency; 
+    params.suggestedLatency = pDevice->inputLatency; 
 
     err = Pa_OpenStream(
             &mCaptureStream,
             &params,
             nullptr,
-            pDevice->portaudio.sampleRate,
+            pDevice->sampleRate,
             1024,
             paNoFlag,
             &PortAudio::captureCallback,
@@ -134,8 +126,8 @@ void PortAudio::openCaptureStream(const Device *pDevice)
     checkError();
 
     mPauseCapture = true;
-    std::cout << "Audio::PortAudio] Input device \"" << pDevice->name << "\" at " << pDevice->portaudio.sampleRate << " Hz" << std::endl;
-    setCaptureBufferSampleRate((int) std::round(pDevice->portaudio.sampleRate));
+    std::cout << "Audio::PortAudio] Input device \"" << pDevice->name << "\" at " << pDevice->sampleRate << " Hz" << std::endl;
+    setCaptureBufferSampleRate((int) std::round(pDevice->sampleRate));
 }
 
 void PortAudio::startCaptureStream()
@@ -187,16 +179,16 @@ void PortAudio::openPlaybackStream(const Device *pDevice)
 
     PaStreamParameters params;
     params.channelCount = 1;
-    params.device = pDevice->portaudio.index;
+    params.device = pDevice->index;
     params.hostApiSpecificStreamInfo = nullptr;
     params.sampleFormat = paFloat32;
-    params.suggestedLatency = pDevice->portaudio.outputLatency;
+    params.suggestedLatency = pDevice->outputLatency;
     
     err = Pa_OpenStream(
             &mPlaybackStream,
             nullptr,
             &params,
-            pDevice->portaudio.sampleRate,
+            pDevice->sampleRate,
             256,
             paNoFlag,
             &PortAudio::playbackCallback,
@@ -204,7 +196,7 @@ void PortAudio::openPlaybackStream(const Device *pDevice)
     checkError();
 
     mPausePlayback = true;
-    mPlaybackQueue->setOutSampleRate((int) std::round(pDevice->portaudio.sampleRate));
+    mPlaybackQueue->setOutSampleRate((int) std::round(pDevice->sampleRate));
 }
 
 void PortAudio::startPlaybackStream()

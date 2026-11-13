@@ -1,7 +1,6 @@
 #ifndef APP_SYNTH_H
 #define APP_SYNTH_H
 
-#ifndef WITHOUT_SYNTH
 
 #include "rpcxx.h"
 
@@ -88,6 +87,5 @@ namespace Module::App
     };
 }
 
-#endif // !WITHOUT_SYNTH
 
 #endif // APP_SYNTH_H

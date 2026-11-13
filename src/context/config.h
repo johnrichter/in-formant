@@ -6,14 +6,16 @@
 #include <QStringList>
 #include <QVariant>
 #include <QVariantMap>
-#include "../filesystem.hpp"
 #include <atomic>
+#include <filesystem>
 #include <fstream>
 #include <toml++/toml.h>
 
 #include "solvermakers.h"
 #include "../gui/qpainterwrapper.h"
 #include "../modules/audio/base/base.h"
+
+namespace fs = std::filesystem;
 
 namespace Main {
 
@@ -56,7 +58,6 @@ namespace Main {
         void linpredAlgorithmChanged(int);
         void formantAlgorithmChanged(int);
         void invglotAlgorithmChanged(int);
-        void audioBackendChanged(int);
         void viewZoomChanged(double);
         void viewMinFrequencyChanged(int);
         void viewMaxFrequencyChanged(int);
@@ -131,9 +132,6 @@ namespace Main {
         // 0 is the live sound of the input device. 1 is a loaded audio file.
         int getSessionMode() const { return mSessionMode; }
         void setSessionMode(int mode);
-
-        Module::Audio::Backend getAudioBackend();
-        void setAudioBackend(Module::Audio::Backend b);
 
         // The name of the input device. An empty name selects the default device of the system.
         QString getAudioCaptureDevice();

@@ -15,62 +15,16 @@ Before you clone this repository, install Git LFS (for example with `brew instal
 
 ## Table of Contents
 
-* [Prebuilt binaries](#prebuilt-binaries)
-* [Compiling from source](#how-to-compile-from-source-using-docker)
-  * [Using Docker](#how-to-compile-from-source-using-docker)
-  * [On macOS with Apple silicon](#how-to-build-for-macos-on-apple-silicon)
-  * [Locally](#how-to-compile-from-source-locally)
+* [Prebuilt binary](#prebuilt-binary)
+* [How to build for macOS on Apple silicon](#how-to-build-for-macos-on-apple-silicon)
 
-## Prebuilt binaries
+## Prebuilt binary
 
-There are several prebuilt binaries included with each new release:
-
-* an AppImage file, for Linux (simply set the executable flag and run it)
-* two ZIP archives, for 32-bit and 64-bit Windows (the 32-bit will run on both editions of Windows)
-* a DMG image, for macOS 27 or newer (Apple silicon only, no Intel binaries)
-
-
-## How to compile from source (using Docker)
-
-### Preparing the build environment
-
-The build system uses Docker images in order to have a consistent build environment regardless of the actual machine that is being used for building.
-
-You can pull prebuilt Docker images from the Docker Hub:
-
-```sh
-for arch in linux win32 win64 android ; do docker pull clorika/sabuilder:$arch ; done
-```
-
-However these are not always kept up to date with the various Dockerfiles included in the repository so you can always build them yourself:
-
-```sh
-cd docker
-# Replace ARCH with one of [ linux, win32, win64, android ]
-docker build -t clorika/sabuilder:ARCH . -f Dockerfile.ARCH
-```
-
-**Note:** The Linux Dockerfile uses the Qt online installer so the build arguments `QT_EMAIL` and `QT_PW` must be provided. Do keep in mind that build arguments are kept in the final image. I will look for an alternative way to install Qt in the future.
-
-### Building the project
-
-Run the `build.sh` script from the project root.
-
-The script takes two arguments:
-- The first one is the target platform: must be one of `linux`, `win32`, `win64`, `android`.
-- The second one is the build configuration: must be one of `Release`, `RelWithDebInfo`, `Debug`.
-
-There is an additional third argument for the `android` target to specify the target architecture.
-
-Valid values are `arm`, `arm64`, `x86` (default if not given), and `x86_64`.
-
-Multi-arch Android builds are already supported by the underlying build system but are not possible as of now.
-
-**Note:** This script immediately creates a native package for the given target platform after a successful build. If you wish to build the project to contribute to it, you should use a local build environment. (see [How to compile from source locally](#how-to-compile-from-source-locally))
+Each release has one DMG image, for macOS 27 or newer. It runs on Apple silicon only. There are no Intel binaries and no builds for other systems.
 
 ## How to build for macOS on Apple silicon
 
-The build runs natively on a Mac. It does not use Docker. It makes an arm64 application that does not need Rosetta 2. Intel Macs are not supported.
+The build runs natively on a Mac. It makes an arm64 application that does not need Rosetta 2. Intel Macs are not supported.
 
 These changes live in the `johnrichter/in-formant` fork. The `in-formant/in-formant` repository is the `upstream` remote.
 
@@ -79,7 +33,7 @@ These changes live in the `johnrichter/in-formant` fork. The `in-formant/in-form
 * An Apple silicon Mac with macOS 27 or newer.
 * Xcode, or the Xcode command line tools, with the macOS 27 SDK.
 * Python 3.
-* Git LFS, which fetches the fonts, the icons, and the model file.
+* Git LFS, which fetches the fonts and the icons.
 * `pkg-config`. For example, install it with `brew install pkgconf`.
 * An internet connection and 10 GB of free disk space for the first build.
 
@@ -140,7 +94,7 @@ Build system:
 * **Libraries:** The script gives the `macdeployqt` tool the folders of FreeType and libsamplerate, so the bundle has both libraries. The search for packages ignores `/opt/homebrew`, so the build never mixes in other versions.
 * **Signature:** The `macdeployqt` tool changes library paths, and this invalidates the signatures. Apple silicon refuses to run an arm64 file with an invalid signature. The script signs the whole bundle again (ad hoc) and verifies it.
 * **Disk image:** The script makes a compressed disk image with `hdiutil`.
-* **Docker:** The Docker image and the x86_64 build for macOS are gone. The Docker builds for Linux, Windows, and Android stay.
+* **One platform:** The Docker images, the x86_64 build, and the builds for Linux, Windows, and Android are gone. The code for these systems and the optional libraries (Armadillo, Oboe, ALSA, PulseAudio, Torch) are gone too. PortAudio with CoreAudio is the only audio module.
 
 Application:
 
@@ -217,45 +171,4 @@ Application:
 * The application has an ad hoc signature and no notarization.
 * The application reads its configuration from `~/Library/Application/informant.conf`.
 * The checks of the playback confirmed the data flow, the position, and the view that follows the sound. Nobody listened to the sound.
-* Video recording needs macOS. The other systems write the sound and the report only.
 * The checks covered views up to 5 minutes, a 20 second speech file in two formats (AIFF and AAC), and recordings of 13 seconds. A view of many hours uses one short analysis for each column. This path has no test with hours of sound.
-
-## How to compile from source locally
-
-As of now, development is only really supported on Linux hosts, but is likely feasible on other Unix-like systems with some work.
-
-Before anything, you must install the various dependencies. Specifics will vary depending on your distribution.
-
-* Qt 5.15.2 (the Quick Controls 2 module is required in addition to the base package)
-* FFTW3
-* Eigen3
-* libtorch built with C++11 ABI (from PyTorch)
-* PortAudio v19 
-* PulseAudio (optional, unstable due to race condition)
-* ALSA (optional, causes inexplicably high CPU usage)
-
-You will also need CMake and a compiler with C++17 support.
-
-This should be all, you're ready to start building:
-
-```sh
-mkdir local
-cd local
-cmake ..
-make -j$(nproc)
-```
-
-You may need to edit the CMake command line if some of those dependencies are installed to non-standard paths.
-
-```sh
-cmake .. -DCMAKE_PREFIX_PATH="/opt/Qt/5.15.2/gcc_64;/usr/local/libtorch"
-```
-
-You can also specify a build configuration between `Debug`, `RelWithDebInfo`, `MinSizeRel`, and `Release`.
-
-```sh
-cmake .. -DCMAKE_BUILD_TYPE=Release
-```
-
-**Note:** the `Debug` build configuration enables ASan and UBSan by default.
-

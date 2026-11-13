@@ -1,7 +1,6 @@
 #ifndef SYNTH_WRAPPER_H
 #define SYNTH_WRAPPER_H
 
-#ifndef WITHOUT_SYNTH
 
 #include <array>
 #include <atomic>
@@ -134,6 +133,5 @@ namespace Main {
 
 }
 
-#endif // !WITHOUT_SYNTH
 
 #endif // SYNTH_WRAPPER_H

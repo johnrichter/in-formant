@@ -558,6 +558,7 @@ The scroll views of the settings, the help pages, the help boxes, the Synthesize
 - **TP-REL-05** (Unit, P1). Check that the test hook is not in `src/context/guicontext.cpp` of a release commit.
 - **TP-REL-06** (Manual, P3). Clone the old history and read the notes. Expect a clear message that old clones must clone again.
 - **TP-REL-07** (Manual, P3). Run the app with the Sound settings of the system set to a sample rate of 8000, 48000, and 192000 Hz.
+- **TP-REL-08** (Unit, P1). Check that the code of the app has no condition for another system, no choice of audio backend, and no optional library. Check that the build file stops on any other system.
 
 ## 21. Load and long sessions
 
@@ -625,3 +626,4 @@ Each entry names the case, the bug, the version of the fix, and the test that gu
 - **The program stopped at launch when no input device existed (3.2.7).** The window now opens with the status "No input device available". TP-CAP-06.
 - **The compiler removed the checks for a number that is not a number (3.2.7).** The flag `-ffast-math` makes these checks undefined. The flag `-fno-finite-math-only` now keeps them. TP-PRA-37.
 - **The oscilloscope showed nothing after the start and with a loaded file (3.2.8).** The plot had data only during a live capture, and it drew no axes and no text. Now the plot shows the axes and a text before the first press of play. When the capture is paused or a file is loaded, it shows the stored sound. The sound is at the picked moment, or at the end of the view. TP-SCP-06 and TP-SCP-07.
+- **A change of the audio backend could free the audio system while it ran (3.2.9).** The handler replaced the audio context while the synthesizer thread still used it. The program now has one backend, PortAudio, and no such option. TP-REL-08.

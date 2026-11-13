@@ -1,8 +1,5 @@
 #include "file_logger.h"
 
-#if defined(ANDROID) || defined(__ANDROID__)
-
-#elif defined(__linux__) || defined(__APPLE__)
 
 #define _GNU_SOURCE
 #include <fcntl.h>
@@ -132,54 +129,3 @@ void openFileLogger(const char *name) {
     }
 }
 
-#elif defined(_WIN32)
-
-#include <fcntl.h>
-#include <stdio.h>
-#include <io.h>
-#include <windows.h>
-#include <string.h>
-#include <time.h>
-#include <thread>
-
-static void appendToLine(char *linebuf, const char *str, size_t strsz)
-{
-    if (linebuf[0] == '\0') {
-        time_t timer;
-        struct tm* tm_info;
-
-        timer = time(NULL);
-        tm_info = localtime(&timer);
-
-        strftime(linebuf, 23, "[%Y-%m-%d %H:%M:%S] ", tm_info);
-    }
-
-    strncat(linebuf, str, strsz);
-}
-
-void openFileLogger(const char *name) {
-    char filename[256];
-    snprintf(filename, 256, "%s.log", name);
-
-    HANDLE logFile = CreateFileA(
-            filename,
-            FILE_APPEND_DATA,
-            FILE_SHARE_READ | FILE_SHARE_WRITE,
-            NULL,
-            OPEN_ALWAYS,
-            FILE_ATTRIBUTE_NORMAL,
-            NULL);
-
-    if (logFile == INVALID_HANDLE_VALUE) {
-        fprintf(stderr, "Unable to open log file.\n");
-        return;
-    }
-
-    int fd = _open_osfhandle((intptr_t) logFile, O_WRONLY | O_APPEND | O_TEXT);
-    _close(1);
-    _close(2);
-    _dup2(fd, 1);
-    _dup2(fd, 2);
-}
-
-#endif

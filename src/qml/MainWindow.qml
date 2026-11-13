@@ -169,7 +169,6 @@ ApplicationWindow {
                 } 
 
                 AppButton {
-                    visible: HAS_SYNTH
                     text: "Synthesizer"
                     Material.background: Material.color(Material.DeepPurple, Material.ShadeA200)
                     Layout.alignment: Qt.AlignRight
@@ -485,9 +484,7 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
-        if (HAS_SYNTH) {
-            synthWindow = Qt.createQmlObject('SynthWindow {}', mainWindow);
-        }
+        synthWindow = Qt.createQmlObject('SynthWindow {}', mainWindow);
     }
 }
 

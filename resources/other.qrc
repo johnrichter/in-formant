@@ -2,7 +2,6 @@
 
 <RCC version="1.0">
     <qresource>
-        <file>model.pt</file>
         <file>Roboto.ttf</file>
         <file>RobotoMono-Regular.ttf</file>
         <file>Roboto-Medium.ttf</file>

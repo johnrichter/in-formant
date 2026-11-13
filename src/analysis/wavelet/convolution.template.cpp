@@ -17,11 +17,7 @@
 
 #include "convolution.h"
 
-#if defined _MSC_VER
-#define restrict __restrict
-#elif defined __GNUC__
 #define restrict __restrict__
-#endif
 
 /* This file contains several functions for computing the convolution of a
  * signal with a filter. The general scheme is:

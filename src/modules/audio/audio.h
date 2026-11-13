@@ -5,29 +5,6 @@
 #include "resampler/resampler.h"
 #include "buffer/buffer.h"
 #include "queue/queue.h"
-
-#ifdef AUDIO_USE_DUMMY
-#   include "dummy/dummy.h"
-#endif
-
-#ifdef AUDIO_USE_ALSA
-#   include "alsa/alsa.h"
-#endif
-
-#ifdef AUDIO_USE_PULSE
-#   include "pulse/pulse.h"
-#endif
-
-#ifdef AUDIO_USE_PORTAUDIO
-#   include "portaudio/portaudio.h"
-#endif
-
-#ifdef AUDIO_USE_OBOE
-#   include "oboe/oboe.h"
-#endif
-
-#ifdef AUDIO_USE_WEBAUDIO
-#   include "webaudio/webaudio.h"
-#endif
+#include "portaudio/portaudio.h"
 
 #endif // MODULES_AUDIO_H

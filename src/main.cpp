@@ -8,18 +8,13 @@
 #include <chrono>
 #include <csignal>
 #include <thread>
-#ifndef _WIN32
 # include <unistd.h>
-#endif
 
 #include <QApplication>
 #include <QMessageBox>
 #include <QSocketNotifier>
 #include <QSurfaceFormat>
 
-#ifdef _WIN32
-# include <windows.h>
-#endif
 
 using namespace Module;
 using namespace std::chrono_literals;
@@ -36,14 +31,10 @@ static void signalHandler(int signal) {
     signalCaught = true;
     signalStatus = signal;
 
-#ifndef _WIN32
     const char byte = (char) signal;
     if (signalPipe[1] >= 0) {
         (void) !write(signalPipe[1], &byte, 1);
     }
-#else
-    QMetaObject::invokeMethod(qGuiApp, "quit", Qt::QueuedConnection);
-#endif
 }
 
 int Main::argc;
@@ -51,26 +42,10 @@ char **Main::argv;
 
 std::unique_ptr<Main::ContextManager> Main::contextManager;
 
-#ifdef _WIN32
-#ifdef DEBUG_THREAD
-void windowsDebugCallback(std::future<void> future);
-#endif
-#endif
 
-#ifndef _MSC_VER
 __attribute__((visibility ("default")))
-#endif
 int main(int argc, char **argv)
 {
-#ifdef _WIN32
-    SetUnhandledExceptionFilter(TopLevelExceptionHandler);
-    srand(time(nullptr));
-    #ifdef DEBUG_THREAD
-    std::promise<void> exitSignal;
-    std::future<void> exitSignalFuture = exitSignal.get_future();
-    std::thread debugThread(windowsDebugCallback, std::move(exitSignalFuture));
-    #endif
-#endif
 
     openFileLogger("InFormant");
 
@@ -83,11 +58,9 @@ int main(int argc, char **argv)
     fmt.setSamples(4);
     QSurfaceFormat::setDefaultFormat(fmt);
 
-#ifndef _WIN32
     if (pipe(signalPipe) != 0) {
         signalPipe[0] = signalPipe[1] = -1;
     }
-#endif
     std::signal(SIGTERM, signalHandler);
     std::signal(SIGINT, signalHandler);
 
@@ -102,7 +75,6 @@ int main(int argc, char **argv)
 
     // The application object exists now. Quit from the event loop when a signal arrives.
     std::unique_ptr<QSocketNotifier> signalNotifier;
-#ifndef _WIN32
     if (signalPipe[0] >= 0) {
         signalNotifier = std::make_unique<QSocketNotifier>(signalPipe[0], QSocketNotifier::Read);
         QObject::connect(signalNotifier.get(), &QSocketNotifier::activated, []() {
@@ -112,7 +84,6 @@ int main(int argc, char **argv)
             QCoreApplication::quit();
         });
     }
-#endif
 
     int ret = Main::contextManager->exec();
 
@@ -122,11 +93,6 @@ int main(int argc, char **argv)
     // exists at that point, and the window destructor crashes on macOS.
     Main::contextManager.reset();
 
-    #ifdef DEBUG_THREAD
-    exitSignal.set_value();
-    if (debugThread.joinable())
-        debugThread.join();
-    #endif
 
     return ret;
 }

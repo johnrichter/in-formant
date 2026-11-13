@@ -8,110 +8,17 @@
 #include <string>
 #include <cstring>
 
-#ifdef AUDIO_USE_PORTAUDIO
-#   include <portaudio.h>
-#endif
+#include <portaudio.h>
 
 namespace Module::Audio {
 
-    struct dev_dummy_t {
-#ifdef AUDIO_USE_DUMMY
-        // Nothing.
-#endif
-    };
-
-    struct dev_alsa_t {
-#ifdef AUDIO_USE_ALSA
-        // The dev.name field will contain the first line of the DESC hint.
-        // This contains the NAME hint. It will be used to identify a device internally.
-        char *hintName;
-#endif
-    };
-
-    struct dev_pulse_t {
-#ifdef AUDIO_USE_PULSE
-        // Nothing.
-#endif
-    };
-
-    struct dev_portaudio_t {
-#ifdef AUDIO_USE_PORTAUDIO
-        PaDeviceIndex index;
-        PaTime inputLatency;
-        PaTime outputLatency;
-        double sampleRate;
-#endif
-    };
-
-    struct dev_oboe_t {
-#ifdef AUDIO_USE_OBOE
-        // Nothing.
-#endif
-    };
-    
-    struct dev_webaudio_t {
-#ifdef AUDIO_USE_WEBAUDIO
-        // Nothing.
-#endif
-    };
-
-    enum class Backend : uint64_t {
-        Dummy,
-        ALSA,
-        Pulse,
-        PortAudio,
-        Oboe,
-        WebAudio,
-    };
-
+    // A sound device that PortAudio reports. The latencies are in seconds, and the sample rate is in Hz.
     struct Device {
-        Device(Backend b) : backend(b) {}
-        ~Device() {
-#ifdef AUDIO_USE_ALSA
-            if (backend == Backend::ALSA) {
-                if (!__builtin_constant_p(alsa.hintName)) {
-                    free(alsa.hintName);
-                }
-            }
-#endif
-        }
-
-        Device(const Device& o) : backend(o.backend), name(o.name) {
-            switch (backend) {
-            case Backend::Dummy:
-                dummy = o.dummy;
-                break;
-            case Backend::ALSA:
-                alsa = o.alsa;
-#ifdef AUDIO_USE_ALSA
-                alsa.hintName = strdup(o.alsa.hintName);
-#endif
-                break;
-            case Backend::Pulse:
-                pulse = o.pulse;
-                break;
-            case Backend::PortAudio:
-                portaudio = o.portaudio;
-                break;
-            case Backend::Oboe:
-                oboe = o.oboe;
-                break;
-            case Backend::WebAudio:
-                webaudio = o.webaudio;
-                break;
-            }
-        }
-
-        Backend backend;
         std::string name;
-        union {
-            dev_dummy_t     dummy;
-            dev_alsa_t      alsa;
-            dev_pulse_t     pulse;
-            dev_portaudio_t portaudio;
-            dev_oboe_t      oboe;
-            dev_webaudio_t  webaudio;
-        };
+        PaDeviceIndex index = paNoDevice;
+        PaTime inputLatency = 0;
+        PaTime outputLatency = 0;
+        double sampleRate = 0;
     };
 
     class AbstractBase {
