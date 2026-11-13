@@ -46,6 +46,9 @@ OverviewItem::OverviewItem(QQuickItem *parent)
       mCacheBinSamples(0),
       mCachePitchEnd(-1),
       mCacheVersion(0),
+      mLastDuration(-1.0),
+      mShownDuration(1.0),
+      mSoundDirty(true),
       mPeak(0.02f),
       mPitchLow(60.0),
       mPitchHigh(600.0)
@@ -54,7 +57,9 @@ OverviewItem::OverviewItem(QQuickItem *parent)
     setAcceptedMouseButtons(Qt::LeftButton);
     setAcceptHoverEvents(true);
 
-    mTimer.setInterval(100);
+    // One check for each frame of the screen. The check is cheap, and the map draws only when a value changed.
+    mTimer.setInterval(16);
+    mTimer.setTimerType(Qt::PreciseTimer);
     connect(&mTimer, &QTimer::timeout, this, &OverviewItem::refresh);
     mTimer.start();
 }
@@ -66,10 +71,30 @@ void OverviewItem::setSources(Main::Config *config, Main::SessionWrapper *sessio
     sDataStore = session->dataStore();
 }
 
-double OverviewItem::total() const
+double OverviewItem::shownDuration()
 {
     if (sDataStore == nullptr) return 1.0;
-    return std::max(sDataStore->session().duration(), 1.0);
+
+    const double duration = sDataStore->session().duration();
+    const auto now = std::chrono::steady_clock::now();
+    if (duration != mLastDuration) {
+        mLastDuration = duration;
+        mDurationStamp = now;
+    }
+
+    const bool running = sConfig != nullptr && sConfig->getSessionMode() == 0 && !sConfig->isPaused() && sConfig->getViewLive();
+    double shown = duration;
+    if (running) {
+        // The sound arrives in blocks. Between two blocks, the length grows with the clock, up to a short limit.
+        shown += std::min(std::chrono::duration<double>(now - mDurationStamp).count(), 0.25);
+    }
+    mShownDuration = std::max(shown, 1.0);
+    return mShownDuration;
+}
+
+double OverviewItem::total() const
+{
+    return mShownDuration;
 }
 
 MapView OverviewItem::currentView()
@@ -77,7 +102,7 @@ MapView OverviewItem::currentView()
     if (mDrag == Drag::Move || mDrag == Drag::LeftEdge || mDrag == Drag::RightEdge) return mDragView;
 
     const bool live = sConfig->getSessionMode() == 0 && sConfig->getViewLive();
-    mView = updateMapView(mState, sDataStore->session().duration(), sConfig->optionDouble("mapWindow"),
+    mView = updateMapView(mState, shownDuration(), sConfig->optionDouble("mapWindow"),
                           sConfig->getViewTimeSpan(), sSession->windowEnd(), live);
     return mView;
 }
@@ -133,14 +158,28 @@ void OverviewItem::refresh()
     if (sConfig == nullptr || sDataStore == nullptr || !isVisible() || width() < 4) return;
 
     const MapView view = currentView();
-    const QString key = QString::number(sDataStore->session().version()) + "|" + QString::number(width()) + "|"
-        + QString::number(height()) + "|" + QString::number(view.start, 'f', 3) + "|" + QString::number(view.span, 'f', 3)
-        + "|" + QString::number(sSession->windowEnd(), 'f', 3) + "|" + QString::number(sConfig->getViewTimeSpan())
-        + "|" + QString::number(sConfig->getViewLive()) + "|" + QString::number(mState.follow)
-        + "|" + sConfig->optionString("theme") + sConfig->optionString("customPitch");
+    Key key;
+    key.version = sDataStore->session().version();
+    key.width = (int) width();
+    key.height = (int) height();
+    key.start = view.start;
+    key.span = view.span;
+    key.windowEnd = sSession->windowEnd();
+    key.viewSpan = sConfig->getViewTimeSpan();
+    key.duration = mShownDuration;
+    key.live = sConfig->getViewLive();
+    key.follow = mState.follow;
+    key.theme = sConfig->optionString("theme") + sConfig->optionString("customPitch");
+
     // The picture of the sound can be older than the sound. The map then draws again until it is current.
-    const bool stale = sDataStore->session().version() != mCacheVersion || pitchEnd() != mCachePitchEnd;
-    if (key == mKey && !stale) return;
+    // The check reads the pitch track under a lock, so it runs a few times in a second only.
+    const auto now = std::chrono::steady_clock::now();
+    if (now - mSoundCheck > std::chrono::milliseconds(100)) {
+        mSoundCheck = now;
+        mSoundDirty = key.version != mCacheVersion || pitchEnd() != mCachePitchEnd;
+    }
+
+    if (key == mKey && !mSoundDirty) return;
     mKey = key;
     update();
 }
@@ -150,12 +189,21 @@ void OverviewItem::rebuildCache(const MapView &view, long long binSamples, const
     auto &session = sDataStore->session();
     session.envelopeBins(bins.first, binSamples, bins.count, mLow, mHigh);
 
-    // The loudness scale rises at once for a louder sound and falls slowly for a quieter one.
-    float target = 0.02f;
-    for (int i = 0; i < bins.count; ++i) target = std::max({ target, mHigh[(size_t) i], -mLow[(size_t) i] });
-    mPeak = target >= mPeak ? target : mPeak - 0.05f * (mPeak - target);
-
     const double perBin = (double) binSamples / sampleRate;
+
+    // The bins that the map shows. The cache has more bins at both sides, and they must not change the scales.
+    const int visibleFirst = (int) std::clamp((long long) std::floor(view.start / perBin) - bins.first, 0LL, (long long) bins.count - 1);
+    const int visibleEnd = (int) std::clamp((long long) std::ceil((view.start + view.span) / perBin) - bins.first, (long long) visibleFirst + 1, (long long) bins.count);
+
+    // The scales change with the clock and not with the number of drawings. A louder sound raises the
+    // loudness scale at once. A quieter sound lowers it in about a second.
+    const auto now = std::chrono::steady_clock::now();
+    const double elapsed = std::clamp(std::chrono::duration<double>(now - mCacheTime).count(), 0.0, 2.0);
+    const double blend = 1.0 - std::exp(-elapsed / 1.0);
+
+    float target = 0.02f;
+    for (int i = visibleFirst; i < visibleEnd; ++i) target = std::max({ target, mHigh[(size_t) i], -mLow[(size_t) i] });
+    mPeak = target >= mPeak ? target : mPeak - (float) blend * (mPeak - target);
     mPitch.assign((size_t) bins.count, 0.0f);
     sDataStore->beginRead();
     auto &track = sDataStore->getPitchTrack();
@@ -194,6 +242,7 @@ void OverviewItem::rebuildCache(const MapView &view, long long binSamples, const
         double lowest = 1e9, highest = 0.0;
         for (int i = 0; i < bins.count; ++i) {
             if (frequency[(size_t) i] <= 0) continue;
+            const bool visible = i >= visibleFirst && i < visibleEnd;
 
             near.clear();
             for (int j = std::max(0, i - 1); j <= std::min(bins.count - 1, i + 1); ++j) {
@@ -202,8 +251,10 @@ void OverviewItem::rebuildCache(const MapView &view, long long binSamples, const
             std::nth_element(near.begin(), near.begin() + near.size() / 2, near.end());
             const double f = near[near.size() / 2];
             mPitch[(size_t) i] = (float) f;
-            lowest = std::min(lowest, f);
-            highest = std::max(highest, f);
+            if (visible) {
+                lowest = std::min(lowest, f);
+                highest = std::max(highest, f);
+            }
         }
 
         // The scale of the pitch fits the pitch in the map, with a margin. It grows at once and
@@ -216,8 +267,8 @@ void OverviewItem::rebuildCache(const MapView &view, long long binSamples, const
                 targetLow = centre / std::sqrt(2.0);
                 targetHigh = centre * std::sqrt(2.0);
             }
-            mPitchLow = targetLow < mPitchLow ? targetLow : mPitchLow + 0.05 * (targetLow - mPitchLow);
-            mPitchHigh = targetHigh > mPitchHigh ? targetHigh : mPitchHigh + 0.05 * (targetHigh - mPitchHigh);
+            mPitchLow = targetLow < mPitchLow ? targetLow : mPitchLow + blend * (targetLow - mPitchLow);
+            mPitchHigh = targetHigh > mPitchHigh ? targetHigh : mPitchHigh + blend * (targetHigh - mPitchHigh);
         }
     }
     sDataStore->endRead();
@@ -225,8 +276,8 @@ void OverviewItem::rebuildCache(const MapView &view, long long binSamples, const
     mCacheBins = bins;
     mCacheBinSamples = binSamples;
     mCacheVersion = session.version();
-    mCacheTime = std::chrono::steady_clock::now();
-    (void) view;
+    mCacheTime = now;
+    mSoundDirty = false;
 }
 
 void OverviewItem::paint(QPainter *painter)
@@ -244,7 +295,6 @@ void OverviewItem::paint(QPainter *painter)
                               sConfig->optionString("customPitch"), sConfig->optionString("customFormants"));
     }
 
-    auto &session = sDataStore->session();
     const double length = total();
     const MapView view = (mDrag == Drag::None || mDrag == Drag::Scrollbar) ? currentView() : mDragView;
     if (mDrag == Drag::None || mDrag == Drag::Scrollbar) mView = view;
@@ -252,13 +302,25 @@ void OverviewItem::paint(QPainter *painter)
     const int strip = stripHeight();
     const int plotH = h - strip;
 
-    // The data of the map changes when the sound grows, but a new picture for each change is not needed.
-    // A new place, a new width or a new time of the map needs a new picture at once.
-    const long long binSamples = mapBinSamples(view.span, w, sampleRate);
-    const MapBins bins = mapBinRange(view, binSamples, sampleRate);
-    const bool placeChanged = binSamples != mCacheBinSamples || bins.first != mCacheBins.first || bins.count != mCacheBins.count;
-    const bool soundChanged = session.version() != mCacheVersion || pitchEnd() != mCachePitchEnd;
-    if (placeChanged || (soundChanged && std::chrono::steady_clock::now() - mCacheTime > std::chrono::milliseconds(250))) {
+    // The bins keep their size while the map scales a little, and the cache has room at both sides of
+    // the map. The map then moves and scales without a new cache. A new cache is needed when the size
+    // of the bin is far from a pixel, when the map leaves the cache, and when new sound arrives.
+    const long long binSamples = mapStableBinSamples(mCacheBinSamples, view.span, w, sampleRate);
+    const bool sizeOk = binSamples == mCacheBinSamples;
+
+    const MapBins needed = mapBinRange(view, binSamples, sampleRate);
+    const bool inCache = sizeOk && needed.first >= mCacheBins.first
+        && needed.first + needed.count <= mCacheBins.first + mCacheBins.count;
+    const bool dirty = mSoundDirty && std::chrono::steady_clock::now() - mCacheTime > std::chrono::milliseconds(100);
+    if (!inCache || dirty) {
+        MapView wide = view;
+        wide.start = std::max(0.0, view.start - 0.5 * view.span);
+        wide.span = view.span * 2.0;
+        MapBins bins = mapBinRange(wide, binSamples, sampleRate);
+        // The first bin is a multiple of 16, so the bins keep their place when the cache moves.
+        const long long aligned = bins.first / 16 * 16;
+        bins.count += (int) (bins.first - aligned);
+        bins.first = aligned;
         rebuildCache(view, binSamples, bins);
     }
 
@@ -271,7 +333,10 @@ void OverviewItem::paint(QPainter *painter)
     envelope.setAlpha(150);
     auto shape = [this](float v) { return std::copysign(std::sqrt(std::abs(v) / mPeak), v); };
     const int count = (int) std::min<size_t>(mLow.size(), (size_t) mCacheBins.count);
-    for (int i = 0; i < count; ++i) {
+    // Only the bins in the map are drawn.
+    const int firstDrawn = (int) std::clamp((long long) std::floor(view.start / perBin) - mCacheBins.first - 1, 0LL, (long long) count);
+    const int endDrawn = (int) std::clamp((long long) std::ceil((view.start + view.span) / perBin) - mCacheBins.first + 1, 0LL, (long long) count);
+    for (int i = firstDrawn; i < endDrawn; ++i) {
         const double t = (double) (mCacheBins.first + i) * perBin;
         const double x0 = (t - view.start) * pixelsPerSecond;
         const double x1 = (t + perBin - view.start) * pixelsPerSecond;
@@ -293,9 +358,9 @@ void OverviewItem::paint(QPainter *painter)
         const double y = std::clamp(std::log(mPitch[(size_t) i] / mPitchLow) / logRange, 0.0, 1.0);
         return QPointF((t - view.start) * pixelsPerSecond, (plotH - 3) - y * (plotH - 6));
     };
-    const int pitchBins = (int) std::min<size_t>(mPitch.size(), (size_t) mCacheBins.count);
+    const int pitchBins = (int) std::min<size_t>(mPitch.size(), (size_t) endDrawn);
     int previous = -1;
-    for (int i = 0; i < pitchBins; ++i) {
+    for (int i = std::max(0, firstDrawn - maxGap - 1); i < pitchBins; ++i) {
         if (mPitch[(size_t) i] <= 0) continue;
 
         if (previous >= 0 && i - previous <= maxGap) {
@@ -399,6 +464,8 @@ void OverviewItem::mousePressEvent(QMouseEvent *event)
         break;
     }
     }
+    // The map draws again at once, and does not wait for the next check of the timer.
+    update();
     event->accept();
 }
 
@@ -429,6 +496,7 @@ void OverviewItem::mouseMoveEvent(QMouseEvent *event)
     default:
         break;
     }
+    update();
     event->accept();
 }
 
@@ -438,6 +506,7 @@ void OverviewItem::mouseReleaseEvent(QMouseEvent *event)
     // The map follows the main view again after a drag of the frame.
     mView = currentView();
     unsetCursor();
+    update();
     event->accept();
 }
 
@@ -472,5 +541,6 @@ void OverviewItem::wheelEvent(QWheelEvent *event)
         // A turn of one step moves the frame by a tenth of its width.
         sSession->scrollView(-steps);
     }
+    update();
     event->accept();
 }

@@ -62,6 +62,8 @@ Each "Limits" block in a report named things that the project did not test. This
 - **The synthesizer stop on close got no test with each way to close.** TP-WIN-03, TP-WIN-04.
 - **The lifted quiet color got an eye check on a few themes.** TP-QUI-06, TP-QUI-07.
 - **The edits of the peer review got no expert check.** TP-DOC-11 to TP-DOC-13.
+- **The map got a timing test in one live run, one scroll, and no drag of a long session.** TP-MAP-16 to TP-MAP-22.
+- **The main graph stalls for 50 to 66 ms during a drag in file mode, and the threaded render loop stops the app.** TP-MAP-23, TP-MAP-24.
 - **The scratch folders `mig` and `fresh` in the working area of the session cannot be removed by the shell gate.** This is not a product test. Remove them by hand.
 
 ## 1. Playback and synthesizer sound
@@ -159,6 +161,17 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-MAP-13** (Unit, P2). Make the view span longer than the map window. Expect the map to widen to the span, so the handles work.
 - **TP-MAP-14** (Qt, P2). Type a value in the field "View" (below 1, above 3600, not a number). Expect a clamp or a rejection.
 - **TP-MAP-15** (Image, P3). Check the vertical centre of the text in the field "View".
+- **TP-MAP-16** (Qt, P1). Run a live capture for 60 seconds with a map window of 8 seconds. Record the time of each map drawing. Expect at least 50 drawings in a second and no gap above 40 ms. The first run had 62 drawings in a second and a longest gap of 29 ms.
+- **TP-MAP-17** (Image, P2). Record the map while a capture grows from 0 to 150 seconds. Compare two frames at each change of the bin size. Expect no jump in the shape of the sound.
+- **TP-MAP-18** (Qt, P1). Drag the frame with a mouse that sends a move each 16 ms. Expect the frame in the map under the pointer in each drawing, with a lag of at most one drawing.
+- **TP-MAP-19** (Qt, P2). Drag the scrollbar strip over a session of 10 minutes. Expect a smooth move and no empty part inside the map.
+- **TP-MAP-20** (Qt, P2). Stop the capture in the middle of a run. Expect the map to stop within 0.25 seconds and not to run ahead of the sound.
+- **TP-MAP-21** (Unit, P2). The bin size stays between one and two and a half pixels. A growth by a factor of 15 needs between three and five new sizes. The unit test `map_layout` has this.
+- **TP-MAP-22** (Perf, P2). Measure the time of one drawing of the map on a session of 24 hours. Expect less than 4 ms.
+- **TP-MAP-23** (Qt, P3). In file mode, drag the frame with a long file and count the drawings of the main graph. The main graph had stalls of 50 to 66 ms during a drag, and the cause is not known.
+- **TP-MAP-24** (Manual, P3). Start the app with the render loop `threaded` (the variable `QSG_RENDER_LOOP`). The app stopped with a trap. Find the cause before a change to the render loop.
+- **TP-RGR-10** (Qt, P2). Find the button "Reset graph" in the top bar next to the play button. Expect an icon of the same size, a tip on a hover, and a disabled state during a recording and a practice session.
+- **TP-RGR-11** (Image, P3). Compare the reset icon with the play icon at a scale of 100 and 200 percent. Expect the same size and the same weight.
 
 ## 6. The right edge and the live spectrogram
 

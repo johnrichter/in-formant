@@ -94,6 +94,20 @@ inline long long mapBinSamples(double span, int widthPixels, int sampleRate)
     return std::max(1LL, (long long) std::llround(10.0 * magnitude));
 }
 
+// The size of the bin for a picture that scales while the map shows a longer or a shorter time. The
+// current size stays while it is between one and two and a half pixels wide. A new size is a power
+// of two, and it is between one and two pixels wide. A new size is then rare, so the map does not
+// need a new picture for each frame.
+inline long long mapStableBinSamples(long long current, double span, int widthPixels, int sampleRate)
+{
+    const double ideal = std::max(1.0, span * sampleRate / std::max(widthPixels, 1));
+    if (current > 0 && (double) current >= ideal && (double) current <= 2.5 * ideal) return current;
+
+    long long size = 1;
+    while ((double) size < ideal) size *= 2;
+    return size;
+}
+
 // The first bin and the number of bins that cover the part of the map from start to start + span.
 struct MapBins {
     long long first = 0;

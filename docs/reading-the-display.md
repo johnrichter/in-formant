@@ -131,7 +131,7 @@ A "?" button next to a setting opens a box with a longer explanation. The box sc
 
 ## Clear the graph
 
-The button "Reset graph" in the bar below the graph deletes the tracks and the recording of the capture and starts again at time zero. A capture of more than 10 seconds asks first. The button does nothing during a recording or a practice session. The settings and the saved files stay.
+The icon button with the circular arrow, next to the play button, is "Reset graph". It deletes the tracks and the recording of the capture and starts again at time zero. A capture of more than 10 seconds asks first. The button does nothing during a recording or a practice session. The settings and the saved files stay.
 
 ## Practice mode and progress
 

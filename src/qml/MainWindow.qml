@@ -102,6 +102,27 @@ ApplicationWindow {
                         icon.height = 2 * icon.height
                     }
                 }
+
+                // Clears the sound and the tracks of the graph. It sits next to the play button and has the same size.
+                AppToolButton {
+                    objectName: "resetGraphButton"
+                    icon.source: "qrc:/icons/restart.svg"
+                    enabled: !sessionControl.recording && !practice.active
+                    Accessible.name: "Reset graph"
+                    ToolTip.visible: hovered
+                    ToolTip.delay: 600
+                    ToolTip.text: "Reset graph"
+                    onClicked: {
+                        // A long session asks first, because the sound and the tracks cannot come back.
+                        if (sessionControl.duration() > 10) resetGraphDialog.open()
+                        else sessionControl.resetGraph()
+                    }
+
+                    Component.onCompleted: {
+                        icon.width = 2 * icon.width
+                        icon.height = 2 * icon.height
+                    }
+                }
             }
             
             RowLayout {
@@ -241,17 +262,6 @@ ApplicationWindow {
                     text: "Live"
                     enabled: !sessionControl.recording && (!config.viewLive || sessionControl.playing || sessionControl.fileMode)
                     onClicked: sessionControl.goLive()
-                }
-
-                BarButton {
-                    text: "Reset graph"
-                    objectName: "resetGraphButton"
-                    enabled: !sessionControl.recording && !practice.active
-                    onClicked: {
-                        // A long session asks first, because the sound and the tracks cannot come back.
-                        if (sessionControl.duration() > 10) resetGraphDialog.open()
-                        else sessionControl.resetGraph()
-                    }
                 }
 
                 BarButton {

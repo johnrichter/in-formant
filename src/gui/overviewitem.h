@@ -48,6 +48,10 @@ namespace Gui {
         void refresh();
         void rebuildCache(const MapView &view, long long binSamples, const MapBins &bins);
 
+        // The length of the session for the map. While a capture runs, the length grows with the clock
+        // between two blocks of sound, so the map moves in small steps and not in one step for each block.
+        double shownDuration();
+
         // The time of the newest entry of the pitch track. The analysis of a file adds entries after the sound is complete.
         double pitchEnd() const;
 
@@ -71,7 +75,28 @@ namespace Gui {
         QTimer mTimer;
 
         // The values that the picture shows. The map draws again when one of them changes.
-        QString mKey;
+        struct Key {
+            unsigned long long version = 0;
+            int width = 0, height = 0;
+            double start = 0, span = 0, windowEnd = 0, viewSpan = 0, duration = 0;
+            bool live = false, follow = false;
+            QString theme;
+            bool operator==(const Key &other) const {
+                return version == other.version && width == other.width && height == other.height && start == other.start
+                    && span == other.span && windowEnd == other.windowEnd && viewSpan == other.viewSpan
+                    && duration == other.duration && live == other.live && follow == other.follow && theme == other.theme;
+            }
+        };
+        Key mKey;
+
+        // The time of the last block of sound, and the length that the map shows now.
+        double mLastDuration;
+        double mShownDuration;
+        std::chrono::steady_clock::time_point mDurationStamp;
+
+        // True when the sound or the pitch is newer than the cache. The check runs a few times in a second.
+        bool mSoundDirty;
+        std::chrono::steady_clock::time_point mSoundCheck;
 
         // The map: the state, the part of the session that it shows now, and a copy during a drag.
         MapState mState;

@@ -120,5 +120,25 @@ int main()
         CHECK(dragViewSpan(1e9, 1e9, 1e9) == maxViewSpan);
     }
 
+    // The size of the bin stays while the map grows from 10 to 20 seconds, and it changes rarely.
+    {
+        const int rate = 32000, width = 1600;
+        long long size = mapStableBinSamples(0, 10.0, width, rate);
+        CHECK(size >= 200 && size < 400);
+        int changes = 0;
+        for (double span = 10.0; span <= 150.0; span += 0.05) {
+            const long long next = mapStableBinSamples(size, span, width, rate);
+            if (next != size) ++changes;
+            size = next;
+            const double ideal = span * rate / width;
+            CHECK((double) size >= ideal && (double) size <= 2.5 * ideal);
+        }
+        // A growth by a factor of 15 needs about four doublings.
+        CHECK(changes >= 3 && changes <= 5);
+        // A map that shrinks does not change the size until the bin is wider than two and a half pixels.
+        CHECK(mapStableBinSamples(size, 140.0, width, rate) == size);
+        CHECK(mapStableBinSamples(size, 20.0, width, rate) < size);
+    }
+
     return TEST_RESULT();
 }
