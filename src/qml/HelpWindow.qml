@@ -55,7 +55,7 @@ ApplicationWindow {
         Repeater {
             model: helpWindow.pages
 
-            ScrollView {
+            AppScrollView {
                 id: scroll
                 clip: true
                 contentWidth: availableWidth

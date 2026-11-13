@@ -109,7 +109,8 @@ ApplicationWindow {
         contentHeight: contents.height
 
         ScrollBar.vertical: ScrollBar {}
-        
+        NativeWheel { flickable: container }
+
         RowLayout {
             id: contents
             width: Math.max(implicitWidth, synthWindow.width)

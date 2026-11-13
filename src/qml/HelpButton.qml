@@ -52,7 +52,7 @@ Item {
             border.color: ui.color.tertiary
         }
 
-        contentItem: ScrollView {
+        contentItem: AppScrollView {
             id: scroll
             clip: true
             contentWidth: availableWidth

@@ -12,6 +12,8 @@
         <file alias="AppToolButton.qml">../src/qml/AppToolButton.qml</file>
         <file alias="HelpButton.qml">../src/qml/HelpButton.qml</file>
         <file alias="AppTabBar.qml">../src/qml/AppTabBar.qml</file>
+        <file alias="NativeWheel.qml">../src/qml/NativeWheel.qml</file>
+        <file alias="AppScrollView.qml">../src/qml/AppScrollView.qml</file>
         <file alias="AppTabButton.qml">../src/qml/AppTabButton.qml</file>
         <file alias="OptionSwitch.qml">../src/qml/OptionSwitch.qml</file>
         <file alias="OptionSlider.qml">../src/qml/OptionSlider.qml</file>

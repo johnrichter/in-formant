@@ -86,7 +86,7 @@ GuiContext::GuiContext(Config *config, RenderContext *renderContext, DataVisWrap
             { "bodySize", Prose::bodySize }, { "bodyLine", Prose::bodyLine }, { "measure", Prose::measure }, { "pageMargin", Prose::pageMargin },
         };
         mQmlEngine->rootContext()->setContextProperty("ui", QVariantMap { { "type", type }, { "space", space }, { "radius", radius },
-                                                                           { "color", color }, { "font", font }, { "measure", Gui::UiScale::textMeasure },
+                                                                           { "color", color }, { "font", font }, { "measure", Gui::UiScale::textMeasure }, { "scrollLine", Gui::UiScale::scrollLine },
                                                                            { "prose", prose } });
         mQmlEngine->rootContext()->setContextProperty("helpStyle", new Gui::HelpStyle(mQmlEngine.get()));
     }

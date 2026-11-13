@@ -60,6 +60,7 @@ Each "Limits" block in a report named things that the project did not test. This
 - **The start time was checked with one default device.** TP-STP-02 to TP-STP-04.
 - **"Reset graph" got one live test and no stress test.** TP-RGR-07 to TP-RGR-09.
 - **The synthesizer stop on close got no test with each way to close.** TP-WIN-03, TP-WIN-04.
+- **The scroll rate got a check with synthetic events only, and no check with a real trackpad or a real mouse.** TP-SCR-08, TP-SCR-09.
 - **The lifted quiet color got an eye check on a few themes.** TP-QUI-06, TP-QUI-07.
 - **The edits of the peer review got no expert check.** TP-DOC-11 to TP-DOC-13.
 - **The map got a timing test in one live run, one scroll, and no drag of a long session.** TP-MAP-16 to TP-MAP-22.
@@ -308,6 +309,21 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-DOC-11** (Unit, P3). A script lists British spellings (for example "colour", "centre", "practise") in `docs`, in `README.md`, and in the strings of `src/qml`. Expect none. The check keeps the UI and the help pages in one spelling.
 - **TP-DOC-12** (Manual, P2). A speech-language pathologist checks the edits of the peer review. Check the F1 statement in the guides for feminization and masculinization, and check the range of 8 to 18 percent.
 - **TP-DOC-13** (Unit, P3). Check that each page name in the text of a page matches the title that the Help window shows. The page "Settings" has the title "Choosing your settings".
+
+## 6e. Scrolling at the rate of the system
+
+The scroll views of the settings, the help pages, the help boxes, the Synthesizer window, and the Progress window use `NativeWheel.qml`. It follows the distance that the system reports.
+
+- **TP-SCR-01** (Qt, P1). Send 20 wheel events of 10 pixels with a pixel distance (a trackpad) to a scroll view. Expect the content to move by 200 pixels. Version 3.2.0 moved it by 1 pixel.
+- **TP-SCR-02** (Qt, P1). Send one notch (120 units, no pixel distance) to a scroll view. Expect a move of the system lines times 24 pixels (72 pixels with 3 lines).
+- **TP-SCR-03** (Qt, P1). Scroll past the top and past the end. Expect the content to stop at the edges, with no blank space.
+- **TP-SCR-04** (Qt, P2). Send the events with the direction of natural scrolling on and off. Expect the content to follow the direction of the system.
+- **TP-SCR-05** (Qt, P2). Scroll each of the seven tabs of the Settings window, the eight help pages, a help box, the Synthesizer window, and the Progress table. Expect the same rate in each.
+- **TP-SCR-06** (Qt, P2). Scroll with the pointer over a slider, a switch, a field, and a list box. Expect the content to move, and expect no change of a value.
+- **TP-SCR-07** (Qt, P2). Scroll a view that is shorter than its window. Expect no movement.
+- **TP-SCR-08** (Manual, P1). Scroll the Settings window and a help page with a real trackpad and with a real mouse. Expect the feel of other apps on the same Mac, including the momentum at the end of a swipe.
+- **TP-SCR-09** (Manual, P2). Change the scroll speed and the direction in System Settings. Expect the app to follow without a restart.
+- **TP-SCR-10** (Unit, P2). Check that the scroll line is a multiple of the grid unit of the scale. The unit test `ui_scale` does this.
 
 ## 7. Switching between modes while capture runs
 

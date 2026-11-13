@@ -62,6 +62,11 @@ inline constexpr int spaceXl = spaceSteps[4].size;
 // Every space and every line height is a multiple of this unit.
 inline constexpr int gridUnit = spaceXs;
 
+// The distance of one line of scrolling, in pixels. It applies to a mouse wheel that reports whole notches.
+// A notch moves the content by the number of lines of the system (the setting of the operating system)
+// times this distance. A trackpad or a precise wheel reports pixels, and the content follows them one to one.
+inline constexpr int scrollLine = spaceXl;
+
 // The space around the graph and the readout boxes. It is the margin between the graph and the edge of the
 // window (at the top, the right, and the bottom), the margin between the boxes and the left edge, and the
 // space between a column of boxes and the title of the frequency axis. All three are a margin of a large

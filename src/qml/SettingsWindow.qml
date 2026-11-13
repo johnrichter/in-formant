@@ -169,7 +169,7 @@ ApplicationWindow {
         currentIndex: tabs.currentIndex
 
         // General
-        ScrollView {
+        AppScrollView {
             clip: true
             ColumnLayout {
                 width: settingsWindow.width - 2 * ui.space.xl
@@ -234,7 +234,7 @@ ApplicationWindow {
         }
 
         // Display
-        ScrollView {
+        AppScrollView {
             clip: true
             ColumnLayout {
                 width: settingsWindow.width - 2 * ui.space.xl
@@ -398,7 +398,7 @@ ApplicationWindow {
         }
 
         // Input
-        ScrollView {
+        AppScrollView {
             clip: true
             ColumnLayout {
                 width: settingsWindow.width - 2 * ui.space.xl
@@ -480,7 +480,7 @@ ApplicationWindow {
         }
 
         // Axes
-        ScrollView {
+        AppScrollView {
             clip: true
             ColumnLayout {
                 width: settingsWindow.width - 2 * ui.space.xl
@@ -576,7 +576,7 @@ ApplicationWindow {
         }
 
         // Tracks
-        ScrollView {
+        AppScrollView {
             clip: true
             ColumnLayout {
                 width: settingsWindow.width - 2 * ui.space.xl
@@ -634,7 +634,7 @@ ApplicationWindow {
         }
 
         // Readouts
-        ScrollView {
+        AppScrollView {
             clip: true
             ColumnLayout {
                 width: settingsWindow.width - 2 * ui.space.xl
@@ -748,7 +748,7 @@ ApplicationWindow {
         }
 
         // Theme
-        ScrollView {
+        AppScrollView {
             clip: true
             ColumnLayout {
                 width: settingsWindow.width - 2 * ui.space.xl

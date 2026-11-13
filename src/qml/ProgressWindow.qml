@@ -287,6 +287,7 @@ ApplicationWindow {
             }
 
             ScrollBar.vertical: ScrollBar {}
+            NativeWheel { flickable: table }
         }
     }
 }

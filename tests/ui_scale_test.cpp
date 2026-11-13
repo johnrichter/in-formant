@@ -71,6 +71,7 @@ int main()
     {
         CHECK(spaceXs == 4 && spaceSm == 8 && spaceMd == 12 && spaceLg == 16 && spaceXl == 24);
         CHECK(gridUnit == 4);
+        CHECK(scrollLine % gridUnit == 0);
         bool onScale = false;
         for (const SpaceStep &s : spaceSteps) onScale = onScale || s.size == graphPadding;
         CHECK(onScale);
