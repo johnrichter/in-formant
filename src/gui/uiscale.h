@@ -52,6 +52,22 @@ inline constexpr std::array<SpaceStep, 7> spaceSteps = { {
     { "xxxl", 48 },  // the space around an empty state
 } };
 
+// The same steps by name, for code that places things on the canvas of the graph.
+inline constexpr int spaceXs = spaceSteps[0].size;
+inline constexpr int spaceSm = spaceSteps[1].size;
+inline constexpr int spaceMd = spaceSteps[2].size;
+inline constexpr int spaceLg = spaceSteps[3].size;
+inline constexpr int spaceXl = spaceSteps[4].size;
+
+// Every space and every line height is a multiple of this unit.
+inline constexpr int gridUnit = spaceXs;
+
+// The space around the graph and the readout boxes. It is the margin between the graph and the edge of the
+// window (at the top, the right, and the bottom), the margin between the boxes and the left edge, and the
+// space between a column of boxes and the title of the frequency axis. All three are a margin of a large
+// area, or a space between groups, so they are the same step.
+inline constexpr int graphPadding = spaceXl;
+
 struct RadiusStep {
     const char *name;
     int size;

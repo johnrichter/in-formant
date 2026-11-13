@@ -64,6 +64,7 @@ Each "Limits" block in a report named things that the project did not test. This
 - **The edits of the peer review got no expert check.** TP-DOC-11 to TP-DOC-13.
 - **The map got a timing test in one live run, one scroll, and no drag of a long session.** TP-MAP-16 to TP-MAP-22.
 - **The main graph stalls for 50 to 66 ms during a drag in file mode, and the threaded render loop stops the app.** TP-MAP-23, TP-MAP-24.
+- **The spaces around the graph got a check by screenshot at one window size and one pixel ratio.** TP-LAY-21 to TP-LAY-32.
 - **The scratch folders `mig` and `fresh` in the working area of the session cannot be removed by the shell gate.** This is not a product test. Remove them by hand.
 
 ## 1. Playback and synthesizer sound
@@ -131,6 +132,18 @@ The project never played the sound through a speaker. These cases use rendered s
 - **TP-LAY-18** (Image, P1). With the bar above the graph, click on the graph. Expect the right time, and expect the labels of the cursor at the right height.
 - **TP-LAY-19** (Unit, P1). Click above the graph (in the bar). Expect no pick.
 - **TP-LAY-20** (Unit, P1). Click at the first and the last row of the graph. Expect a pick.
+- **TP-LAY-21** (Image, P1). Grab the window with the boxes in a row and then in a column. Expect a space of 24 points at the top, the right, and the bottom edge of the graph. Expect the same space at the left edge of the boxes, and between a column of boxes and the title of the frequency axis.
+- **TP-LAY-22** (Image, P2). Grab the window at device pixel ratios 1 and 2. Expect each space to scale with the ratio.
+- **TP-LAY-23** (Unit, P1). Click on the space at the right of the graph. Expect no pick. Click on the last column of the graph. Expect a pick.
+- **TP-LAY-24** (Image, P2). Set a time window where the last time label is near the right edge. Expect the label not to be cut off, and not to overlap the space of the window edge.
+- **TP-LAY-25** (Image, P2). Show the cursor at the last column of the graph. Expect the labels of the cursor to stay inside the graph.
+- **TP-LAY-26** (Image, P2). Start a recording and grab one frame of the video. Expect the same spaces around the graph in the video.
+- **TP-LAY-27** (Image, P3). Resize the window to 480 points of width. Expect a graph with a positive width and the right space intact.
+- **TP-LAY-28** (Image, P2). Show the legend and the frame times in a window that is 600 points high. Expect the bar to start 24 points below the toolbar, and a graph with a positive height.
+- **TP-LAY-29** (Unit, P1). Compute the layout for each combination of axis labels and axis titles. Expect each margin of the axes to be a sum of the ticks and the smallest steps.
+- **TP-LAY-30** (Unit, P2). Compute the layout at each pixel ratio from 1 to 3. Expect the row height of the boxes to be a multiple of 4 times the ratio.
+- **TP-LAY-31** (Image, P2). Hide the axis titles and the axis labels. Expect the same padding at the left edge of the graph.
+- **TP-LAY-32** (Image, P3). Compare the box heights with the heights before this change. Expect a one-row box of 32 points and a six-row box of 112 points.
 
 ## 4. Drawing with an origin below the bar
 

@@ -107,7 +107,7 @@ namespace Gui {
 
         // The margins at the left and at the bottom that hold the axes, and the margin at the top that
         // holds the bar of boxes. The spectrogram fills the rest of the canvas, which is the area of the graph.
-        void setPlotMargins(int left, int bottom, int top = 0) { mPlotLeft = left; mPlotBottom = bottom; mPlotTop = top; }
+        void setPlotMargins(int left, int bottom, int top = 0, int right = 0) { mPlotLeft = left; mPlotBottom = bottom; mPlotTop = top; mPlotRight = right; }
 
         // Move the origin of all drawing down by a number of pixels. The graph uses the top margin as its
         // origin, so its code counts from the top of the graph. A value of zero restores the canvas origin.
@@ -134,6 +134,7 @@ namespace Gui {
         int mPlotLeft = 0;
         int mPlotBottom = 0;
         int mPlotTop = 0;
+        int mPlotRight = 0;
         bool mTimeFlipped = false;
         int mOriginY = 0;
 

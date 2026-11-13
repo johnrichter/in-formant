@@ -380,7 +380,7 @@ void CanvasRenderer::drawSpectrogram(
 
     // The picture fills the graph, which is the canvas without the margins of the axes. The
     // projection places the picture, and the viewport stays the whole canvas.
-    const float w = mWidth - mPlotLeft;
+    const float w = mWidth - mPlotLeft - mPlotRight;
     const float h = mHeight - mPlotBottom - mPlotTop;
     glViewport(0, 0, mWidth, mHeight);
 

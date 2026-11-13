@@ -67,6 +67,15 @@ int main()
         CHECK(spaceSteps.front().size == 4);
     }
 
+    // The named steps match the table, and the padding of the graph is one of the steps.
+    {
+        CHECK(spaceXs == 4 && spaceSm == 8 && spaceMd == 12 && spaceLg == 16 && spaceXl == 24);
+        CHECK(gridUnit == 4);
+        bool onScale = false;
+        for (const SpaceStep &s : spaceSteps) onScale = onScale || s.size == graphPadding;
+        CHECK(onScale);
+    }
+
     // The radii are multiples of 4 and they grow.
     {
         int previous = 0;

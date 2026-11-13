@@ -134,6 +134,8 @@ private:
     // The margins of the axes, in pixels.
     int mPlotLeft = 0;
     int mPlotBottom = 0;
+    // The space at the right of the graph. It balances the space at the left of the readout boxes.
+    int mPlotRight = 0;
     // The height of the bar at the top of the canvas. The graph starts below it.
     int mPlotTop = 0;
     // The height of the row of readout boxes below the time axis. The row is part of the bottom margin.
@@ -166,7 +168,7 @@ private:
         double debugY = 0.0;
         bool hasDebug = false;
     } mReadout;
-    int plotWidth() const { return viewport().width() - mPlotLeft; }
+    int plotWidth() const { return viewport().width() - mPlotLeft - mPlotRight; }
     int plotHeight() const { return viewport().height() - mPlotBottom - mPlotTop; }
 
     FrequencyScale mFrequencyScale;
