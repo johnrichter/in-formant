@@ -104,6 +104,9 @@ public:
 
     double mapFrequencyToY(double frequency);
 
+    // The largest jump in pixels between two frames that a line of a track still joins.
+    double trackJumpLimitPixels();
+
     using SliceIterator = TimeTrack<Main::SpectrogramCoefs>::const_iterator;
 
     // Draw the slices in the range. The function stores only the slices that are new since the last call.

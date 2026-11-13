@@ -72,11 +72,16 @@ namespace Main {
         // keys key, start, median, min, max, minutes, and sessions.
         Q_INVOKABLE QVariantList trend(const QString &track, const QString &stat, const QString &period, const QString &tag);
 
-        // All sessions as items with the keys id, start, minutes, tag, pitch, f1, f2, f3, and marks. Newest first.
+        // All sessions as items with the keys id, folder, start, minutes, tag, pitch, f1, f2, f3, and marks. Newest first.
         Q_INVOKABLE QVariantList sessions();
 
         // The task names that occur in the library.
         Q_INVOKABLE QStringList libraryTags();
+
+        // Delete one saved session of the library. The argument is the folder of the session, the value of the key
+        // folder in the list of sessions. The result is true when the folder is gone. The status line says what
+        // happened. Files that the person exported before stay, because they are copies.
+        Q_INVOKABLE bool deleteSession(const QString &sessionFolder);
 
     signals:
         void activeChanged();
@@ -87,6 +92,8 @@ namespace Main {
         void folderChanged();
         // Emitted when a session is saved. The text is the summary.
         void saved(const QString &text);
+        // Emitted after a session left the library.
+        void deleted();
         // Emitted when a session has ended and waits for the answer keep or discard. The text describes the session.
         void confirm(const QString &text);
 

@@ -10,9 +10,9 @@ ApplicationWindow {
     visible: false
 
     width: 820
-    height: 700
-    minimumWidth: 520
-    minimumHeight: 420
+    height: 880
+    minimumWidth: 580
+    minimumHeight: 560
 
     font.pixelSize: ui.type.body
     Material.theme: Material.Dark
@@ -52,6 +52,7 @@ ApplicationWindow {
     ]
 
     property var points: []
+    property var sessionList: []
     property var tagNames: ["All tasks"]
     readonly property var measure: measures[measureBox.currentIndex]
     readonly property var stat: stats[statBox.currentIndex]
@@ -64,6 +65,7 @@ ApplicationWindow {
         const wanted = keep && tagNames.indexOf(keep) >= 0 ? keep : (tagNames.indexOf(practice.tag) >= 0 ? practice.tag : "All tasks")
         taskBox.currentIndex = Math.max(0, tagNames.indexOf(wanted))
         points = practice.trend(measure.key, stat.key, periods[periodBox.currentIndex].key, taskBox.currentIndex > 0 ? tagNames[taskBox.currentIndex] : "")
+        sessionList = practice.sessions()
         chart.requestPaint()
     }
 
@@ -76,6 +78,9 @@ ApplicationWindow {
     Connections {
         target: practice
         function onSaved() { if (progressWindow.visible) progressWindow.refresh() }
+        function onDeleted() { if (progressWindow.visible) progressWindow.refresh() }
+        // A new folder of the sessions has other sessions.
+        function onFolderChanged() { if (progressWindow.visible) progressWindow.refresh() }
     }
 
     ColumnLayout {
@@ -154,6 +159,7 @@ ApplicationWindow {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.minimumHeight: 200
+            Layout.verticalStretchFactor: 3
             visible: progressWindow.points.length > 0
 
             onWidthChanged: requestPaint()
@@ -290,6 +296,120 @@ ApplicationWindow {
 
             ScrollBar.vertical: ScrollBar {}
             NativeWheel { flickable: table }
+        }
+
+        // The sessions themselves, newest first, each with a button to delete it.
+        Label {
+            Layout.topMargin: ui.space.sm
+            text: "Sessions"
+            font.pixelSize: ui.type.title
+        }
+
+        Label {
+            Layout.fillWidth: true
+            Layout.maximumWidth: ui.measure
+            visible: progressWindow.sessionList.length === 0
+            wrapMode: Text.WordWrap
+            color: ui.color.secondary
+            text: "No practice session is saved yet."
+        }
+
+        ListView {
+            id: sessionTable
+            objectName: "sessionTable"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.minimumHeight: 128
+            Layout.verticalStretchFactor: 2
+            visible: progressWindow.sessionList.length > 0
+            clip: true
+            model: progressWindow.sessionList
+
+            header: Rectangle {
+                width: sessionTable.width
+                height: 32
+                color: "#2a2a33"
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: ui.space.sm
+                    anchors.rightMargin: ui.space.sm
+                    Label { text: "Date"; font.bold: true; Layout.preferredWidth: 150 }
+                    Label { text: "Task"; font.bold: true; Layout.preferredWidth: 110 }
+                    Label { text: "Minutes"; font.bold: true; Layout.preferredWidth: 70; horizontalAlignment: Text.AlignRight }
+                    Label { text: "Pitch (Hz)"; font.bold: true; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
+                    Label { text: "Marks"; font.bold: true; Layout.preferredWidth: 60; horizontalAlignment: Text.AlignRight }
+                    Item { Layout.preferredWidth: 88 }
+                }
+            }
+
+            delegate: Rectangle {
+                required property var modelData
+                required property int index
+                width: sessionTable.width
+                height: 32
+                color: index % 2 === 0 ? "transparent" : "#1d1d24"
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: ui.space.sm
+                    anchors.rightMargin: ui.space.sm
+                    Label { text: modelData.start; Layout.preferredWidth: 150; font.family: ui.font.mono }
+                    Label { text: modelData.tag === "" ? "-" : modelData.tag; Layout.preferredWidth: 110; elide: Text.ElideRight }
+                    Label { text: Number(modelData.minutes).toFixed(1); font.family: ui.font.mono; Layout.preferredWidth: 70; horizontalAlignment: Text.AlignRight }
+                    Label { text: modelData.pitch > 0 ? Number(modelData.pitch).toFixed(1) : "-"; font.family: ui.font.mono; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
+                    Label { text: modelData.marks; font.family: ui.font.mono; Layout.preferredWidth: 60; horizontalAlignment: Text.AlignRight }
+                    Button {
+                        objectName: "deleteSession"
+                        text: "Delete"
+                        flat: true
+                        Layout.preferredWidth: 88
+                        Layout.preferredHeight: 32
+                        // A new session is not in the list yet, so a practice in progress is never at risk.
+                        onClicked: {
+                            deleteDialog.target = modelData
+                            deleteDialog.open()
+                        }
+                    }
+                }
+            }
+
+            ScrollBar.vertical: ScrollBar {}
+            NativeWheel { flickable: sessionTable }
+        }
+    }
+
+    // The question before a delete. The sound, the statistics, the marks, and the report of the session are lost.
+    Dialog {
+        id: deleteDialog
+        objectName: "deleteSessionDialog"
+        Material.roundedScale: Material.SmallScale
+        title: "Delete this practice session?"
+        modal: true
+        anchors.centerIn: Overlay.overlay
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        property var target: null
+
+        Component.onCompleted: standardButton(Dialog.Ok).text = "Delete"
+        onAccepted: {
+            if (target) practice.deleteSession(target.folder)
+            target = null
+        }
+        onRejected: target = null
+
+        ColumnLayout {
+            spacing: ui.space.md
+            Label {
+                Layout.preferredWidth: 420
+                wrapMode: Text.WordWrap
+                text: deleteDialog.target
+                    ? deleteDialog.target.start + ", " + (deleteDialog.target.tag === "" ? "no task" : deleteDialog.target.tag)
+                      + ", " + Number(deleteDialog.target.minutes).toFixed(1) + " minutes"
+                    : ""
+            }
+            Label {
+                Layout.preferredWidth: 420
+                wrapMode: Text.WordWrap
+                text: "This deletes the statistics, the marks, the report, and the sound of this session from the folder of the practice sessions. Files that you exported before stay. You cannot undo this."
+            }
         }
     }
 }

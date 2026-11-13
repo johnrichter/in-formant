@@ -325,6 +325,7 @@ QVariantList PracticeWrapper::sessions()
         const PracticeRecord &r = records[i];
         QVariantMap m;
         m["id"] = r.id;
+        m["folder"] = r.folder;
         m["start"] = r.start.toString("yyyy-MM-dd HH:mm");
         m["minutes"] = r.duration / 60.0;
         m["tag"] = r.tag;
@@ -334,6 +335,29 @@ QVariantList PracticeWrapper::sessions()
         out << m;
     }
     return out;
+}
+
+bool PracticeWrapper::deleteSession(const QString &sessionFolder)
+{
+    // The sound of the newest session can still be in the write. Wait for it, so that no file appears in a
+    // folder that is gone. The write of a few minutes of sound takes a fraction of a second.
+    if (mSoundThread.joinable()) mSoundThread.join();
+
+    // The session is the one in this folder. The program reads the list again, so only a real session of the
+    // library can match. Two copies with the same id in two folders stay apart.
+    PracticeLibrary library(folder());
+    for (const PracticeRecord &r : library.list()) {
+        if (r.folder != sessionFolder) continue;
+        if (!library.remove(r)) {
+            mSession->showStatus(QStringLiteral("The practice session could not be deleted"));
+            return false;
+        }
+        mSession->showStatus(QStringLiteral("The practice session is deleted"));
+        emit deleted();
+        return true;
+    }
+    mSession->showStatus(QStringLiteral("The practice session was not found"));
+    return false;
 }
 
 QStringList PracticeWrapper::libraryTags()

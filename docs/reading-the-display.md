@@ -142,6 +142,7 @@ The Practice button below the graph starts a session on the live capture. Choose
 - The app discards a session that is shorter than the minimum time, with no question. The minimum is 5 seconds by default, and the General tab of the settings changes it.
 - A folder for the session holds the statistics, a report, the marks, and the sound. The General tab of the settings sets the folder. The default is Documents/InFormant/Practice.
 - The Progress button opens a chart of your change. Choose a measure, a task, and a period. Compare like with like. A formant median over mixed tasks says little.
+- The Progress window also lists your sessions. To delete one, press Delete next to it, and confirm. This removes the session folder and its sound. Files that you exported before stay.
 
 ## The synthesizer
 

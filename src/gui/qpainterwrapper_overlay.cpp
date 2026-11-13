@@ -7,6 +7,7 @@
 #include "gridlines.h"
 #include "gridcolor.h"
 #include "bands.h"
+#include "trackruns.h"
 #include "../context/timings.h"
 #include <QElapsedTimer>
 #include <algorithm>
@@ -23,13 +24,6 @@ namespace {
 const QColor outlineColor(0, 0, 0, 255);
 const QColor tickColor(255, 255, 255, 235);
 const QColor titleColor(200, 200, 210, 230);
-
-// One point of a track in the time and the transformed frequency.
-struct TrackPoint {
-    double time;
-    double value;
-    bool valid;
-};
 
 }
 
@@ -377,40 +371,8 @@ void drawTrackPoints(Gui::CanvasRenderer *p, const Gui::RenderOptions &o,
                      const QColor &color,
                      int style)
 {
-    // Split the track into runs. A run has no frame without a value.
-    std::vector<std::vector<size_t>> runs;
-    std::vector<size_t> current;
-    // A run also ends at a long time gap and at a jump of the value. A line across a jump
-    // shows a change that never happened, for example an octave error of the pitch.
-    std::vector<double> gaps;
-    for (size_t i = 1; i < points.size(); ++i) {
-        gaps.push_back(std::fabs(points[i].time - points[i - 1].time));
-    }
-    double medianGap = 0.0;
-    if (!gaps.empty()) {
-        std::nth_element(gaps.begin(), gaps.begin() + gaps.size() / 2, gaps.end());
-        medianGap = gaps[gaps.size() / 2];
-    }
-    const double maxGap = medianGap > 0 ? 3.0 * medianGap : 1e9;
-
-    for (size_t i = 0; i < points.size(); ++i) {
-        if (points[i].valid) {
-            if (!current.empty()) {
-                const size_t prev = current.back();
-                if (std::fabs(points[i].time - points[prev].time) > maxGap
-                    || std::fabs(toY(points[i].value) - toY(points[prev].value)) > maxJump) {
-                    runs.push_back(std::move(current));
-                    current.clear();
-                }
-            }
-            current.push_back(i);
-        }
-        else if (!current.empty()) {
-            runs.push_back(std::move(current));
-            current.clear();
-        }
-    }
-    if (!current.empty()) runs.push_back(std::move(current));
+    // Split the track into runs. A run has no frame without a value, no long time gap, and no jump of the value.
+    const std::vector<std::vector<size_t>> runs = splitTrackRuns(points, toY, maxJump);
 
     const bool drawLines = (style & 2) != 0;
     const bool drawDots = (style & 1) != 0;
@@ -472,6 +434,13 @@ void drawTrackPoints(Gui::CanvasRenderer *p, const Gui::RenderOptions &o,
 
 }
 
+double QPainterWrapper::trackJumpLimitPixels()
+{
+    // The height of a jump of the limit in semitones, measured at the low end of the view range, where it is smallest.
+    const double pixels = trackJumpPixels([this](double f) { return mapFrequencyToY(f); }, mMinFrequency, mMaxFrequency);
+    return trackJumpLimit(plotHeight(), pixels);
+}
+
 void QPainterWrapper::drawFrequencyTrack(
             const TimeTrack<double>::const_iterator& begin,
             const TimeTrack<double>::const_iterator& end,
@@ -485,7 +454,7 @@ void QPainterWrapper::drawFrequencyTrack(
     drawTrackPoints(p, mOptions, points,
                     [this](double t) { return mapTimeToX(t); },
                     [this](double f) { return mapFrequencyToY(f); },
-                    0.1 * plotHeight(),
+                    trackJumpLimitPixels(),
                     color,
                     style);
 }
@@ -516,7 +485,7 @@ void QPainterWrapper::drawFrequencyTrack(
                         const double vmax = transformFrequency(mMaxFrequency);
                         return plotHeight() * (1.0 - (v - vmin) / (vmax - vmin));
                     },
-                    0.1 * plotHeight(),
+                    trackJumpLimitPixels(),
                     color,
                     style);
 }

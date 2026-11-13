@@ -51,6 +51,9 @@ namespace Main {
 
     struct PracticeRecord {
         QString id;             // for example 20261113-091500
+        // The folder where the list function found session.json. It is not in the file. A record that the
+        // program builds has no folder, and the library then uses the folder that follows from the date and the id.
+        QString folder;
         QDateTime start;
         double duration = 0.0;  // seconds
         QString tag;            // the task, for example "Vowels"
@@ -173,6 +176,14 @@ namespace Main {
 
         // All sessions, oldest first. A folder with a broken file is skipped.
         QList<PracticeRecord> list() const;
+
+        // Delete the folder of one session with all its files. The folder is the one that the list function found
+        // (the member folder of the record). Then delete each parent folder (day, month, year) that is empty now,
+        // but never the root. The result is false, and nothing is deleted, when the folder does not exist, has no
+        // session.json, is not at the depth root/YYYY/MM/DD/<id> with the id as its name, or lies outside the root.
+        // A session.json with an id like "../x" can never delete a folder outside the library. A copy of a session
+        // in another place of the library, for example root/backup/..., is refused and stays.
+        bool remove(const PracticeRecord &record) const;
 
     private:
         QString mRoot;

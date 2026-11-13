@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 #include "../src/context/practicelib.h"
 #include <QTemporaryDir>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QElapsedTimer>
 #include <QJsonDocument>
 #include <QTimeZone>
@@ -935,4 +938,282 @@ TEST(PracticeFiles, TheMinimumLengthOfASessionHasAnUpperLimit)
     EXPECT_EQ(practiceMinimumSeconds(std::numeric_limits<double>::infinity()), 3600.0);
     EXPECT_EQ(practiceMinimumSeconds(std::numeric_limits<double>::quiet_NaN()), 1.0);
     EXPECT_EQ(practiceMinimumSeconds(30), 30.0);
+}
+
+namespace {
+
+// A saved session with a report and a sound file, as the program writes it.
+void saveWithFiles(const PracticeLibrary &library, const PracticeRecord &r)
+{
+    ASSERT_TRUE(library.save(r));
+    ASSERT_TRUE(writeBundleText(library.sessionFolder(r), r, "report of " + r.id));
+    QFile sound(library.sessionFolder(r) + "/audio.wav");
+    ASSERT_TRUE(sound.open(QIODevice::WriteOnly));
+    sound.write("RIFF");
+}
+
+}
+
+// Delete one session. Its folder goes with every file, and the other sessions stay.
+TEST(PracticeDelete, TP_PRG_14_TheFolderOfOneSessionGoesAndTheOthersStay)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    PracticeLibrary library(dir.path());
+
+    const PracticeRecord a = make("20261113-090000", "2026-11-13T09:00:00", "Free", 180.0);
+    const PracticeRecord b = make("20261113-100000", "2026-11-13T10:00:00", "Vowels", 190.0);
+    saveWithFiles(library, a);
+    saveWithFiles(library, b);
+
+    EXPECT_TRUE(library.remove(a));
+    EXPECT_FALSE(QDir(library.sessionFolder(a)).exists());
+    EXPECT_FALSE(QFile::exists(library.sessionFolder(a) + "/audio.wav"));
+
+    // The other session on the same day stays, and so does its day folder.
+    EXPECT_TRUE(QFile::exists(library.sessionFolder(b) + "/session.json"));
+    EXPECT_TRUE(QFile::exists(library.sessionFolder(b) + "/audio.wav"));
+    const QList<PracticeRecord> left = library.list();
+    ASSERT_EQ(left.size(), 1);
+    EXPECT_EQ(left[0].id, b.id);
+}
+
+// The day, the month, and the year folders go when no session keeps them. The root and the busy folders stay.
+TEST(PracticeDelete, TP_PRG_14_EmptyParentFoldersGoButTheRootAndBusyFoldersStay)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    PracticeLibrary library(dir.path());
+
+    const PracticeRecord only = make("20261113-090000", "2026-11-13T09:00:00", "Free", 180.0);
+    const PracticeRecord sameMonth = make("20261120-090000", "2026-11-20T09:00:00", "Free", 181.0);
+    const PracticeRecord otherYear = make("20251201-090000", "2025-12-01T09:00:00", "Free", 182.0);
+    saveWithFiles(library, only);
+    saveWithFiles(library, sameMonth);
+    saveWithFiles(library, otherYear);
+
+    // The day 13 is empty after the delete, so it goes. The month 11 keeps the day 20, and so does the year.
+    EXPECT_TRUE(library.remove(only));
+    EXPECT_FALSE(QDir(dir.path() + "/2026/11/13").exists());
+    EXPECT_TRUE(QDir(dir.path() + "/2026/11/20").exists());
+    EXPECT_TRUE(QDir(dir.path() + "/2026/11").exists());
+
+    // Now the month and the year go, and the other year stays.
+    EXPECT_TRUE(library.remove(sameMonth));
+    EXPECT_FALSE(QDir(dir.path() + "/2026").exists());
+    EXPECT_TRUE(QDir(dir.path() + "/2025/12/01").exists());
+
+    // The last session goes, and the root stays.
+    EXPECT_TRUE(library.remove(otherYear));
+    EXPECT_FALSE(QDir(dir.path() + "/2025").exists());
+    EXPECT_TRUE(QDir(dir.path()).exists());
+    EXPECT_TRUE(library.list().isEmpty());
+}
+
+// A file that the person put in the day folder is not a session, so the day folder stays.
+TEST(PracticeDelete, TP_PRG_14_AFileOfThePersonKeepsItsFolder)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    PracticeLibrary library(dir.path());
+
+    const PracticeRecord r = make("20261113-090000", "2026-11-13T09:00:00", "Free", 180.0);
+    saveWithFiles(library, r);
+    QFile note(dir.path() + "/2026/11/13/my-notes.txt");
+    ASSERT_TRUE(note.open(QIODevice::WriteOnly));
+    note.write("keep me");
+    note.close();
+
+    EXPECT_TRUE(library.remove(r));
+    EXPECT_TRUE(QFile::exists(dir.path() + "/2026/11/13/my-notes.txt"));
+}
+
+// A session that does not exist gives false and deletes nothing. A second delete of the same session gives false.
+TEST(PracticeDelete, TP_PRG_14_ASessionThatIsNotThereGivesFalse)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    PracticeLibrary library(dir.path());
+
+    const PracticeRecord kept = make("20261113-090000", "2026-11-13T09:00:00", "Free", 180.0);
+    const PracticeRecord ghost = make("20261114-090000", "2026-11-14T09:00:00", "Free", 180.0);
+    saveWithFiles(library, kept);
+
+    EXPECT_FALSE(library.remove(ghost));
+    EXPECT_TRUE(QFile::exists(library.sessionFolder(kept) + "/session.json"));
+
+    EXPECT_TRUE(library.remove(kept));
+    EXPECT_FALSE(library.remove(kept));
+
+    // A library folder that does not exist gives false, with no error.
+    EXPECT_FALSE(PracticeLibrary(dir.path() + "/missing").remove(kept));
+    EXPECT_FALSE(PracticeLibrary(QString()).remove(kept));
+}
+
+// A folder with no session.json is not a session. It stays, even when its name matches the id.
+TEST(PracticeDelete, TP_PRG_14_AFolderWithNoSessionFileStays)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    PracticeLibrary library(dir.path());
+
+    const PracticeRecord r = make("20261113-090000", "2026-11-13T09:00:00", "Free", 180.0);
+    ASSERT_TRUE(QDir().mkpath(library.sessionFolder(r)));
+    QFile other(library.sessionFolder(r) + "/important.txt");
+    ASSERT_TRUE(other.open(QIODevice::WriteOnly));
+    other.write("data");
+    other.close();
+
+    EXPECT_FALSE(library.remove(r));
+    EXPECT_TRUE(QFile::exists(library.sessionFolder(r) + "/important.txt"));
+}
+
+// A session.json with an id like "../x" must never delete a folder outside its day, and never outside the library.
+TEST(PracticeDelete, TP_PRG_14_AnIdWithPathPartsDeletesNothing)
+{
+    QTemporaryDir outer;
+    ASSERT_TRUE(outer.isValid());
+    const QString rootPath = outer.path() + "/library";
+    ASSERT_TRUE(QDir().mkpath(rootPath));
+    PracticeLibrary library(rootPath);
+
+    // A folder outside the library, with a session.json, that the bad id points to.
+    const QString victim = outer.path() + "/victim";
+    ASSERT_TRUE(QDir().mkpath(victim));
+    QFile victimFile(victim + "/session.json");
+    ASSERT_TRUE(victimFile.open(QIODevice::WriteOnly));
+    victimFile.write("{}");
+    victimFile.close();
+
+    const PracticeRecord good = make("20261113-090000", "2026-11-13T09:00:00", "Free", 180.0);
+    saveWithFiles(library, good);
+
+    for (const QString &badId : { QString("../../../../victim"), QString("../../../../../victim"), QString(".."),
+                                  QString("../"), QString("."), QString("/"), QString("../20261113-090000"),
+                                  QString("a/b") }) {
+        PracticeRecord bad = good;
+        bad.id = badId;
+        EXPECT_FALSE(library.remove(bad)) << badId.toStdString();
+    }
+    EXPECT_TRUE(QFile::exists(victim + "/session.json"));
+    EXPECT_TRUE(QFile::exists(library.sessionFolder(good) + "/session.json"));
+
+    // A record with an empty id deletes nothing.
+    PracticeRecord empty = good;
+    empty.id.clear();
+    EXPECT_FALSE(library.remove(empty));
+    EXPECT_TRUE(QFile::exists(library.sessionFolder(good) + "/session.json"));
+}
+
+// A session folder that is a link to a folder outside the library is refused, and the target stays.
+TEST(PracticeDelete, TP_PRG_14_ALinkOutOfTheLibraryIsNotFollowed)
+{
+    QTemporaryDir outer;
+    ASSERT_TRUE(outer.isValid());
+    const QString rootPath = outer.path() + "/library";
+    PracticeLibrary library(rootPath);
+
+    const PracticeRecord r = make("20261113-090000", "2026-11-13T09:00:00", "Free", 180.0);
+    const QString target = outer.path() + "/elsewhere";
+    ASSERT_TRUE(QDir().mkpath(target));
+    QFile targetFile(target + "/session.json");
+    ASSERT_TRUE(targetFile.open(QIODevice::WriteOnly));
+    targetFile.write("{}");
+    targetFile.close();
+
+    ASSERT_TRUE(QDir().mkpath(QFileInfo(library.sessionFolder(r)).absolutePath()));
+    ASSERT_TRUE(QFile::link(target, library.sessionFolder(r)));
+
+    EXPECT_FALSE(library.remove(r));
+    EXPECT_TRUE(QFile::exists(target + "/session.json"));
+}
+
+// The list gives the folder where it found each session, and remove deletes exactly that folder.
+TEST(PracticeDelete, TP_PRG_14_TheListGivesTheFolderAndRemoveDeletesThatFolder)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    PracticeLibrary library(dir.path());
+
+    const PracticeRecord a = make("20261113-090000", "2026-11-13T09:00:00", "Free", 180.0);
+    const PracticeRecord b = make("20261114-090000", "2026-11-14T09:00:00", "Free", 181.0);
+    saveWithFiles(library, a);
+    saveWithFiles(library, b);
+
+    const QList<PracticeRecord> listed = library.list();
+    ASSERT_EQ(listed.size(), 2);
+    EXPECT_EQ(QFileInfo(listed[0].folder).canonicalFilePath(), QFileInfo(library.sessionFolder(a)).canonicalFilePath());
+
+    EXPECT_TRUE(library.remove(listed[0]));
+    EXPECT_FALSE(QDir(library.sessionFolder(a)).exists());
+    EXPECT_TRUE(QDir(library.sessionFolder(b)).exists());
+}
+
+// A copy of a session in another place of the library, with the same id, is a second row in the list. A delete of
+// one row must never delete the other. The copy is not at the depth of a session folder, so it is refused and stays.
+TEST(PracticeDelete, TP_PRG_14_ACopyWithTheSameIdIsNotDeletedByTheDeleteOfTheOriginal)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    PracticeLibrary library(dir.path());
+
+    const PracticeRecord original = make("20261113-090000", "2026-11-13T09:00:00", "Free", 180.0);
+    saveWithFiles(library, original);
+
+    // The person copies the folder into a backup folder of the library.
+    const QString copy = dir.path() + "/backup/2026/11/13/20261113-090000";
+    ASSERT_TRUE(QDir().mkpath(copy));
+    for (const QString &name : QDir(library.sessionFolder(original)).entryList(QDir::Files)) {
+        ASSERT_TRUE(QFile::copy(library.sessionFolder(original) + "/" + name, copy + "/" + name));
+    }
+
+    const QList<PracticeRecord> listed = library.list();
+    ASSERT_EQ(listed.size(), 2);
+
+    for (const PracticeRecord &row : listed) {
+        const bool isCopy = row.folder.contains("/backup/");
+        if (isCopy) {
+            // The delete of the copy is refused, and the original stays.
+            EXPECT_FALSE(library.remove(row));
+            EXPECT_TRUE(QDir(library.sessionFolder(original)).exists());
+            EXPECT_TRUE(QDir(copy).exists());
+        }
+    }
+    for (const PracticeRecord &row : library.list()) {
+        if (!row.folder.contains("/backup/")) EXPECT_TRUE(library.remove(row));
+    }
+
+    // The original is gone, and the copy stays.
+    EXPECT_FALSE(QDir(library.sessionFolder(original)).exists());
+    EXPECT_TRUE(QFile::exists(copy + "/session.json"));
+}
+
+// A record whose folder is outside the library is refused, even when its id looks right.
+TEST(PracticeDelete, TP_PRG_14_AFolderOutsideTheLibraryIsRefused)
+{
+    QTemporaryDir outer;
+    ASSERT_TRUE(outer.isValid());
+    const QString rootPath = outer.path() + "/library";
+    ASSERT_TRUE(QDir().mkpath(rootPath));
+    PracticeLibrary library(rootPath);
+
+    const QString other = outer.path() + "/2026/11/13/20261113-090000";
+    ASSERT_TRUE(QDir().mkpath(other));
+    QFile file(other + "/session.json");
+    ASSERT_TRUE(file.open(QIODevice::WriteOnly));
+    file.write("{}");
+    file.close();
+
+    PracticeRecord r = make("20261113-090000", "2026-11-13T09:00:00", "Free", 180.0);
+    r.folder = other;
+    EXPECT_FALSE(library.remove(r));
+    EXPECT_TRUE(QFile::exists(other + "/session.json"));
+
+    // The root itself and a year folder are refused.
+    saveWithFiles(library, make("20261113-090000", "2026-11-13T09:00:00", "Free", 180.0));
+    r.folder = rootPath;
+    EXPECT_FALSE(library.remove(r));
+    r.folder = rootPath + "/2026";
+    EXPECT_FALSE(library.remove(r));
+    EXPECT_TRUE(QDir(rootPath + "/2026/11/13/20261113-090000").exists());
 }

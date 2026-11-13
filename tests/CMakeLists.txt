@@ -53,6 +53,7 @@ informant_add_test(NAME oklab_tests SOURCES oklab_test.cpp LABELS oklab)
 informant_add_test(NAME map_layout_tests SOURCES map_layout_test.cpp LABELS map_layout)
 informant_add_test(NAME ui_scale_tests SOURCES ui_scale_test.cpp LABELS ui_scale)
 informant_add_test(NAME ticks_tests SOURCES ticks_test.cpp ${SRC}/gui/ticks.cpp LABELS ticks)
+informant_add_test(NAME track_runs_tests SOURCES track_runs_test.cpp LABELS track_runs)
 
 # The migration of the settings file needs the TOML library.
 add_library(tomlpp_for_tests STATIC ${SRC}/tomlplusplus.cpp)

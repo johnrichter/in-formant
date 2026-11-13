@@ -608,6 +608,31 @@ TEST(Capture, TP_CAP_20_TheProgramAsksTheMicrophoneThroughAVFoundation)
     EXPECT_NE(qml.find("sessionControl.openMicrophoneSettings()"), std::string::npos);
 }
 
+// The Progress window lists the sessions, and a Delete button with a question deletes one. The question has a Cancel
+// button, and it says that the exported files stay. The program has the call that deletes a session by its id.
+TEST(Practice, TP_PRG_18_TheProgressWindowCanDeleteASessionAfterAQuestion)
+{
+    const std::string qml = readFile(root / "src/qml/ProgressWindow.qml");
+    EXPECT_NE(qml.find("objectName: \"sessionTable\""), std::string::npos);
+    EXPECT_NE(qml.find("objectName: \"deleteSession\""), std::string::npos);
+    EXPECT_NE(qml.find("deleteSessionDialog"), std::string::npos);
+    EXPECT_NE(qml.find("Dialog.Ok | Dialog.Cancel"), std::string::npos);
+    EXPECT_NE(qml.find("practice.deleteSession(target.folder)"), std::string::npos);
+    EXPECT_NE(qml.find("function onFolderChanged()"), std::string::npos);
+    EXPECT_NE(qml.find("Files that you exported before stay"), std::string::npos);
+    EXPECT_NE(qml.find("function onDeleted()"), std::string::npos);
+
+    // A press of Delete opens the question first. No path calls the delete without the question.
+    const size_t call = qml.find("practice.deleteSession");
+    ASSERT_NE(call, std::string::npos);
+    EXPECT_EQ(qml.find("practice.deleteSession", call + 1), std::string::npos);
+    EXPECT_NE(qml.find("deleteDialog.open()"), std::string::npos);
+
+    const std::string wrapper = readFile(root / "src/context/practicewrapper.h");
+    EXPECT_NE(wrapper.find("Q_INVOKABLE bool deleteSession(const QString &sessionFolder);"), std::string::npos);
+    EXPECT_NE(wrapper.find("void deleted();"), std::string::npos);
+}
+
 namespace {
 
 struct Block {

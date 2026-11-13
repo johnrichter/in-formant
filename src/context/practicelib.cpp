@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <algorithm>
@@ -539,18 +540,44 @@ bool PracticeLibrary::save(const PracticeRecord &r) const
     return file.write(bytes) == bytes.size();
 }
 
+bool PracticeLibrary::remove(const PracticeRecord &r) const
+{
+    // The function canonicalFilePath gives an empty text for a path that does not exist, and it resolves links.
+    const QString root = QFileInfo(mRoot).canonicalFilePath();
+    const QString folder = QFileInfo(r.folder.isEmpty() ? sessionFolder(r) : r.folder).canonicalFilePath();
+    if (root.isEmpty() || folder.isEmpty() || r.id.isEmpty()) return false;
+    if (!folder.startsWith(root + "/")) return false;
+
+    // The folder must be a session folder at the depth root/YYYY/MM/DD/<id>, with the id as its name.
+    if (QDir(root).relativeFilePath(folder).split('/').size() != 4) return false;
+    if (QFileInfo(folder).fileName() != r.id) return false;
+    if (!QFile::exists(QDir(folder).filePath("session.json"))) return false;
+
+    if (!QDir(folder).removeRecursively()) return false;
+
+    // Delete the day, the month, and the year when no other session keeps them. The function rmdir fails for a
+    // folder that is not empty, and that ends the loop.
+    QString parent = QFileInfo(folder).absolutePath();
+    while (parent != root && parent.startsWith(root + "/") && QDir().rmdir(parent)) {
+        parent = QFileInfo(parent).absolutePath();
+    }
+    return true;
+}
+
 QList<PracticeRecord> PracticeLibrary::list() const
 {
     QList<PracticeRecord> out;
     QDirIterator it(mRoot, QStringList() << "session.json", QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
-        QFile file(it.next());
+        const QString filePath = it.next();
+        QFile file(filePath);
         if (!file.open(QIODevice::ReadOnly)) continue;
         QJsonParseError error;
         const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &error);
         if (error.error != QJsonParseError::NoError || !doc.isObject()) continue;
         PracticeRecord r = recordFromJson(doc.object());
         if (r.id.isEmpty() || !r.start.isValid()) continue;
+        r.folder = QFileInfo(filePath).absolutePath();
         out.append(r);
     }
     std::sort(out.begin(), out.end(), [](const PracticeRecord &x, const PracticeRecord &y) { return x.start < y.start; });
