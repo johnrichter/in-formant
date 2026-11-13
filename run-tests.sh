@@ -11,14 +11,14 @@
 #
 # Settings (environment variables):
 #   BUILD_TYPE   The build type (default Debug)
-#   QT_VERSION   The Qt version of build-macos.sh (default 6.8.3)
+#   QT_VERSION   The Qt version of build-macos.sh (default 6.12.0)
 #   WORK_DIR     The folder of build-macos.sh (default build/native)
 #   JOBS         The number of parallel jobs (default: the number of CPU cores)
 
 set -euo pipefail
 
 BUILD_TYPE=${BUILD_TYPE:-Debug}
-QT_VERSION=${QT_VERSION:-6.8.3}
+QT_VERSION=${QT_VERSION:-6.12.0}
 MIN_MACOS=27.0
 
 root=$(cd "$(dirname "$0")" && pwd)
@@ -47,6 +47,11 @@ export MACOSX_DEPLOYMENT_TARGET=$MIN_MACOS
 export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
 export PKG_CONFIG_LIBDIR=$prefix/lib/pkgconfig
 unset PKG_CONFIG_PATH
+
+# CMake keeps the path of Qt in its cache. A build folder that used another Qt version links the wrong libraries.
+if [ -f "$build/CMakeCache.txt" ] && ! grep -q "^Qt6_DIR:PATH=$qt_dir/" "$build/CMakeCache.txt"; then
+    rm -rf "$build"
+fi
 
 cmake -S "$root" -B "$build" -G Ninja \
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \

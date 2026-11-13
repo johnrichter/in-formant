@@ -51,7 +51,7 @@ Each "Limits" block in a report named things that the project did not test. This
 - **The 16 dB headroom darkens the default Magma theme.** TP-COL-08.
 - **The warm-up ranks are a judgment from search summaries.** TP-DOC-07.
 - **The formant tracker is not reliable above about 400 Hz.** TP-ANA-01.
-- **The Qt 6.8.3 build was verified on one Mac.** TP-REL-02, TP-REL-03.
+- **The Qt 6.12.0 build was verified on one Mac.** TP-REL-02, TP-REL-03.
 - **Old clones must clone again.** TP-REL-06.
 - **The Escape key and a quit with the question open were not tried by hand.** TP-PRA-33, TP-PRA-34.
 - **The text in the graph is not on the type scale.** TP-UI-16.
@@ -560,12 +560,14 @@ The scroll views of the settings, the help pages, the help boxes, the Synthesize
 ## 20. Build, release, and platform
 
 - **TP-REL-01** (Manual, P1). Build the Release app and the disk image from a clean clone. Expect no error.
-- **TP-REL-02** (Manual, P1). Start the app from the disk image on another Mac. The build was verified only on one Mac with macOS 27 and Qt 6.8.3.
+- **TP-REL-02** (Manual, P1). Start the app from the disk image on another Mac. The build was verified only on one Mac with macOS 27 and Qt 6.12.0.
 - **TP-REL-03** (Manual, P2). Build and start the app on macOS 27.0, the oldest version that the fork supports. Expect a start with no error.
 - **TP-REL-04** (Manual, P2). Check that each binary file is in Git LFS and that `git lfs status` shows no screenshot, helper script, or test hook.
 - **TP-REL-05** (Unit, P1). Check that the test hook is not in `src/context/guicontext.cpp` of a release commit.
 - **TP-REL-06** (Manual, P3). Clone the old history and read the notes. Expect a clear message that old clones must clone again.
 - **TP-REL-07** (Manual, P3). Run the app with the Sound settings of the system set to a sample rate of 8000, 48000, and 192000 Hz.
+- **TP-REL-09** (Unit, P1). Check that the build script downloads over https only and checks a pinned SHA-256 checksum for each download. Check that it pins the Python tools and that both scripts use the same Qt version.
+- **TP-REL-10** (Manual, P1). Change `QT_VERSION` and run `build-macos.sh` on a used build folder. Expect the script to delete the old build folder, and the app to link the new Qt.
 - **TP-REL-08** (Unit, P1). Check that the code of the app has no condition for another system, no choice of audio backend, and no optional library. Check that the build file stops on any other system.
 
 ## 21. Load and long sessions

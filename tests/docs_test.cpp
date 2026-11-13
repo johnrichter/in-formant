@@ -506,6 +506,45 @@ TEST(Release, TP_REL_08_TheSourceHasNoCodeForOtherSystems)
     EXPECT_EQ(cmake.find("MSVC"), std::string::npos);
 }
 
+// The build script downloads only over https, checks a pinned SHA-256 checksum of each download, and pins the
+// versions of its Python tools. The test script uses the same Qt version as the build script.
+TEST(Release, TP_REL_09_TheBuildScriptPinsAndChecksItsDownloads)
+{
+    const std::string build = readFile(root / "build-macos.sh");
+    EXPECT_EQ(build.find("http://"), std::string::npos);
+
+    int fetches = 0;
+    for (const std::string &line : readLines(root / "build-macos.sh")) {
+        if (line.find("    fetch ") == 0) {
+            ++fetches;
+            EXPECT_NE(line.find("_SHA256\""), std::string::npos) << line;
+        }
+    }
+    EXPECT_EQ(fetches, 3);
+
+    for (const char *name : { "FFTW_SHA256=", "PORTAUDIO_SHA256=", "EIGEN_SHA256=" }) {
+        const size_t at = build.find(name);
+        ASSERT_NE(at, std::string::npos) << name;
+        const std::string sum = build.substr(at + std::string(name).size(), 64);
+        EXPECT_EQ(sum.find_first_not_of("0123456789abcdef"), std::string::npos) << name;
+        EXPECT_EQ(build[at + std::string(name).size() + 64], '\n') << name;
+    }
+
+    for (const char *pin : { "AQT_VERSION=", "CMAKE_VERSION=", "NINJA_VERSION=" }) {
+        EXPECT_NE(build.find(pin), std::string::npos) << pin;
+    }
+
+    // Both scripts name the same Qt version.
+    const auto qtVersion = [](const std::string &text) {
+        const std::string key = "QT_VERSION=${QT_VERSION:-";
+        const size_t at = text.find(key);
+        return at == std::string::npos ? std::string() : text.substr(at + key.size(), text.find('}', at) - at - key.size());
+    };
+    const std::string tests = readFile(root / "run-tests.sh");
+    EXPECT_FALSE(qtVersion(build).empty());
+    EXPECT_EQ(qtVersion(build), qtVersion(tests));
+}
+
 namespace {
 
 struct Block {

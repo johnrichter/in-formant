@@ -62,11 +62,11 @@ hdiutil attach -readonly dist/InFormant-*-macOS-arm64.dmg
 The script writes its downloads and build files in `build/native`. It reads these settings from the environment:
 
 * `BUILD_TYPE`: `Release` (default), `RelWithDebInfo`, or `Debug`.
-* `QT_VERSION`: The Qt version that `aqtinstall` installs. The default is 6.8.3.
+* `QT_VERSION`: The Qt version that `aqtinstall` installs. The default is 6.12.0.
 * `WORK_DIR`: The folder for downloads and build files. The default is `build/native`.
 * `JOBS`: The number of parallel jobs. The default is the number of CPU cores.
 
-The `macdeployqt` tool prints `ERROR: no file at ".../libiodbc.2.dylib"` and `ERROR: no file at ".../libpq.5.dylib"`. These messages come from the optional Qt SQL plugins. The application does not use them. Ignore these messages.
+The `macdeployqt` tool prints `ERROR: no file at ".../libiodbc.2.dylib"`, `ERROR: no file at ".../libpq.5.dylib"`, and `ERROR: no file at ".../libmimerapi.dylib"`. These messages come from the optional Qt SQL plugins. The application does not use them. Ignore these messages.
 
 ### Run the unit tests
 
@@ -89,8 +89,9 @@ The script `tests/check_plan_coverage.py` checks that each case of type Unit in 
 Build system:
 
 * **Native build:** The script `build-macos.sh` installs Qt with `aqtinstall` in a Python virtual environment. It builds FFTW 3.3.10 and PortAudio 19.7, and it installs Eigen 3.4.0, in a local folder. Then it builds the application with CMake and Ninja.
+* **Pinned downloads:** The script checks a SHA-256 checksum for FFTW, PortAudio, and Eigen, and it downloads over https only. It pins the versions of `aqtinstall`, CMake, and Ninja. It deletes the build folder when the Qt version changes. It needs the macOS 27 SDK.
 * **Minimum version:** The deployment target is macOS 27.0. The CMake file sets it, and `LSMinimumSystemVersion` in `dist-res/Info.plist` states it.
-* **AGL framework:** The macOS 27 SDK has no AGL framework, but Qt 6.8.3 links it. The CMake file replaces it with the OpenGL framework.
+* **AGL framework:** The macOS 27 SDK has no AGL framework, but Qt 6.12.0 links it. The CMake file replaces it with the OpenGL framework.
 * **Libraries:** The script gives the `macdeployqt` tool the folders of FreeType and libsamplerate, so the bundle has both libraries. The search for packages ignores `/opt/homebrew`, so the build never mixes in other versions.
 * **Signature:** The `macdeployqt` tool changes library paths, and this invalidates the signatures. Apple silicon refuses to run an arm64 file with an invalid signature. The script signs the whole bundle again (ad hoc) and verifies it.
 * **Disk image:** The script makes a compressed disk image with `hdiutil`.
@@ -167,7 +168,7 @@ Application:
 
 * The checks launched the application, saved a picture of the window, and confirmed the toolbar, the axes, and the text. Speech from a loudspeaker, picked up by the microphone, drew the spectrogram, the pitch track, and the formant tracks.
 * The checks used the built-in input path of one Mac with a USB webcam microphone. Other input devices are not tested.
-* The native build is tested on one Mac with macOS 27.0.1 and Qt 6.8.3. The application starts, shows the window, and quits with no crash report.
+* The native build is tested on one Mac with macOS 27.0.1 and Qt 6.12.0. The application starts, shows the window, and quits with no crash report.
 * The application has an ad hoc signature and no notarization.
 * The application reads its configuration from `~/Library/Application/informant.conf`.
 * The checks of the playback confirmed the data flow, the position, and the view that follows the sound. Nobody listened to the sound.
