@@ -36,7 +36,7 @@ All spaces are multiples of 4 pixels.
 - **xs, 4.** Between a label or a slider and its hint.
 - **sm, 8.** Between a label and its control, and between a switch and its hint.
 - **md, 12.** Between two controls of one group.
-- **lg, 16.** The margin of a small window, and the space above the first heading.
+- **lg, 16.** The margin of a small window.
 - **xl, 24.** The margin of a large window, and the space between groups.
 - **xxl, 32.** The space between large parts.
 - **xxxl, 48.** The space around an empty state.
@@ -62,15 +62,30 @@ All controls and boxes use the same corner radius: 8 pixels (the medium radius).
 5. **Enough contrast.** Each text colour has a contrast of at least 4.5 to 1 against the window and the surface. The primary colour is for headings, labels, and values. The secondary colour is for hints and units. The tertiary colour is for the least important text.
 6. **Numbers in columns.** A value that changes uses the monospace font, so the digits keep their width.
 7. **One place for the numbers.** A window reads the scale through the context property `ui` (`ui.type`, `ui.space`, `ui.radius`, `ui.color`, `ui.font`, `ui.measure`). A window does not use its own number for a size or a space.
-8. **Every control explains itself.** A control has a grey hint under it when its name does not say what it does.
+8. **Every control explains itself.** A control has a grey hint under it when its name does not say what it does. A "?" button (the component `HelpButton`) next to a setting opens a box with a longer explanation. The box scrolls when the text is long. It adds detail and does not replace the hint.
 
 ## How to use the scale in a window
 
-- Use the component `Heading` for a heading, and set `first: true` for the first heading of a page.
+- Use the component `Heading` for a heading, and set `first: true` for the first heading of a page. Each heading has 24 pixels above it, also the first one. A pane has 32 pixels of space below its last control.
 - Use the component `Hint` for a line of explanation. The option controls `OptionSwitch` and `OptionSlider` and the lists `ConfigCombo` and `ConfigSlider` take a `hint` property.
 - Set the spacing of a column to `ui.space.md`. Set the margin of a window to `ui.space.lg` or `ui.space.xl`.
 - Set `font.pixelSize: ui.type.body` on the window. Use `ui.type.caption` for dense toolbars.
 - Set `font.family: ui.font.mono` on a number, a number field, or a label that lines up.
+
+## The scale of the help pages
+
+A help page is long text, so it has its own scale. The numbers are in `UiScale::Prose` in `src/gui/uiscale.h`, and the unit test `ui_scale` checks the rules. The class `HelpStyle` applies the scale to a page after Qt parses the Markdown.
+
+Three sources shaped the rules: the typography plugin of Tailwind CSS (a body line of 1.75, a gap of 1.25 em between paragraphs, a gap of 0.5 em between list items), the book "Refactoring UI" (more space above a heading than below it), and the habits of long-form blogs (a column of 60 to 80 characters).
+
+- **Body.** 16 pixels on a line of 28 pixels. Long text needs more air than the controls of a window.
+- **Headings.** 28, 22, and 18 pixels, all bold. A heading has a tight line, 1.25 to 1.6 times its size, because a short line of large text needs less air.
+- **Code and tables.** 14 pixels on a line of 24. Inline code has a dark background.
+- **Gaps.** 20 pixels below a paragraph, a list, a table, or a code block. 8 pixels between two list items. A heading has 48 pixels above it (level 2) or 32 pixels (level 3), and 12 or 8 pixels below it. A heading then belongs to the text after it.
+- **Column.** 640 pixels wide, centred, with at least 32 pixels of margin. This is about 75 characters in a line.
+- **Colour.** The body is in the secondary colour, and headings and bold text are in the primary colour. Links are lilac and underlined. The table header has a stronger line than the other rows.
+
+Qt adds the bottom margin of a block and the top margin of the next block, and it does not merge them. So the page uses a bottom margin for a normal gap and a top margin only to widen the gap above a heading.
 
 ## Limits
 

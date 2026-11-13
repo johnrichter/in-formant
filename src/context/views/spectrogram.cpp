@@ -142,14 +142,18 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
     const bool live = !fileMode && config->getViewLive();
     double timeEnd;
     if (live) {
-        // The graph starts at time zero at the left, and it fills towards the right. After the
+        // Without the flip, the graph starts at time zero at the left, and it fills towards the right. After the
         // sound fills the width, the graph scrolls. The stamp of a slice is the centre of its
         // window, so the newest slice is older than the newest sound by half a window. The view
         // ends at the time of the newest slice, so the picture reaches the right edge and shows
         // no repeated or empty part.
         const double sliceRate = 2.0 * config->getViewMaxFrequency();
         const double timeDelay = 0.5 * config->getViewFFTSize() / sliceRate;
-        timeEnd = std::max(realTimeEnd - timeDelay, viewDuration);
+        // With the time flipped, the newest sound is always at the left edge, next to the axis, and the old
+        // sound flows to the right. The view then starts before time zero. The part before time zero is empty,
+        // and it fills as the sound grows. Without the flip, the graph fills from the left to the right.
+        timeEnd = config->optionBool("flipTime") ? realTimeEnd - timeDelay
+                                                 : std::max(realTimeEnd - timeDelay, viewDuration);
     }
     else {
         const double length = session.duration();
@@ -216,6 +220,9 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
     painter->beginPlot();
 
     if (showSpectrogram) {
+        // The quietest colour of the theme fills the graph, also where no sound exists yet. The quiet parts of
+        // the picture then join the background, and the edge of the data does not show as a hard line.
+        painter->fillPlotBackground();
         if (useReview) {
             if (!mReview) mReview = std::make_unique<ReviewSpectrogram>(&session);
 

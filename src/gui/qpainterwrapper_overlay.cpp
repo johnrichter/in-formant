@@ -289,12 +289,12 @@ void QPainterWrapper::drawTimeAxis()
 
     // The widest label has the most digits. Use the time labels at the ends as the estimate.
     const double sampleWidth = std::max<double>(
-        p->textBoundsOfSize(4, formatTime(mTimeEnd, 0.001)).width(),
-        p->textBoundsOfSize(4, "00.000").width());
+        p->textBoundsOfSize(4, formatTime(mTimeEnd, 1.0)).width(),
+        p->textBoundsOfSize(4, "000").width());
 
     auto toPixel = [&](double t) { return mapTimeToX(t); };
     const auto ticks = makeTimeTicks(static_cast<TimeTickMode>(mOptions.timeTickMode), mOptions.timeTickStep,
-                                     mTimeStart, mTimeEnd, toPixel, sampleWidth * 0.8, 10.0 * dpr);
+                                     mTimeStart, mTimeEnd, toPixel, sampleWidth, 10.0 * dpr);
 
     std::vector<float> small, medium;
     std::vector<float> large;
@@ -403,16 +403,43 @@ void QPainterWrapper::drawFrequencyBands()
     }
 }
 
+void QPainterWrapper::fillPlotBackground()
+{
+    if (mOptions.theme.colormap.isEmpty()) return;
+    const QColor quiet = QColor::fromRgb(mOptions.theme.colormap[0]);
+    p->drawRoundedRect((float) mPlotLeft, 0.0f, (float) plotWidth(), (float) plotHeight(), 0.0f, quiet);
+}
+
+std::vector<Gui::Tick> QPainterWrapper::frequencyTicks()
+{
+    const double digitHeight = p->textBoundsOfSize(axisLabelSize, "0").height();
+    auto toPixel = [&](double f) { return mapFrequencyToY(f); };
+    return makeFrequencyTicks(static_cast<FrequencyTickMode>(mOptions.freqTickMode), mOptions.freqTickStep,
+                              mMinFrequency, mMaxFrequency, toPixel, digitHeight, 0.9 * digitHeight,
+                              mFrequencyScale == FrequencyScale::Linear,
+                              static_cast<TickDensity>(std::clamp(mOptions.freqTickDensity, 0, 2)));
+}
+
+QColor QPainterWrapper::gridColor(double alphaScale) const
+{
+    // The line is a light tint of the quiet colour of the theme, or a dark tint when the quiet colour is light.
+    // The line has the hue of the theme, so it fits the picture, and it has a large difference in lightness.
+    const QColor quiet = mOptions.theme.colormap.isEmpty() ? QColor(0, 0, 0) : QColor::fromRgb(mOptions.theme.colormap[0]);
+    const bool darkBase = quiet.lightnessF() < 0.5;
+    const QColor target = darkBase ? QColor(255, 255, 255) : QColor(0, 0, 0);
+    const double mix = 0.75;
+    QColor line = QColor::fromRgbF(quiet.redF() * (1 - mix) + target.redF() * mix,
+                                   quiet.greenF() * (1 - mix) + target.greenF() * mix,
+                                   quiet.blueF() * (1 - mix) + target.blueF() * mix);
+    line.setAlphaF(std::clamp(mOptions.gridStrength * alphaScale, 0.0, 1.0));
+    return line;
+}
+
 void QPainterWrapper::drawFrequencyGrid()
 {
     if (!mOptions.gridMajor && !mOptions.gridMinor) return;
 
-    const double digitHeight = p->textBoundsOfSize(3, "0").height();
-
-    // The ticks are the same as the ticks of the axis, so each line is at a tick.
-    auto toPixel = [&](double f) { return mapFrequencyToY(f); };
-    const auto ticks = makeFrequencyTicks(static_cast<FrequencyTickMode>(mOptions.freqTickMode), mOptions.freqTickStep,
-                                          mMinFrequency, mMaxFrequency, toPixel, digitHeight, 0.9 * digitHeight);
+    const auto ticks = frequencyTicks();
 
     std::vector<float> major, minor;
     const double left = mPlotLeft;
@@ -427,12 +454,12 @@ void QPainterWrapper::drawFrequencyGrid()
         target.insert(target.end(), { (float) left, (float) y, (float) right, (float) y });
     }
 
-    // The lines are thin and light, so they stay behind the tracks. The major lines are brighter.
+    // The minor lines are thinner and fainter than the major lines.
     if (mOptions.gridMinor && !minor.empty()) {
-        p->drawSegments(minor.data(), (int) minor.size() / 4, 1.0f, QColor(255, 255, 255, 28));
+        p->drawSegments(minor.data(), (int) minor.size() / 4, 1.0f, gridColor(0.55));
     }
     if (mOptions.gridMajor && !major.empty()) {
-        p->drawSegments(major.data(), (int) major.size() / 4, 1.0f, QColor(255, 255, 255, 70));
+        p->drawSegments(major.data(), (int) major.size() / 4, 1.6f, gridColor(1.0));
     }
 }
 
@@ -442,11 +469,7 @@ void QPainterWrapper::drawFrequencyScale()
     const int width = viewport().width();
     const int height = viewport().height();
 
-    const double digitHeight = p->textBoundsOfSize(3, "0").height();
-
-    auto toPixel = [&](double f) { return mapFrequencyToY(f); };
-    const auto ticks = makeFrequencyTicks(static_cast<FrequencyTickMode>(mOptions.freqTickMode), mOptions.freqTickStep,
-                                          mMinFrequency, mMaxFrequency, toPixel, digitHeight, 0.9 * digitHeight);
+    const auto ticks = frequencyTicks();
 
     std::vector<float> small, medium, large;
 
@@ -474,7 +497,8 @@ void QPainterWrapper::drawFrequencyScale()
         }
 
         if (labeled && mOptions.showAxisLabels) {
-            const int size = tick.level == 0 ? 3 : 4;
+            // All labels have one size, so the axis looks the same along its length.
+            const int size = axisLabelSize;
             const QRect bounds = p->textBoundsOfSize(size, tick.label);
             const double digit = p->textBoundsOfSize(size, "0").height();
             // A label that crosses the top edge, or the lower edge of the graph, is not readable. Skip it.

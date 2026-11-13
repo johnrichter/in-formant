@@ -26,7 +26,7 @@ Press "Reset all" to return every control to its value at the start.
 A voice has two parts. You can change each part alone.
 
 - **The source** is the buzz of the vocal folds. It sets the pitch, and it sets how soft or how pressed the voice sounds. The controls for the source are the pitch, Rd, Tc, the volume, the jitter, and the breath noise.
-- **The filter** is the shape of the throat, the mouth, and the lips. It sets the formants F1 to F4. The formants make the vowel and the colour of the voice.
+- **The filter** is the shape of the throat, the mouth, and the lips. It sets the formants F1 to F4. The formants make the vowel and the color of the voice.
 
 A vowel is a pattern of formants. The same pattern at a low pitch or at a high pitch is the same vowel. A voice that sounds low, dark, or male usually has a low pitch and low formants. A voice that sounds high, bright, or female usually has a high pitch and high formants.
 
@@ -58,7 +58,7 @@ You can reach most vowels with F1 and F2 alone.
 
 - **F1 goes with the opening of the jaw.** A low F1 (300 Hz) is a closed mouth, as in "ee" and "oo". A high F1 (700 to 850 Hz) is an open mouth, as in "ah".
 - **F2 goes with the place of the tongue.** A high F2 (2300 Hz and above) is a tongue at the front, as in "ee". A low F2 (900 Hz) is a tongue at the back and rounded lips, as in "oo".
-- **F3 and F4 give colour.** They change little between vowels. They make the voice sound smaller or larger.
+- **F3 and F4 give color.** They change little between vowels. They make the voice sound smaller or larger.
 - **All formants together** go down when the vocal tract is longer, and they go up when it is shorter. Rounded lips and a low larynx make the tract longer.
 
 ## Recipe 1: hear a vowel

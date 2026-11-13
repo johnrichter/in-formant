@@ -4,12 +4,13 @@ This page explains what you see in InFormant. The other pages use these terms.
 
 ## What the graph shows
 
-- **Spectrogram.** Frequency goes from bottom to top. The colour shows the loudness at that time and frequency. By default, the newest sound is at the left edge, and older sound moves to the right.
+- **Spectrogram.** Frequency goes from bottom to top. The color shows the loudness at that time and frequency. By default, the newest sound is at the left edge, and older sound moves to the right.
 - **Pitch track.** The dots and the line show the fundamental frequency (F0). F0 is the rate at which the vocal folds open and close. You hear F0 as the pitch of the voice.
 - **Formant tracks.** F1, F2, F3 and the higher formants are resonances of the vocal tract. The vocal tract is the space from the vocal folds to the lips. The shape of this space sets the formants.
-- **Axes.** Both axes lie outside the graph. By default, new sound appears at the left edge and the time axis counts back to the right. The switch "Newest sound at the left" in the Axes tab turns this off. The graph then fills from the left to the right, and time zero is at the lower left.
-
-- **Grid lines.** Two switches in the Axes tab draw thin horizontal lines across the graph. The major lines are at the numbers of the frequency axis. The minor lines are at the ticks between the numbers. Both are off by default.
+- **Axes.** Both axes lie outside the graph. By default, new sound appears at the left edge, next to the frequency axis, from the first moment of a capture. Old sound flows to the right. The part of the graph before the start of the capture is empty. To stop this, clear the switch "Newest sound at the left" in the Axes tab. The graph then fills from the left to the right, and time zero is at the lower left.
+- **Frequency labels.** The automatic mode labels only round values, all with one text size. The setting "Number of labels" chooses Few (100, 200, 500), Normal (100, 200, 300, 500), or Many (100, 150, 200, 300, 400, 500). A linear axis uses equal steps.
+- **Time labels.** The labels show whole seconds, and the smallest step is 1 second. A view of 15 seconds has a label each second. A view of 1 minute has a label every 5 seconds, and a view of 2 minutes every 10 seconds. A longer view has larger steps.
+- **Grid lines.** Two switches in the Axes tab draw thin horizontal lines across the graph. The major lines are at the numbers of the frequency axis. The minor lines are at the ticks between the numbers. Both are off by default. A slider sets the strength of the lines. The line color comes from the quiet color of the theme, so it fits every theme.
 
 ## What a formant tells you
 
@@ -20,13 +21,13 @@ A formant is a frequency where the vocal tract amplifies the sound. Each formant
 - **F3** goes up when the lips spread, and it goes down when the lips round.
 - **F4** goes up when the vocal tract is shorter.
 
-The Display tab has one switch for each formant track (F1 to F4). Turn off a track that you do not need. The box of that track in the readouts has its own switch in the Readouts tab.
+The Display tab has one switch for each formant track (F1 to F4). Clear the switch of a track that you do not need. The box of that track in the readouts has its own switch in the Readouts tab.
 
 A shorter vocal tract gives higher formants. A longer vocal tract gives lower formants. This is the main reason why many voices of men and women sound different. The page "The math" gives the formula.
 
 ## Pick a moment
 
-Click on the graph, or drag across it. A bar shows the moment from the top to the bottom of the graph. A label next to the bar gives the time. A label with a dot on the bar gives the exact value of the pitch and of each formant at that moment. The colour of each label is the colour of its track.
+Click on the graph, or drag across it. A bar shows the moment from the top to the bottom of the graph. A label next to the bar gives the time. A label with a dot on the bar gives the exact value of the pitch and of each formant at that moment. The color of each label is the color of its track.
 
 - A double click or a right click removes the bar.
 - The labels go to the side of the bar that has room.
@@ -44,7 +45,7 @@ The Readouts tab of the settings has these choices:
 
 At the left of the graph, the column has the same order as the tracks in the graph. The highest formant (F4) is at the top, and the pitch is at the bottom.
 
-A bar above the graph holds the legend and the frame times. The two boxes stand side by side at the centre of the bar. The bar keeps its height during a recording, so the graph does not move. The app hides the frame times during a recording.
+A bar above the graph holds the legend and the frame times. The two boxes stand side by side at the center of the bar. The bar keeps its height during a recording, so the graph does not move. The app hides the frame times during a recording.
 
 | Line | Meaning |
 | --- | --- |
@@ -92,7 +93,7 @@ The report that Record writes uses the same definition as the table. Both divide
 
 ## Pitch zones
 
-The Display tab has a switch for pitch zones. The zones are three coloured bands behind the tracks:
+The Display tab has a switch for pitch zones. The zones are three colored bands behind the tracks:
 
 - **Masculine** is blue. The default range is 60 to 150 Hz.
 - **Androgynous** is yellow-green. The default range is 150 to 180 Hz.
@@ -102,7 +103,7 @@ A text field sets the four edges. The bands follow the frequency scale. A thin b
 
 The zones show ranges of pitch that many listeners hear in a certain way. This is a rough stereotype. It differs between languages, voices, and listeners. A zone is not a goal.
 
-The recorder grabs the whole window, so a video shows the zones. The switch "Keep the zones in recordings" turns this off.
+The recorder grabs the whole window, so a video shows the zones. To remove the zones from a video, clear the switch "Keep the zones in recordings".
 
 ## Pitch-only graph
 
@@ -114,14 +115,23 @@ The two buttons "Full" and "Pitch only" in the toolbar set what the graph shows.
 
 Use this mode for a pitch slide, for a warm-up, and for a talk where you only watch the pitch.
 
-## Colours
+## Colors
 
-The Theme tab sets the colours of the spectrogram, the tracks, and the plots.
+The Theme tab sets the colors of the spectrogram, the tracks, and the plots.
 
-- A colour map changes from near black to a light tint. The colours change in a way that looks even, so no grey patch shows between two colours.
-- The saturation slider makes the colours weaker or stronger.
-- The brightness has its own slider. It is the Gain normalization slider in the Display tab. A loud sound must not fill the map with its last colour.
-- Each track has a dark outline, so it stays visible on every colour.
+- A color map changes from near black to a light tint. The colors change in a way that looks even, so no gray patch shows between two colors.
+- The saturation slider makes the colors weaker or stronger.
+- The brightness has its own slider. It is the Gain normalization slider in the Display tab. A loud sound must not fill the map with its last color.
+- Each track has a dark outline, so it stays visible on every color.
+- The switch "Minimum volume is black" sets the quiet end. When it is off (the default), the quietest sound has a dark tint of the theme, as in the Viridis theme. A quiet sound then stands out from the black window. When it is on, the quietest sound is black.
+
+## Help in the Settings window
+
+A "?" button next to a setting opens a box with a longer explanation. The box scrolls when the text is long. A press outside the box, or the Escape key, closes it. The short hint under the setting stays. The page "Settings" in the Help window explains the frequency scale, the FFT size, and the four methods of the Input tab for each goal.
+
+## Clear the graph
+
+The button "Reset graph" in the bar below the graph deletes the tracks and the recording of the capture and starts again at time zero. A capture of more than 10 seconds asks first. The button does nothing during a recording or a practice session. The settings and the saved files stay.
 
 ## Practice mode and progress
 
@@ -129,7 +139,7 @@ The Practice button below the graph starts a session on the live capture. Choose
 
 - The M key, or the Mark button, saves a mark. A mark has the time, a note if you type one, and the pitch and F1 to F4 of the last half second.
 - Click Stop practice to end the session. A window asks if you want to keep it. It shows the length, the marks, and a comparison with your last session of the same task. Keep saves the session. Discard saves nothing.
-- A session that is shorter than the minimum time is dropped with no question. The minimum is 5 seconds by default, and the General tab of the settings changes it.
+- The app discards a session that is shorter than the minimum time, with no question. The minimum is 5 seconds by default, and the General tab of the settings changes it.
 - A folder for the session holds the statistics, a report, the marks, and the sound. The General tab of the settings sets the folder. The default is Documents/InFormant/Practice.
 - The Progress button opens a chart of your change. Choose a measure, a task, and a period. Compare like with like. A formant median over mixed tasks says little.
 
@@ -139,7 +149,7 @@ The Synthesizer window makes a steady test voice. It starts in constant mode, so
 
 - The box "Quick start" sets F1 to F4 and the pitch for ten vowels, for a lower voice or for a higher voice. The page "Synthesizer" in the help shows how to use it, with recipes.
 - Sliders and number boxes set the pitch, F1 to F4, the bandwidths, and the amount of pitch jitter.
-- The switches "Follow pitch estimates" and "Follow formant estimates" make the synthesizer follow your voice. Use headphones when you switch them on. Without headphones, the microphone hears the synthesizer, and the sound changes by itself.
+- The switches "Follow pitch estimates" and "Follow formant estimates" make the synthesizer follow your voice. Use headphones when you use these switches. Without headphones, the microphone hears the synthesizer, and the sound changes by itself.
 
 ## Settings that change what you see
 
@@ -152,7 +162,9 @@ The Synthesizer window makes a steady test voice. It starts in constant mode, so
 
 ## Return to the defaults
 
-The General tab of Settings has the button "Reset all settings to defaults". A dialog asks you to confirm. The reset cannot be undone. It returns every setting to its default value. The folder of the practice sessions stays, so the Progress window still shows your sessions. Your sessions, recordings, and files stay.
+The Settings window saves its values when you close it. The General tab has the button "Reset all settings to defaults". A dialog asks you to confirm. You cannot undo the reset. It returns every setting to its default value.
+
+The folder of the practice sessions stays. Your sessions, recordings, and files stay.
 
 ## Know the limits
 

@@ -83,6 +83,10 @@ namespace Main {
         // file and starts a new capture.
         Q_INVOKABLE void goLive();
 
+        // Clear the graph and the recording of the session, and start again at time zero. The settings stay.
+        // Files that the person saved stay. The call does nothing during a recording.
+        Q_INVOKABLE void resetGraph();
+
         // Ask for a file name, and write the sound of the window, or the whole session, as a WAV file.
         Q_INVOKABLE void exportWindow();
         Q_INVOKABLE void exportAll();

@@ -1,5 +1,6 @@
 #include "theme.h"
 #include "oklab.h"
+#include "quietlift.h"
 #include "qpainterwrapper.h"
 #include <algorithm>
 #include <array>
@@ -261,7 +262,18 @@ QString Gui::themeGroup(const QString &name)
 }
 
 Theme Gui::resolveTheme(const QString &name, const QString &customColors,
-                        const QString &customPitch, const QString &customFormants, double saturation)
+                        const QString &customPitch, const QString &customFormants, double saturation,
+                        bool minVolumeBlack)
+{
+    Theme theme = resolveThemeBlack(name, customColors, customPitch, customFormants, saturation);
+    if (!minVolumeBlack) {
+        liftQuietEnd(theme.colormap);
+    }
+    return theme;
+}
+
+Theme Gui::resolveThemeBlack(const QString &name, const QString &customColors,
+                             const QString &customPitch, const QString &customFormants, double saturation)
 {
     if (name == "Custom") {
         // The base is the default theme. Each custom value that is valid replaces the default value.
@@ -301,9 +313,9 @@ Theme Gui::resolveTheme(const QString &name, const QString &customColors,
     return fromDefinition(definitions().front(), saturation);
 }
 
-QVariantList Gui::themePreview(const QString &name, int count, double saturation)
+QVariantList Gui::themePreview(const QString &name, int count, double saturation, bool minVolumeBlack)
 {
-    const Theme t = resolveTheme(name, QString(), QString(), QString(), saturation);
+    const Theme t = resolveTheme(name, QString(), QString(), QString(), saturation, minVolumeBlack);
     QVariantList list;
     for (int i = 0; i < count; ++i) {
         const int index = count > 1 ? (i * 255) / (count - 1) : 0;

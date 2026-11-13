@@ -41,6 +41,10 @@ namespace Gui {
         // The minor lines are at the ticks without a label.
         bool gridMajor = false;
         bool gridMinor = false;
+        // The opacity of the major grid lines from 0 to 1. The minor lines use about half of it.
+        double gridStrength = 0.6;
+        // The density of the labels in the automatic mode of the frequency axis: 0 sparse, 1 normal, 2 dense.
+        int freqTickDensity = 1;
 
         // The newest sound is at the left edge and the older sound is to the right.
         bool timeFlipped = true;

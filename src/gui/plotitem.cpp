@@ -179,12 +179,12 @@ void PlotItem::refresh()
     mShownVersion = frame->snapshot.version;
 
     const QString themeKey = sConfig->optionString("theme") + "|" + sConfig->optionString("customColors")
-        + "|" + sConfig->optionString("customPitch") + "|" + sConfig->optionString("customFormants") + "|" + sConfig->optionString("colorSaturation");
+        + "|" + sConfig->optionString("customPitch") + "|" + sConfig->optionString("customFormants") + "|" + sConfig->optionString("colorSaturation") + "|" + sConfig->optionString("minVolumeBlack");
     if (themeKey != mThemeKey) {
         mThemeKey = themeKey;
         mTheme = Gui::resolveTheme(sConfig->optionString("theme"), sConfig->optionString("customColors"),
                                    sConfig->optionString("customPitch"), sConfig->optionString("customFormants"),
-                                   sConfig->optionDouble("colorSaturation"));
+                                   sConfig->optionDouble("colorSaturation"), sConfig->optionBool("minVolumeBlack"));
     }
 
     switch (mKind) {

@@ -87,6 +87,8 @@ namespace Main {
         Q_INVOKABLE void resetOption(const QString &name);
         // Return every setting to its default value, except the folder of the practice sessions.
         Q_INVOKABLE void resetAll();
+        // Write all settings to the file now. The destructor does the same at the end of the program.
+        Q_INVOKABLE void save();
 
         bool optionBool(const QString &name) const;
         int optionInt(const QString &name) const;

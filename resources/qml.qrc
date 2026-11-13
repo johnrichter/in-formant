@@ -10,6 +10,7 @@
         <file alias="SegmentedControl.qml">../src/qml/SegmentedControl.qml</file>
         <file alias="AppButton.qml">../src/qml/AppButton.qml</file>
         <file alias="AppToolButton.qml">../src/qml/AppToolButton.qml</file>
+        <file alias="HelpButton.qml">../src/qml/HelpButton.qml</file>
         <file alias="AppTabBar.qml">../src/qml/AppTabBar.qml</file>
         <file alias="AppTabButton.qml">../src/qml/AppTabButton.qml</file>
         <file alias="OptionSwitch.qml">../src/qml/OptionSwitch.qml</file>
@@ -18,6 +19,7 @@
         <file alias="ProgressWindow.qml">../src/qml/ProgressWindow.qml</file>
         <file alias="HelpWindow.qml">../src/qml/HelpWindow.qml</file>
         <file alias="help/reading-the-display.md">../docs/reading-the-display.md</file>
+        <file alias="help/choosing-settings.md">../docs/choosing-settings.md</file>
         <file alias="help/feminization.md">../docs/feminization.md</file>
         <file alias="help/masculinization.md">../docs/masculinization.md</file>
         <file alias="help/singing.md">../docs/singing.md</file>

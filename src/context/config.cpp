@@ -178,6 +178,8 @@ QVariantMap Config::defaultOptions()
     m["graphMode"] = QString("full");  // "full" for the spectrogram and all tracks, "pitch" for the pitch track alone
     m["rangeSemitones"] = false; // show the Range statistic in semitones and not in Hz
     m["flipTime"] = true;        // the newest sound is at the left edge and the graph scrolls to the right
+    m["gridStrength"] = 0.6;     // the opacity of the grid lines from 0.1 to 1
+    m["freqTickDensity"] = 1;    // labels of the automatic frequency axis: 0 sparse, 1 normal, 2 dense
     m["gridMajor"] = false;      // draw a line across the graph at each labelled tick of the frequency axis
     m["gridMinor"] = false;      // draw a fainter line at each tick without a label
     m["showBands"] = false;      // show the pitch zones in the graph
@@ -239,6 +241,7 @@ QVariantMap Config::defaultOptions()
     m["customColors"] = QString("#000004,#3b0f70,#b73779,#fc8961,#fcfdbf");
     m["customPitch"] = QString("#00e5ff");
     m["customFormants"] = QString("#00ff00,#91ee91,#ff0000,#ff99ff,#ffcc00");
+    m["minVolumeBlack"] = false;  // false: the quietest sound has a dark tint of the theme. true: it is black.
     m["colorSaturation"] = 1.0;  // the chroma of the colour map, from 0.5 to 1.5 times
     return m;
 }
@@ -252,7 +255,7 @@ QVariantMap Config::themeColors() const
 {
     const Gui::Theme theme = Gui::resolveTheme(optionString("theme"), optionString("customColors"),
                                                optionString("customPitch"), optionString("customFormants"),
-                                               optionDouble("colorSaturation"));
+                                               optionDouble("colorSaturation"), optionBool("minVolumeBlack"));
     return Gui::themeColorMap(theme);
 }
 
@@ -265,14 +268,15 @@ QVariantList Config::themePreview(const QString &name, int count) const
 {
     if (name == "Custom") {
         const Gui::Theme t = Gui::resolveTheme(name, optionString("customColors"), optionString("customPitch"),
-                                               optionString("customFormants"), optionDouble("colorSaturation"));
+                                               optionString("customFormants"), optionDouble("colorSaturation"),
+                                               optionBool("minVolumeBlack"));
         QVariantList list;
         for (int i = 0; i < count; ++i) {
             list << QColor::fromRgb(t.colormap[count > 1 ? (i * 255) / (count - 1) : 0]);
         }
         return list;
     }
-    return Gui::themePreview(name, count, optionDouble("colorSaturation"));
+    return Gui::themePreview(name, count, optionDouble("colorSaturation"), optionBool("minVolumeBlack"));
 }
 
 QVariant Config::option(const QString &name) const
@@ -350,10 +354,15 @@ int Config::optionInt(const QString &name) const { return mOptions.value(name).t
 double Config::optionDouble(const QString &name) const { return mOptions.value(name).toDouble(); }
 QString Config::optionString(const QString &name) const { return mOptions.value(name).toString(); }
 
-Config::~Config()
+void Config::save()
 {
     std::ofstream stream(getConfigPath());
     stream << mTbl;
+}
+
+Config::~Config()
+{
+    save();
 }
 
 Module::Audio::Backend Config::getAudioBackend()

@@ -77,58 +77,31 @@ struct Occupancy {
     void add(double lo, double hi) { used.emplace_back(lo, hi); }
 };
 
-// The rank of a candidate. A round value has a small rank, so the algorithm labels it first.
-// The value is m * 10^k, with m from 1 to 99.
-struct Candidate {
-    double value;
-    int digits;       // the number of significant digits of m: 1 or 2
-    int rank;         // the position of m in the order of preference
-};
-
-int mantissaRank(int m)
+// The mantissas of the labels for each density, in the order of preference. The first one gets its label first.
+const std::vector<double> &labelMantissas(TickDensity density)
 {
-    if (m < 10) {
-        static const int order[10] = { 99, 0, 2, 3, 4, 1, 5, 6, 7, 8 };
-        return order[m];
+    static const std::vector<double> sparse = { 1, 5, 2 };
+    static const std::vector<double> normal = { 1, 5, 2, 3 };
+    static const std::vector<double> dense = { 1, 5, 2, 3, 4, 1.5 };
+    switch (density) {
+    case TickDensity::Sparse: return sparse;
+    case TickDensity::Dense: return dense;
+    default: return normal;
     }
-    // Two digits: the multiples of 5 first, then the even values, then the rest.
-    if (m % 5 == 0) return m % 10 == 0 ? 0 : 1;
-    if (m % 2 == 0) return 2;
-    return 3;
 }
 
-std::vector<Candidate> roundCandidates(double lo, double hi)
+// All values of m * 10^k in the range, for one mantissa m.
+std::vector<double> valuesOfMantissa(double m, double lo, double hi)
 {
-    std::vector<Candidate> list;
-    if (!(hi > lo) || hi <= 0) {
-        return list;
-    }
-
-    const double lowPositive = std::max(lo, 1e-6);
-    const int k0 = (int) std::floor(std::log10(lowPositive)) - 1;
+    std::vector<double> values;
+    if (!(hi > lo) || hi <= 0) return values;
+    const int k0 = (int) std::floor(std::log10(std::max(lo, 1e-6))) - 1;
     const int k1 = (int) std::ceil(std::log10(hi)) + 1;
-
     for (int k = k0; k <= k1; ++k) {
-        const double unit = std::pow(10.0, k);
-        for (int m = 1; m <= 99; ++m) {
-            if (m % 10 == 0) continue;     // 10 * 10^k is 1 * 10^(k+1)
-            const double value = m * unit;
-            if (value < lo - 1e-12 || value > hi + 1e-12) continue;
-            list.push_back({ value, m < 10 ? 1 : 2, mantissaRank(m) });
-        }
+        const double value = std::round(m * 1000.0) / 1000.0 * std::pow(10.0, k);
+        if (value >= lo - 1e-12 && value <= hi + 1e-12) values.push_back(value);
     }
-
-    // The zero value is a candidate when the range includes zero.
-    if (lo <= 0 && hi >= 0) {
-        list.push_back({ 0.0, 1, 0 });
-    }
-
-    std::sort(list.begin(), list.end(), [](const Candidate &a, const Candidate &b) {
-        if (a.digits != b.digits) return a.digits < b.digits;
-        if (a.rank != b.rank) return a.rank < b.rank;
-        return a.value < b.value;
-    });
-    return list;
+    return values;
 }
 
 }
@@ -136,7 +109,8 @@ std::vector<Candidate> roundCandidates(double lo, double hi)
 std::vector<Tick> Gui::makeFrequencyTicks(FrequencyTickMode mode, double step,
                                           double minFrequency, double maxFrequency,
                                           const ToPixel &toPixel,
-                                          double labelSize, double labelGap)
+                                          double labelSize, double labelGap,
+                                          bool linearScale, TickDensity density)
 {
     std::vector<Tick> ticks;
     const double lo = std::min(minFrequency, maxFrequency);
@@ -245,15 +219,99 @@ std::vector<Tick> Gui::makeFrequencyTicks(FrequencyTickMode mode, double step,
         return ticks;
     }
 
-    // Automatic: label the round values first, and then use the free space for less round values.
-    const auto candidates = roundCandidates(lo, hi);
-    for (const auto &c : candidates) {
-        const int level = c.digits == 1 && c.rank <= 1 ? 0 : (c.digits == 1 ? 1 : 2);
-        if (!tryLabel(c.value, level, formatNumber(c.value))) {
-            tryMark(c.value, level == 0 ? 1 : 2);
+    const double pLow = std::min(toPixel(lo), toPixel(hi));
+    const double pHigh = std::max(toPixel(lo), toPixel(hi));
+    const double half = 0.5 * labelSize + 0.5 * labelGap;
+    // A label that would cross an end of the axis cannot show, so it does not count.
+    auto inside = [&](double value) {
+        const double p = toPixel(value);
+        return p - half >= pLow - 1e-9 && p + half <= pHigh + 1e-9;
+    };
+
+    if (linearScale) {
+        // Equal steps. The step is the smallest of 1, 2, 5 times a power of ten that leaves room for each label.
+        // A sparse axis needs more room for each label than a dense axis.
+        static const double room[3] = { 2.0, 1.4, 1.0 };
+        const double pixelsPerUnit = (pHigh - pLow) / (hi - lo);
+        const double needed = (labelSize + labelGap) * room[(int) density] / std::max(pixelsPerUnit, 1e-9);
+        const double base = std::pow(10.0, std::floor(std::log10(needed)));
+        double labelStep = 10.0 * base;
+        for (double m : { 1.0, 2.0, 5.0, 10.0 }) {
+            if (m * base >= needed - 1e-12) { labelStep = m * base; break; }
+        }
+
+        // Four small steps between two labels, or five.
+        const double mantissa = labelStep / std::pow(10.0, std::floor(std::log10(labelStep) + 1e-9));
+        const double fineStep = std::fabs(mantissa - 2.0) < 1e-6 ? labelStep / 4.0 : labelStep / 5.0;
+        const bool fine = fineStep * pixelsPerUnit >= 6.0;
+
+        const double firstLabel = std::ceil(lo / labelStep - 1e-9);
+        const double lastLabel = std::floor(hi / labelStep + 1e-9);
+        for (double i = firstLabel; i <= lastLabel; i += 1.0) {
+            const double value = i * labelStep;
+            if (value > lo - 1e-9 && value < hi + 1e-9) {
+                if (inside(value)) tryLabel(value, 0, formatNumber(value));
+                else tryMark(value, 1);
+            }
+        }
+        if (fine) {
+            const double firstFine = std::ceil(lo / fineStep - 1e-9);
+            const double lastFine = std::floor(hi / fineStep + 1e-9);
+            for (double i = firstFine; i <= lastFine; i += 1.0) {
+                const double ratio = i * fineStep / labelStep;
+                if (std::fabs(ratio - std::round(ratio)) < 1e-6) continue;
+                tryMark(i * fineStep, 2);
+            }
+        }
+        return ticks;
+    }
+
+    // Powers of ten. A group of values with the same mantissa gets labels in all decades, or in none.
+    // This keeps the pattern of the labels the same along the axis. The mantissa 1 comes first, then 5, 2, 3, 4, and 1.5.
+    std::vector<double> labelled;
+    for (double m : labelMantissas(density)) {
+        std::vector<double> values;
+        for (double v : valuesOfMantissa(m, lo, hi)) {
+            if (inside(v)) values.push_back(v);
+        }
+        if (values.empty()) continue;
+
+        Occupancy test = labels;
+        bool fits = true;
+        for (double v : values) {
+            const double p = toPixel(v);
+            if (!test.free(p - half, p + half)) { fits = false; break; }
+            test.add(p - half, p + half);
+        }
+        if (!fits) continue;
+
+        for (double v : values) {
+            tryLabel(v, 0, formatNumber(v));
+            labelled.push_back(v);
+        }
+    }
+
+    // The other values of 1 to 9 (and 1.5) get small ticks, when they have room.
+    for (double m : { 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0 }) {
+        for (double v : valuesOfMantissa(m, lo, hi)) {
+            if (std::find_if(labelled.begin(), labelled.end(), [&](double x) { return std::fabs(x - v) < 1e-9 * std::max(1.0, v); }) != labelled.end()) continue;
+            tryMark(v, 2);
         }
     }
     return ticks;
+}
+
+double Gui::timeLabelStep(double span, double pixelsPerLabel, double secondsPerPixel)
+{
+    // The steps that people read at once: seconds, then 5, 10, 15, 30 seconds, then minutes and hours.
+    static const double steps[] = { 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 14400, 21600, 43200, 86400 };
+    const double forSpace = pixelsPerLabel * secondsPerPixel;
+    const double forSpan = span / 15.0;
+    const double needed = std::max(1.0, std::max(forSpace, forSpan));
+    for (double step : steps) {
+        if (step >= needed - 1e-9) return step;
+    }
+    return 86400.0 * std::ceil(needed / 86400.0);
 }
 
 std::vector<Tick> Gui::makeTimeTicks(TimeTickMode mode, double step,
@@ -278,44 +336,21 @@ std::vector<Tick> Gui::makeTimeTicks(TimeTickMode mode, double step,
     double labelStep;     // the step between two labels
 
     if (mode == TimeTickMode::Step && step > 0) {
-        labelStep = step;
+        // Half seconds carry no meaning, so the step is at least 1 second.
+        labelStep = std::max(step, 1.0);
     }
     else {
-        // The smallest value of 1, 2, 5 times a power of ten that leaves enough space for each label.
-        const double needed = (labelWidth + labelGap) * secondsPerPixel;
-        static const double mantissas[] = { 1, 2, 5, 10 };
-        const double base = std::pow(10.0, std::floor(std::log10(needed)));
-        labelStep = 10.0 * base;
-        for (double m : mantissas) {
-            if (m * base >= needed) {
-                labelStep = m * base;
-                break;
-            }
-        }
-
-        // For a long time span, use a step that is a multiple of a minute or an hour.
-        static const double clockSteps[] = { 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 14400, 21600, 43200, 86400 };
-        if (labelStep > 10.0) {
-            for (double c : clockSteps) {
-                if (c >= needed) {
-                    labelStep = c;
-                    break;
-                }
-            }
-        }
+        labelStep = timeLabelStep(hi - lo, labelWidth + labelGap, secondsPerPixel);
     }
 
-    // The step between small ticks.
-    double fineStep = labelStep / 5.0;
-    if (labelStep >= 60.0) {
-        fineStep = labelStep / 3.0 >= 60.0 ? labelStep / 3.0 : labelStep / 2.0;
-    }
-    else {
-        const double mantissa = labelStep / std::pow(10.0, std::floor(std::log10(labelStep) + 1e-9));
-        if (std::fabs(mantissa - 2.0) < 1e-6) fineStep = labelStep / 4.0;
-    }
-    if (fineStep / secondsPerPixel < 4.0) {
-        fineStep = labelStep;
+    // The step between small ticks. It is a whole number of seconds, and it is at least 1 second.
+    double fineStep = labelStep;
+    for (double parts : { 5.0, 3.0, 4.0, 2.0 }) {
+        const double candidate = labelStep / parts;
+        if (candidate >= 1.0 - 1e-9 && std::fabs(candidate - std::round(candidate)) < 1e-9 && candidate / secondsPerPixel >= 4.0) {
+            fineStep = candidate;
+            break;
+        }
     }
 
     const long first = (long) std::ceil(lo / fineStep - 1e-9);

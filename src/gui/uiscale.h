@@ -84,6 +84,41 @@ inline constexpr std::array<ColorToken, 3> textColors = { {
 // The longest line of a paragraph, in pixels, at the body size.
 inline constexpr int textMeasure = 560;
 
+// The scale of the help pages. A page is long text, so it has its own scale. The body is 16 pixels with a
+// line of 28 pixels (1.75 times the size), because long text needs more air than a window of controls.
+// The sizes of the headings go up by a ratio of about 1.2 (16, 18, 22, 28). A heading has a tight line
+// (1.3 times the size), because a short line of large text needs less air. The rules come from three sources:
+// the Tailwind typography plugin (a body line of 1.75, a paragraph gap of 1.25 em, a list gap of 0.5 em),
+// "Refactoring UI" (more space above a heading than below it, so the heading belongs to the text after it),
+// and the habit of long-form blogs (a line of 60 to 75 characters).
+//
+// Qt adds the bottom margin of a block and the top margin of the next block. It does not merge them.
+// So the page uses a bottom margin for a normal gap, and a top margin only to widen the gap above a heading.
+struct Prose {
+    static constexpr int bodySize = 16;
+    static constexpr int bodyLine = 28;
+    static constexpr int codeSize = 14;      // code, and the cells of a table
+    static constexpr int codeLine = 24;
+    static constexpr int h1Size = 28;
+    static constexpr int h1Line = 36;
+    static constexpr int h2Size = 22;
+    static constexpr int h2Line = 32;
+    static constexpr int h3Size = 18;
+    static constexpr int h3Line = 28;
+
+    static constexpr int paragraphGap = 20;  // below a paragraph, a list, a table, and a code block
+    static constexpr int listItemGap = 8;    // between two items of a list
+    static constexpr int h1Below = 24;
+    static constexpr int h2Above = 48;       // the total space above, with the gap of the block before it
+    static constexpr int h2Below = 12;
+    static constexpr int h3Above = 32;
+    static constexpr int h3Below = 8;
+    static constexpr int listIndent = 24;
+    static constexpr int cellPadding = 8;
+    static constexpr int measure = 640;      // the width of the column: about 75 characters at 16 pixels
+    static constexpr int pageMargin = 32;    // the space between the column and the window
+};
+
 // The ratio between the steps of the type scale, and the size of the body.
 inline constexpr double typeRatio = 1.2;
 inline constexpr int bodySize = 14;

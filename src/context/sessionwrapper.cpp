@@ -260,6 +260,27 @@ void SessionWrapper::goLive()
     if (mConfig->isPaused()) mConfig->setPaused(false);
 }
 
+void SessionWrapper::resetGraph()
+{
+    if (mRecorder.recording()) return;
+
+    mPlayer->stop();
+    finishPlayback();
+    stopFileWork();
+
+    // The tracks, the sound, and the picked moment go away. The pipeline and the clock start again at time zero.
+    clearSession();
+    const bool wasFile = mConfig->getSessionMode() == 1;
+    mConfig->setSessionMode(0);
+    mResetLive();
+    emit fileModeChanged();
+    setStatus("The graph is clear");
+
+    mConfig->setViewLive(true);
+    // A loaded file left the capture paused. A reset returns to the live view, as the Live button does.
+    if (wasFile && mConfig->isPaused()) mConfig->setPaused(false);
+}
+
 void SessionWrapper::finishPlayback()
 {
     if (mPausedByPlayback) {

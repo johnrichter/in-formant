@@ -41,14 +41,20 @@ namespace Gui {
     // three strings: the colours of the spectrogram from low to high, the colour of the pitch track,
     // and the colours of the formant tracks. A colour has the form #rrggbb. Commas separate colours.
     // The saturation scales the chroma of the colour map. A value of 1 leaves the colours as they are.
+    // When minVolumeBlack is false, the quiet end of the map has a dark tint of the map's hue and not black.
     Theme resolveTheme(const QString &name,
                        const QString &customColors = QString(),
                        const QString &customPitch = QString(),
                        const QString &customFormants = QString(),
-                       double saturation = 1.0);
+                       double saturation = 1.0,
+                       bool minVolumeBlack = true);
+
+    // The theme with its original colour map, where the quietest colour is black or as the theme defines it.
+    Theme resolveThemeBlack(const QString &name, const QString &customColors, const QString &customPitch,
+                            const QString &customFormants, double saturation);
 
     // Some evenly spaced colours of the colour map, for a preview.
-    QVariantList themePreview(const QString &name, int count, double saturation = 1.0);
+    QVariantList themePreview(const QString &name, int count, double saturation = 1.0, bool minVolumeBlack = true);
 
     // The colours of the theme for the QML windows.
     QVariantMap themeColorMap(const Theme &theme);

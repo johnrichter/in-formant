@@ -6,11 +6,11 @@ This page shows how to warm up your voice, which exercises help with which goal,
 
 ## How strong is the evidence?
 
-The rankings below are a judgement. They come from small studies, from reviews of small studies, and from the advice of voice teachers. No study compares all these exercises with each other for a voice goal.
+The rankings below are a judgment. They come from small studies, from reviews of small studies, and from the advice of voice teachers. No study compares all these exercises with each other for a voice goal.
 
 - The evidence is best for the effect of straw exercises on the effort of the voice. Even this evidence is small, and some results disagree.
 - A search for this page found no study that tests these exercises for resonance or for a gender goal.
-- A rank means "more likely to help, by this judgement". It does not mean "proven".
+- A rank means "more likely to help, by this judgment". It does not mean "proven".
 - The listener and your own body have the last word. When an exercise feels bad, stop it.
 
 The list of sources is at the end of the page.
@@ -51,7 +51,7 @@ Use the Practice button with the task "Free". The practice mode saves the length
 
 ## Which exercise for which goal?
 
-Each list goes from the exercise that is more likely to help to the exercise that is less likely to help. The reasons are short. All ranks are a judgement. See the section on evidence.
+Each list goes from the exercise that is more likely to help to the exercise that is less likely to help. The reasons are short. All ranks are a judgment. See the section on evidence.
 
 ### Goal: an easier, less pressed voice (weight and the vocal folds)
 
@@ -66,7 +66,7 @@ These exercises ease a pressed voice. They do not set the weight of your voice i
 
 ### Goal: resonance (F1, F2, and F3)
 
-No SOVT exercise trains resonance directly. This ranking tells you which exercise is easiest to use as a step towards resonance practice.
+No SOVT exercise trains resonance directly. This ranking tells you which exercise is easiest to use as a step toward resonance practice.
 
 1. **Humming.** You can feel the buzz at the front of the mouth. You can move from a hum to a vowel with no break.
 2. **Voiced fricatives.** The "v" and the "z" make you notice the position of the lips and the tongue.
@@ -109,7 +109,7 @@ A tired voice needs rest. Most mild cases of hoarseness after hard use clear in 
 
 When to see a professional:
 
-- Hoarseness that does not go away after 2 to 4 weeks.
+- Hoarseness that continues for more than 2 to 4 weeks.
 - Pain when you speak or swallow, or a feeling of a lump in the throat.
 - Blood in the sound or the saliva, or a sudden loss of the voice.
 - A change of the voice that you cannot explain.

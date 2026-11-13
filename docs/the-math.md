@@ -31,7 +31,7 @@ error in cents = 1200 * log2(1 + SD / Mean)
 
 ## The vocal tract and the formants
 
-A simple model treats the vocal tract as a tube. The tube is closed at the vocal folds and open at the lips. The length is L. The resonances of this tube are.
+A simple model treats the vocal tract as a tube. The tube is closed at the vocal folds and open at the lips. The length is L. This formula gives the resonances of this tube:
 
 ```
 Fn = (2n - 1) * c / (4 * L)        n = 1, 2, 3, ...
@@ -64,7 +64,7 @@ The voice source makes a series of harmonics.
 harmonic k = k * F0        k = 1, 2, 3, ...
 ```
 
-The vocal tract does not make new frequencies. It makes the harmonics near a formant louder. When F0 is 200 Hz, the harmonics are 200 Hz apart. A formant between two harmonics is then not seen well. This is why formant tracking is less accurate at a high pitch.
+The vocal tract does not make new frequencies. It makes the harmonics near a formant louder. When F0 is 200 Hz, the harmonics are 200 Hz apart. The tracker then cannot see a formant between two harmonics well. This is why formant tracking is less accurate at a high pitch.
 
 ## Frequency scales
 
@@ -90,7 +90,7 @@ window length  = N / fs        (in seconds)
 
 fs is the sample rate. A larger N gives a smaller frequency step and a longer window. You cannot have both. The product of the frequency step and the window length is about 1.
 
-Example: fs = 11 000 Hz and N = 1024 give a frequency step of 10.7 Hz and a window of 93 ms. The harmonics of a voice at 100 Hz are then well separated, but a fast change of the pitch is blurred.
+Example: fs = 11 000 Hz and N = 1024 give a frequency step of 10.7 Hz and a window of 93 ms. The harmonics of a voice at 100 Hz are then well separated, but a fast change of the pitch looks blurred.
 
 For a long view, and for a view of a past time, InFormant takes the sample rate as twice the highest frequency of the view.
 
@@ -113,7 +113,7 @@ A common rule for the order is p = fs / 1000 + 2. This gives 2 poles for each ex
 
 ## Statistics
 
-N is the number of values in the window. The values x are sorted from the smallest to the largest for the percentiles.
+N is the number of values in the window. For the percentiles, the program sorts the values x from the smallest to the largest.
 
 ```
 Mean      = (x1 + x2 + ... + xN) / N

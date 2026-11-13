@@ -15,6 +15,10 @@ ApplicationWindow {
     // The first time the window opens, it takes the size of its contents.
     property bool sized: false
     onVisibleChanged: {
+        // The synthesizer makes sound only while its window is open. A closed window turns it off.
+        if (!visible && synth.enabled) {
+            synth.enabled = false
+        }
         if (visible && !sized) {
             sized = true
             width = Math.min(contents.implicitWidth + 4, Screen.desktopAvailableWidth * 0.95)

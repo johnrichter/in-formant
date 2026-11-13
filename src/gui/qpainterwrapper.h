@@ -5,6 +5,7 @@
 #include "canvas_renderer.h"
 #include "renderoptions.h"
 #include "readoutlayout.h"
+#include "ticks.h"
 #include <map>
 #include <string>
 #include <vector>
@@ -89,6 +90,15 @@ public:
     void drawFrequencyBands();
     // Horizontal lines across the graph at the ticks of the frequency axis. They are behind the tracks.
     void drawFrequencyGrid();
+    // Fill the graph with the quietest colour of the theme. This is the first drawing of the graph.
+    void fillPlotBackground();
+
+    // The ticks of the frequency axis for the current options. The axis and the grid use the same ticks.
+    std::vector<Gui::Tick> frequencyTicks();
+    // The colour of a grid line, from the quiet colour of the theme. The scale changes the opacity.
+    QColor gridColor(double alphaScale) const;
+    // The size index of every label on the axes. One size keeps the axes in balance.
+    static constexpr int axisLabelSize = 4;
 
     double mapFrequencyToY(double frequency);
 

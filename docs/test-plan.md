@@ -213,6 +213,51 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-SHAPE-05** (Image, P3). Check the frame of the session map with a narrow frame (under 8 pixels). Expect no broken outline.
 - **TP-SHAPE-06** (Image, P3). Check the combo boxes, the text fields, and the sliders. Expect the radius to match the buttons.
 
+## 6d. Axes, grid, themes, and help (round 5)
+
+- **TP-AXT-01** (Unit, P1). Check the time label step for views of 15, 30, 60, 120, 300, 600, and 3600 seconds. Expect 1, 2, 5, 10, 30, 60, and 300 seconds. The unit test `ticks` has these.
+- **TP-AXT-02** (Unit, P1). Check that no time tick falls between whole seconds, in the automatic mode and in the custom mode with a step of 0.5.
+- **TP-AXT-03** (Image, P2). Check the time labels at window widths of 600, 1000, and 2000 pixels. Expect no overlap and a larger step in a narrow window.
+- **TP-AXT-04** (Unit, P1). Check that a mantissa gets a label in all decades or in none, for each density and each scale.
+- **TP-AXT-05** (Image, P1). Check the frequency axis on each scale (linear, logarithmic, Mel, ERB) and at three window heights. Expect labels of the set 1, 2, 3, 5 only, one text size, and no overlap.
+- **TP-AXT-06** (Unit, P2). Check the linear axis from 0 to 500 Hz and from 0 to 8000 Hz. Expect equal steps.
+- **TP-AXT-07** (Qt, P2). Change "Number of labels" (Few, Normal, Many). Expect the graph to follow at once, and expect the grid lines to follow the same ticks.
+- **TP-AXT-08** (Image, P2). Check that the label text of the frequency axis has one size in the custom, the note, and the octave modes.
+- **TP-GRD-10** (Image, P1). Check the grid lines on every theme at strengths of 10, 60, and 100 percent. Expect lines that show, and expect no line to hide the loud sound.
+- **TP-GRD-11** (Unit, P2). Check the grid colour for a dark quiet colour and a light quiet colour. Expect a light tint for the first and a dark tint for the second.
+- **TP-QUI-01** (Unit, P1). Lift the quiet end of a map that starts at black. Expect a lightness of 0.22 to 0.32 at the first entry. Expect the same colours above 45 percent of the map, and no fall of the lightness. The unit test `oklab` has this.
+- **TP-QUI-02** (Unit, P2). Lift the quiet end of Viridis and of a grey map. Expect no change for Viridis and no chroma for the grey map.
+- **TP-QUI-03** (Image, P1). Screenshot each of the 22 themes with the switch on and off. Expect the quiet parts to differ from the black window when the switch is off.
+- **TP-QUI-04** (Image, P2). Check the graph before the first sound arrives and in the empty part of a flipped graph. Expect the quiet colour and no black block.
+- **TP-QUI-05** (Qt, P2). Turn the switch on and off while capture runs. Expect the strip in the Theme tab, the graph, the map, and the plots to follow at once.
+- **TP-LFT-01** (Qt, P1). Start a live capture with the flip on. Expect the new sound at the left edge from the first second, and the old sound to flow to the right.
+- **TP-LFT-02** (Qt, P2). Check the empty part at the right of a young capture. Expect the quiet colour and no tick before time zero.
+- **TP-LFT-03** (Qt, P2). Click in the empty part. Expect no pick, or a pick at time zero.
+- **TP-LFT-04** (Qt, P2). Pause, resume, and press Reset graph with the flip on. Expect the new sound at the left edge again.
+- **TP-LFT-05** (Unit, P2). Check the view end for a young capture (time 0 to 15 s) with the flip on and off. Expect a negative start with the flip on and a start of zero with the flip off.
+- **TP-RGR-01** (Qt, P1). Press "Reset graph" after a capture of 5 seconds. Expect a clear graph with no question, and a new capture at time zero.
+- **TP-RGR-02** (Qt, P1). Press it after 30 seconds. Expect the question. Cancel keeps the data. Clear deletes the tracks and the recording.
+- **TP-RGR-03** (Qt, P1). Press it during a recording and during a practice session. Expect the button to be off.
+- **TP-RGR-04** (Qt, P2). Press it with a loaded file. Expect the file to go, and expect a live capture at time zero.
+- **TP-RGR-05** (Qt, P2). Press it during playback. Expect the playback to stop.
+- **TP-RGR-06** (Qt, P2). Press it twice in a row. Expect no crash and no stale data. The data race between the reset and the analysis thread was not tested.
+- **TP-PAD-01** (Image, P2). Check the top and the bottom of each Settings tab at the end of the scroll. Expect at least 24 pixels above the first heading and 32 pixels below the last control.
+- **TP-WIN-01** (Qt, P1). Turn the synthesizer on and close its window. Expect the synthesizer to be off and the sound to stop.
+- **TP-WIN-02** (Qt, P1). Change a setting, close the Settings window, and kill the app with SIGKILL. Start again. Expect the setting to stay.
+- **TP-SEG-01** (Image, P2). Check the Full and Pitch only group in each state (chosen, hover, hover on the chosen one, pressed). Expect square inner corners and no gap between the segments.
+- **TP-HLP-01** (Qt, P1). Press the "?" button of each setting. Expect a box with the text, and expect a scroll bar for a long text.
+- **TP-HLP-02** (Qt, P2). Close the box with a press outside, with Escape, and with a second press on the button.
+- **TP-HLP-03** (Qt, P2). Open the box near the right edge and the bottom edge of the window. Expect the box to stay inside the window.
+- **TP-HLP-04** (Manual, P2). Check each text of the boxes with a speech-language pathologist.
+- **TP-TYP-01** (Image, P1). Check each Help page at widths of 480, 760, and 1400 pixels. Expect a column of at most 640 pixels, centred, with no sideways scroll.
+- **TP-TYP-02** (Unit, P1). Check the prose scale. Lines and gaps must be on the 4-pixel grid. A body line must be at least 1.6 times the size. A heading must have more space above it than below it. The unit test `ui_scale` has this.
+- **TP-TYP-03** (Image, P2). Check a table, a code block, a list, a block quote, a link, and bold and code text in one paragraph. Expect the right size, colour, and gap for each.
+- **TP-TYP-04** (Qt, P3). Select text with the mouse and copy it. Expect the text without style marks.
+- **TP-TYP-05** (Manual, P2). Read each page for five minutes. Compare the comfort with the old pages.
+- **TP-GDE-01** (Manual, P2). A speech-language pathologist reads the page "Settings". Check each claim about a method, and check the advice for each goal.
+- **TP-GDE-02** (Unit, P2). Check the numbers of the FFT table on the page (window time and line distance) against the formula for a view up to 5500 Hz.
+- **TP-STP-01** (Manual, P1). Measure the time from the start of the app to the line "Input device" in the log. The time must be under 3 seconds on each input device. A first build of the help styling took 12 seconds, and one edit block fixed it. The audio device was not the cause.
+
 ## 7. Switching between modes while capture runs
 
 - **TP-MODE-01** (Qt, P1). Press "Pitch only" during live capture. Expect no stale spectrogram on the screen, and expect the pitch track to continue.

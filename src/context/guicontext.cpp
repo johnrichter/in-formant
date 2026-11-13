@@ -9,6 +9,7 @@
 #include "rendercontext.h"
 #include <QColor>
 #include <QFontDatabase>
+#include "../gui/helpstyle.h"
 #include <QQmlContext>
 #include <iostream>
 #include <chrono>
@@ -80,8 +81,14 @@ GuiContext::GuiContext(Config *config, RenderContext *renderContext, DataVisWrap
         for (const Gui::UiScale::ColorToken &token : Gui::UiScale::textColors) {
             color[token.name] = QColor::fromRgb(token.rgb);
         }
+        using Prose = Gui::UiScale::Prose;
+        QVariantMap prose {
+            { "bodySize", Prose::bodySize }, { "bodyLine", Prose::bodyLine }, { "measure", Prose::measure }, { "pageMargin", Prose::pageMargin },
+        };
         mQmlEngine->rootContext()->setContextProperty("ui", QVariantMap { { "type", type }, { "space", space }, { "radius", radius },
-                                                                           { "color", color }, { "font", font }, { "measure", Gui::UiScale::textMeasure } });
+                                                                           { "color", color }, { "font", font }, { "measure", Gui::UiScale::textMeasure },
+                                                                           { "prose", prose } });
+        mQmlEngine->rootContext()->setContextProperty("helpStyle", new Gui::HelpStyle(mQmlEngine.get()));
     }
 
     mQmlEngine->rootContext()->setContextProperty("config", mConfig);

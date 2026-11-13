@@ -38,6 +38,8 @@ void RenderContext::render(QPainterWrapper *painter)
     options.hideDebug = mConfig->isRecording();
     // The recorder grabs the whole window, so the zones on the screen are also in the video.
     options.timeFlipped = mConfig->optionBool("flipTime");
+    options.gridStrength = mConfig->optionDouble("gridStrength");
+    options.freqTickDensity = mConfig->optionInt("freqTickDensity");
     options.gridMajor = mConfig->optionBool("gridMajor");
     options.gridMinor = mConfig->optionBool("gridMinor");
     options.showBands = mConfig->optionBool("showBands") && (mConfig->optionBool("bandsInExport") || !mConfig->isRecording());
@@ -63,12 +65,12 @@ void RenderContext::render(QPainterWrapper *painter)
     options.rangeSemitones = mConfig->optionBool("rangeSemitones");
 
     const QString themeKey = mConfig->optionString("theme") + "|" + mConfig->optionString("customColors")
-        + "|" + mConfig->optionString("customPitch") + "|" + mConfig->optionString("customFormants") + "|" + mConfig->optionString("colorSaturation");
+        + "|" + mConfig->optionString("customPitch") + "|" + mConfig->optionString("customFormants") + "|" + mConfig->optionString("colorSaturation") + "|" + mConfig->optionString("minVolumeBlack");
     if (themeKey != mThemeKey) {
         mThemeKey = themeKey;
         mTheme = Gui::resolveTheme(mConfig->optionString("theme"), mConfig->optionString("customColors"),
                                    mConfig->optionString("customPitch"), mConfig->optionString("customFormants"),
-                                   mConfig->optionDouble("colorSaturation"));
+                                   mConfig->optionDouble("colorSaturation"), mConfig->optionBool("minVolumeBlack"));
     }
     options.theme = mTheme;
 

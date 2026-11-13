@@ -28,7 +28,7 @@ constexpr double edgeZone = 6.0;
 // The height of the strip under the map, in pixels.
 constexpr int scrollStrip = 9;
 
-QString formatTime(double seconds)
+QString mapTimeText(double seconds)
 {
     const long long s = (long long) std::llround(std::max(0.0, seconds));
     const long long h = s / 3600, m = (s / 60) % 60, r = s % 60;
@@ -330,9 +330,9 @@ void OverviewItem::paint(QPainter *painter)
     font.setPixelSize(10);
     painter->setFont(font);
     painter->setPen(QColor(200, 200, 210));
-    painter->drawText(QRectF(4, 2, 80, 14), Qt::AlignLeft | Qt::AlignVCenter, formatTime(view.start));
+    painter->drawText(QRectF(4, 2, 80, 14), Qt::AlignLeft | Qt::AlignVCenter, mapTimeText(view.start));
     const bool atEnd = view.start + view.span >= length - 1e-6;
-    const QString endLabel = (live && atEnd ? QStringLiteral("LIVE  ") : QString()) + formatTime(view.start + view.span);
+    const QString endLabel = (live && atEnd ? QStringLiteral("LIVE  ") : QString()) + mapTimeText(view.start + view.span);
     painter->drawText(QRectF(w - 124, 2, 120, 14), Qt::AlignRight | Qt::AlignVCenter, endLabel);
 }
 

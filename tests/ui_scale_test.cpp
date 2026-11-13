@@ -1,4 +1,5 @@
 #include "check.h"
+#include <utility>
 #include "../src/gui/uiscale.h"
 #include <algorithm>
 #include <cmath>
@@ -74,6 +75,35 @@ int main()
             CHECK(s.size > previous);
             previous = s.size;
         }
+    }
+
+    // The scale of the help pages: lines and gaps on the 4-pixel grid, a loose body line, tight heading lines,
+    // more space above a heading than below it, and a column of about 60 to 80 characters.
+    {
+        using P = Gui::UiScale::Prose;
+        for (int v : { P::bodyLine, P::codeLine, P::h1Line, P::h2Line, P::h3Line, P::paragraphGap, P::listItemGap, P::h1Below,
+                       P::h2Above, P::h2Below, P::h3Above, P::h3Below, P::listIndent, P::cellPadding, P::pageMargin }) {
+            CHECK(v % 4 == 0);
+        }
+        CHECK(P::bodyLine >= 1.6 * P::bodySize);
+        CHECK(P::codeLine >= 1.5 * P::codeSize);
+        for (auto sizeLine : { std::pair<int, int>(P::h1Size, P::h1Line), std::pair<int, int>(P::h2Size, P::h2Line), std::pair<int, int>(P::h3Size, P::h3Line) }) {
+            CHECK(sizeLine.second >= 1.25 * sizeLine.first);
+            CHECK(sizeLine.second <= 1.6 * sizeLine.first);
+        }
+        CHECK(P::h1Size > P::h2Size);
+        CHECK(P::h2Size > P::h3Size);
+        CHECK(P::h3Size > P::bodySize);
+        CHECK(P::codeSize < P::bodySize);
+        // A heading belongs to the text after it: the space above is larger than the space below.
+        CHECK(P::h2Above >= 3 * P::h2Below);
+        CHECK(P::h3Above >= 3 * P::h3Below);
+        CHECK(P::h2Above >= P::h3Above);
+        // The gap between two paragraphs is larger than the gap between two list items.
+        CHECK(P::paragraphGap > P::listItemGap);
+        // About 0.52 of the size is the mean width of a character of a sans-serif font.
+        const double characters = P::measure / (0.52 * P::bodySize);
+        CHECK(characters >= 60 && characters <= 80);
     }
 
     // One corner radius serves all controls and boxes. It is the medium radius.

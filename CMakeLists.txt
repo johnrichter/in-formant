@@ -147,6 +147,8 @@ set(SOURCES
     src/gui/qpainterwrapper_overlay.cpp
     src/gui/theme.cpp
     src/gui/ticks.cpp
+    src/gui/helpstyle.cpp
+    src/gui/helpstyle.h
     src/gui/cmap.cpp
     src/gui/shaders/text.h
     src/gui/font.cpp
@@ -408,6 +410,8 @@ if(INFORMANT_BUILD_TESTS)
     add_test(NAME bands COMMAND bands_test)
     add_executable(ui_scale_test tests/ui_scale_test.cpp)
     add_test(NAME ui_scale COMMAND ui_scale_test)
+    add_executable(ticks_test tests/ticks_test.cpp src/gui/ticks.cpp)
+    add_test(NAME ticks COMMAND ticks_test)
     add_executable(pitch_axis_test tests/pitch_axis_test.cpp)
     add_test(NAME pitch_axis COMMAND pitch_axis_test)
     add_executable(practice_test tests/practice_test.cpp src/context/practicelib.cpp)

@@ -36,9 +36,16 @@ Item {
             Rectangle {
                 id: segment
                 readonly property bool chosen: index === root.currentIndex
+                readonly property bool isFirst: index === 0
+                readonly property bool isLast: index === root.model.length - 1
                 width: label.implicitWidth + 2 * ui.space.lg
                 height: row.height
-                radius: ui.radius.md - 2
+                // Only the outer corners of the group are round. The inner corners are square, so the
+                // chosen segment and the hover fill meet their neighbour with no gap.
+                topLeftRadius: isFirst ? ui.radius.md - 2 : 0
+                bottomLeftRadius: isFirst ? ui.radius.md - 2 : 0
+                topRightRadius: isLast ? ui.radius.md - 2 : 0
+                bottomRightRadius: isLast ? ui.radius.md - 2 : 0
                 color: chosen ? root.accent : (mouse.containsMouse ? "#33FFFFFF" : "transparent")
 
                 Label {

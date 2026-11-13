@@ -244,6 +244,17 @@ ApplicationWindow {
                 }
 
                 BarButton {
+                    text: "Reset graph"
+                    objectName: "resetGraphButton"
+                    enabled: !sessionControl.recording && !practice.active
+                    onClicked: {
+                        // A long session asks first, because the sound and the tracks cannot come back.
+                        if (sessionControl.duration() > 10) resetGraphDialog.open()
+                        else sessionControl.resetGraph()
+                    }
+                }
+
+                BarButton {
                     text: "Open file"
                     enabled: !sessionControl.recording
                     onClicked: sessionControl.openFile()
@@ -422,6 +433,29 @@ ApplicationWindow {
             }
             Hint {
                 text: "Keep saves the statistics, the marks, a report, and the sound in the folder of the practice sessions. Discard saves nothing."
+            }
+        }
+    }
+
+    // The question before a reset of a long session. The graph, the tracks, and the recording of the capture are lost.
+    Dialog {
+        id: resetGraphDialog
+        objectName: "resetGraphDialog"
+        Material.roundedScale: Material.SmallScale
+        title: "Clear the graph?"
+        modal: true
+        anchors.centerIn: Overlay.overlay
+        standardButtons: Dialog.Ok | Dialog.Cancel
+
+        Component.onCompleted: standardButton(Dialog.Ok).text = "Clear"
+        onAccepted: sessionControl.resetGraph()
+
+        ColumnLayout {
+            spacing: ui.space.md
+            Label {
+                Layout.preferredWidth: 420
+                wrapMode: Text.WordWrap
+                text: "The graph, the tracks, and the recording of this capture are deleted, and the time starts again at zero. You cannot undo this. Settings and saved files stay."
             }
         }
     }

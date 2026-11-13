@@ -1,5 +1,7 @@
 #include "check.h"
 #include "../src/gui/oklab.h"
+#include "../src/gui/quietlift.h"
+#include <array>
 
 using namespace Gui;
 
@@ -54,6 +56,54 @@ int main()
     {
         CHECK_NEAR(labDistance(rgbToLab(0x336699), rgbToLab(0x336699)), 0.0, 1e-12);
         CHECK_NEAR(labDistance(rgbToLab(0x000000), rgbToLab(0xffffff)), 1.0, 1e-2);
+    }
+
+    // The quiet end of a map that starts at black becomes a dark tint of the map's hue.
+    // The upper part of the map does not change, and the lightness still rises along the map.
+    {
+        std::array<unsigned int, 256> map;
+        for (int i = 0; i < 256; ++i) {
+            const double t = i / 255.0;
+            // A map from black through purple to yellow.
+            map[i] = 0xff000000u | labToRgb(lchToLab(0.9 * t, 0.15 * std::sin(t * 3.14159), 300.0 - 200.0 * t));
+        }
+        const auto original = map;
+        liftQuietEnd(map);
+        const Lch quiet = labToLch(rgbToLab(map[0] & 0xffffff));
+        CHECK(quiet.L > 0.22);
+        CHECK(quiet.L < 0.32);
+        const Lch before = labToLch(rgbToLab(original[0] & 0xffffff));
+        CHECK(before.L < 0.05);
+        // The top of the map is the same.
+        for (int i = 140; i < 256; ++i) CHECK(map[i] == original[i]);
+        // The lightness never falls along the map.
+        double previous = 0.0;
+        for (int i = 0; i < 256; ++i) {
+            const double L = labToLch(rgbToLab(map[i] & 0xffffff)).L;
+            CHECK(L >= previous - 0.01);
+            previous = L;
+        }
+    }
+
+    // A map that has a light quiet end, like Viridis, does not change.
+    {
+        std::array<unsigned int, 256> map;
+        for (int i = 0; i < 256; ++i) map[i] = 0xff000000u | labToRgb(lchToLab(0.3 + 0.6 * i / 255.0, 0.12, 280.0));
+        const auto original = map;
+        liftQuietEnd(map);
+        CHECK(map == original);
+    }
+
+    // A grey map stays grey, and it gets a lighter quiet end.
+    {
+        std::array<unsigned int, 256> map;
+        for (int i = 0; i < 256; ++i) {
+            const unsigned v = (unsigned) std::lround(255.0 * i / 255.0);
+            map[i] = 0xff000000u | (v << 16) | (v << 8) | v;
+        }
+        liftQuietEnd(map);
+        CHECK(labToLch(rgbToLab(map[0] & 0xffffff)).C < 0.02);
+        CHECK(labToLch(rgbToLab(map[0] & 0xffffff)).L > 0.2);
     }
 
     return TEST_RESULT();

@@ -21,6 +21,7 @@ ApplicationWindow {
 
     readonly property var pages: [
         { title: "Display", file: "reading-the-display" },
+        { title: "Settings", file: "choosing-settings" },
         { title: "Feminization", file: "feminization" },
         { title: "Masculinization", file: "masculinization" },
         { title: "Singing", file: "singing" },
@@ -59,18 +60,32 @@ ApplicationWindow {
                 clip: true
                 contentWidth: availableWidth
 
-                Text {
-                    x: 20
-                    y: 14
-                    width: scroll.availableWidth - 40
+                // The page is a column of 640 pixels, centred in the window. The typography comes from the prose
+                // scale (see gui/uiscale.h): a body of 16 pixels on a line of 28, a large space above each heading,
+                // a small space below it, and a gap between two blocks.
+                TextEdit {
+                    id: page
+                    readonly property real column: Math.min(ui.prose.measure, scroll.availableWidth - 2 * ui.prose.pageMargin)
+                    x: Math.max(ui.prose.pageMargin, (scroll.availableWidth - column) / 2)
+                    y: ui.space.xl
+                    width: column
+                    readOnly: true
+                    selectByMouse: true
+                    persistentSelection: true
+                    textFormat: TextEdit.MarkdownText
+                    wrapMode: TextEdit.WordWrap
                     text: config.helpPage(modelData.file) || "This page is not available."
-                    textFormat: Text.MarkdownText
-                    wrapMode: Text.WordWrap
-                    color: "#e6e6ea"
-                    linkColor: "#b39ddb"
-                    font.pixelSize: 15
+                    color: ui.color.secondary
+                    font.family: ui.font.sans
+                    font.pixelSize: ui.prose.bodySize
                     onLinkActivated: (link) => Qt.openUrlExternally(link)
-                    bottomPadding: 28
+                    bottomPadding: ui.space.xxxl
+
+                    Component.onCompleted: helpStyle.apply(page.textDocument, ui.font.sans, ui.font.mono,
+                                                           ui.color.primary, ui.color.secondary, ui.color.tertiary,
+                                                           "#b39ddb", "#2B2930")
+
+                    HoverHandler { cursorShape: page.hoveredLink !== "" ? Qt.PointingHandCursor : Qt.IBeamCursor }
                 }
             }
         }

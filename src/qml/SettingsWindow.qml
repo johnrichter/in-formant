@@ -8,6 +8,9 @@ ApplicationWindow {
     title: appName + " - Settings"
     visible: false
 
+    // The values go to the file when the window closes, so a crash or a forced quit does not lose them.
+    onVisibleChanged: if (!visible) config.save()
+
     width: 640
     height: 680
     minimumWidth: 460
@@ -37,6 +40,7 @@ ApplicationWindow {
         property real stepSize: 0
         property real value: 0
         property string hint: ""
+        property string more: ""
         signal moved(real newValue)
         Layout.fillWidth: true
         spacing: ui.space.xs
@@ -45,6 +49,7 @@ ApplicationWindow {
             Layout.fillWidth: true
             Label { text: cs.title; Layout.fillWidth: true; font.weight: Font.Medium }
             Label { text: cs.valueText; color: ui.color.secondary; font.family: ui.font.mono }
+            HelpButton { title: cs.title; text: cs.more }
         }
         Slider {
             Layout.fillWidth: true
@@ -64,17 +69,25 @@ ApplicationWindow {
         property alias model: box.model
         property int index: 0
         property string hint: ""
+        // One sentence for each choice. The sentence of the chosen item shows under the list.
+        property var choiceHints: []
+        property string more: ""
         signal picked(int newIndex)
         Layout.fillWidth: true
         spacing: ui.space.xs
 
-        Label { text: cc.title; font.weight: Font.Medium }
+        RowLayout {
+            Layout.fillWidth: true
+            Label { text: cc.title; font.weight: Font.Medium; Layout.fillWidth: true }
+            HelpButton { title: cc.title; text: cc.more }
+        }
         ComboBox {
             id: box
             Layout.fillWidth: true
             currentIndex: cc.index
             onActivated: cc.picked(currentIndex)
         }
+        Hint { visible: cc.choiceHints.length > cc.index && cc.index >= 0; text: cc.choiceHints[cc.index] || "" }
         Hint { visible: cc.hint !== ""; text: cc.hint }
     }
 
@@ -215,6 +228,8 @@ ApplicationWindow {
                 Hint {
                     text: "This returns every setting in this window, and the view, the layers, the algorithms, and the input device, to the values of a new installation. The folder of the practice sessions stays. Your sessions, recordings, and files stay."
                 }
+                // Space below the last control, so the text does not touch the edge of the window.
+                Item { Layout.preferredHeight: ui.space.xxl }
             }
         }
 
@@ -232,7 +247,7 @@ ApplicationWindow {
                     checked: config.viewShowSpectrogram
                     onToggled: config.viewShowSpectrogram = checked
                 }
-                Hint { text: "The colour picture of the sound over time."; Layout.topMargin: -ui.space.xs; Layout.leftMargin: ui.space.xs }
+                Hint { text: "The color picture of the sound over time."; Layout.topMargin: -ui.space.xs; Layout.leftMargin: ui.space.xs }
                 Switch {
                     text: "Pitch track"
                     checked: config.viewShowPitch
@@ -288,7 +303,7 @@ ApplicationWindow {
                 Heading { text: "Pitch zones" }
                 OptionSwitch {
                     key: "showBands"; text: "Show the pitch zones in the graph"
-                    hint: "Three coloured bands behind the tracks show ranges of pitch."
+                    hint: "Three colored bands behind the tracks show ranges of pitch."
                 }
                 OptionSwitch {
                     key: "bandsInExport"; text: "Keep the zones in recordings"
@@ -325,7 +340,14 @@ ApplicationWindow {
                 }
                 Hint { text: "The lowest and the highest frequency of the view. This does not change the formant tracker." }
                 ConfigCombo {
-                    hint: "Logarithmic, Mel, and ERB give more room to low frequencies. Linear gives all frequencies the same room."
+                    hint: "The scale sets how much vertical room each part of the range gets. The sound is the same on every scale."
+                    choiceHints: [
+                        "Linear: every hertz has the same room. Use it to count harmonics and to see breath and noise above 4 kHz.",
+                        "Logarithmic: every octave has the same room, as on a piano. Use it for pitch work. A change of one semitone looks the same at every pitch.",
+                        "Mel: a compromise that follows how people judge the height of a tone. The pitch and the formants F1 to F3 are all easy to see.",
+                        "ERB: low and middle frequencies get the most room. Use it for resonance work. The formants F1 to F3 are well apart."
+                    ]
+                    more: "The scale maps a frequency in hertz to a height on the screen. On the linear scale, every hertz has the same height. On the logarithmic scale, every doubling of the frequency has the same height, as every octave has on a piano. Pitch moves in equal musical steps, so this scale fits pitch work. The Mel and ERB scales follow how people hear. They give the range of the formants (about 300 to 3500 Hz) more room than the linear scale."
                     title: "Frequency scale"
                     model: [ "Linear", "Logarithmic", "Mel", "ERB" ]
                     index: config.viewFrequencyScale
@@ -335,7 +357,8 @@ ApplicationWindow {
 
                 Heading { text: "Spectrogram" }
                 ConfigSlider {
-                    hint: "A larger size shows finer frequencies but blurs fast changes. A smaller size does the opposite."
+                    hint: "A larger size shows finer detail in frequency and blurs fast changes. A smaller size does the opposite. Choose 512 or 1024 for fast speech and pitch work, 2048 for steady vowels and formants (the default), and 4096 for a held note."
+                    more: "The FFT cuts the sound into short windows and shows the frequencies in each one. A long window holds many cycles, so it sees fine detail in frequency but coarse detail in time. A short window does the opposite. The window time is the FFT size divided by twice the highest frequency of the view. At 5500 Hz, the size 2048 gives a window of 186 ms and a line every 5.4 Hz. Use a smaller size for fast speech and a larger size for a held note."
                     title: "FFT size"
                     valueText: String(config.viewFFTSize)
                     from: Math.log2(512); to: Math.log2(4096); stepSize: 1
@@ -344,6 +367,7 @@ ApplicationWindow {
                 }
                 ConfigSlider {
                     hint: "The brightness of the picture. A higher value makes the picture darker. A lower value makes it brighter."
+                    more: "This sets the loudness that gets the brightest color. A higher value needs more sound for a bright color, so the picture is darker. A lower value makes quiet sounds bright. Raise the value when the background noise is bright. Lower the value when your voice is faint."
                     title: "Gain normalization"
                     valueText: config.viewMaxGain + " dB"
                     from: -100; to: 40
@@ -352,6 +376,7 @@ ApplicationWindow {
                 }
                 ConfigCombo {
                     hint: "Smooth draws a softer picture and uses more power. Fast uses less power."
+                    more: "Fast draws each column of the picture as it is. Smooth blends the columns, so the picture has soft edges. Smooth uses more power from the graphics chip. On a slow computer, choose Fast."
                     title: "Quality"
                     model: [ "Fast", "Smooth" ]
                     index: config.viewSpectrogramQuality
@@ -366,6 +391,9 @@ ApplicationWindow {
                     value: config.viewSpectrogramBlur
                     onMoved: (v) => config.viewSpectrogramBlur = v
                 }
+                AppButton { text: "Read the guide to these settings"; onClicked: helpWindow.showPage("choosing-settings") }
+                // Space below the last control, so the text does not touch the edge of the window.
+                Item { Layout.preferredHeight: ui.space.xxl }
             }
         }
 
@@ -392,33 +420,62 @@ ApplicationWindow {
 
                 Heading { text: "Algorithms" }
                 ConfigCombo {
-                    hint: "The method that finds the pitch. Try another method when the pitch track jumps."
+                    hint: "The method that finds the rate of your vocal folds. Try another method when the pitch track jumps by an octave."
+                    choiceHints: [
+                        "YIN: fast, with few errors on a clean voice. A good first choice.",
+                        "McLeod: fast and stable on a clean, steady voice. It suits singing.",
+                        "RAPT: looks at many frames, so the track is smoother and has fewer jumps. This is the default."
+                    ]
+                    more: "All three methods compare the sound with a copy of itself that moves in time. The pitch is the time shift where the two match best. A wrong match gives a jump of one octave, and the methods differ in how they avoid it. YIN corrects the match with a running mean, McLeod picks the first strong peak, and RAPT picks the best path over many frames. When the track jumps, try another method."
                     title: "Pitch"
                     model: [ "YIN", "McLeod", "RAPT" ]
                     index: config.pitchAlgorithm
                     onPicked: (i) => config.pitchAlgorithm = i
                 }
                 ConfigCombo {
-                    hint: "The method that finds the formants. Try another method when the formant tracks look wrong."
+                    hint: "The method that finds the resonances of your vocal tract (F1 to F4). Try another method when the formant tracks look wrong."
+                    choiceHints: HAS_TORCH ? [
+                        "Simple LPC: fast. It can show a false formant or miss a real one.",
+                        "Filtered LPC: removes weak resonances and checks large gaps for a missed formant. The tracks are steadier. This is the default.",
+                        "DeepFormants: a neural network finds the formants without LPC. It needs more computer power."
+                    ] : [
+                        "Simple LPC: fast. It can show a false formant or miss a real one.",
+                        "Filtered LPC: removes weak resonances and checks large gaps for a missed formant. The tracks are steadier. This is the default."
+                    ]
+                    more: "A formant is a peak in the spectrum that the vocal tract makes. The LPC methods fit a smooth curve and read its peaks. The Simple method reads every peak. The Filtered method drops weak peaks and checks for a missed peak. A formant track is an estimate, and it is less exact for a high pitch. Compare a track with the spectrogram."
                     title: "Formants"
                     model: HAS_TORCH ? [ "Simple LPC", "Filtered LPC", "DeepFormants" ] : [ "Simple LPC", "Filtered LPC" ]
                     index: config.formantAlgorithm
                     onPicked: (i) => config.formantAlgorithm = i
                 }
                 ConfigCombo {
-                    hint: "How the formant method fits a model of the vocal tract to the sound. Most people keep the default."
+                    hint: "How the program fits a model of the vocal tract to the sound. Most people keep the default."
+                    choiceHints: [
+                        "Autocorrelation: always stable. It smooths the peaks, so a formant can look wide.",
+                        "Covariance: fits a short piece of sound closely. It can become unstable, and then a formant jumps.",
+                        "Burg: stable, and it keeps sharp peaks in a short window. This is the default."
+                    ]
+                    more: "Linear prediction fits a model of the vocal tract to a short piece of sound. The three methods are three ways to compute the model. Autocorrelation always gives a stable model. Covariance fits closely, and it can become unstable. Burg is stable, and it keeps sharp peaks in a short window. Most people do not need to change this setting."
                     title: "Linear prediction (LPC)"
                     model: [ "Autocorrelation", "Covariance", "Burg" ]
                     index: config.linpredAlgorithm
                     onPicked: (i) => config.linpredAlgorithm = i
                 }
                 ConfigCombo {
-                    hint: "The method for the glottal flow estimate in the oscilloscope."
+                    hint: "The method for the glottal flow estimate in the oscilloscope window. It does not change the main graph."
+                    choiceHints: [
+                        "IAIF: a classic method. It works well on a normal voice.",
+                        "GFM-IAIF: a newer method with a better estimate of the spectral tilt, which relates to vocal effort. This is the default."
+                    ]
+                    more: "The vocal folds make a pulse of air at each cycle, and the vocal tract then shapes the sound. Inverse filtering removes the effect of the tract, to show the pulse. The oscilloscope window shows this shape. The shape tells about vocal effort and breathiness. IAIF is a classic method. GFM-IAIF models the glottal flow with a third-order filter."
                     title: "Glottal inverse filtering"
                     model: [ "IAIF", "GFM-IAIF" ]
                     index: config.invglotAlgorithm
                     onPicked: (i) => config.invglotAlgorithm = i
                 }
+                AppButton { text: "Read the guide to these settings"; onClicked: helpWindow.showPage("choosing-settings") }
+                // Space below the last control, so the text does not touch the edge of the window.
+                Item { Layout.preferredHeight: ui.space.xxl }
             }
         }
 
@@ -458,30 +515,48 @@ ApplicationWindow {
                         onEditingFinished: config.setOption("freqTickStep", parseFloat(text))
                     }
                 }
-                Hint {
-                    text: "Automatic mode labels the roundest values first (1000, 500, 200, 100) and fills the free space with finer values. The labels never overlap, at any window height."
+                Label { text: "Number of labels (automatic mode)"; visible: config.options.freqTickMode === 0 }
+                ComboBox {
+                    Layout.fillWidth: true
+                    visible: config.options.freqTickMode === 0
+                    model: [ "Few: 100, 200, 500, 1000", "Normal: 100, 200, 300, 500, 1000", "Many: 100, 150, 200, 300, 400, 500, 1000" ]
+                    currentIndex: config.options.freqTickDensity
+                    onActivated: config.setOption("freqTickDensity", currentIndex)
                 }
+                Hint {
+                    visible: config.options.freqTickMode === 0
+                    text: "The automatic mode labels only round values. A label never overlaps another label, at any window height. On a linear scale the labels have equal steps (for example every 100 Hz). Choose Few for a calm axis, and Many to read a value more exactly."
+                }
+
+
+                Heading { text: "Grid lines" }
                 OptionSwitch {
                     key: "gridMajor"; text: "Grid lines at the labelled values"
-                    hint: "A thin line across the graph at each number of the frequency axis."
+                    hint: "A line across the graph at each number of the frequency axis."
                 }
                 OptionSwitch {
                     key: "gridMinor"; text: "Grid lines at the values between"
                     hint: "A fainter line at each tick that has no number."
+                }
+                OptionSlider {
+                    key: "gridStrength"; title: "Grid line strength"; unit: "%"; from: 0.1; to: 1.0; stepSize: 0.05; displayScale: 100
+                    hint: "How clearly the lines show. The line color comes from the quiet color of the theme, so it fits every theme."
+                    more: "The line has a light tint of the quiet color of the theme. On a light theme, it has a dark tint. A strong line is easy to see, and it can cover a faint sound. A faint line stays out of the way. The major lines have the full strength, and the minor lines have about half of it."
                 }
 
 
                 Heading { text: "Time axis (horizontal)" }
                 ComboBox {
                     Layout.fillWidth: true
-                    model: [ "Automatic: round values that fit the width", "Custom step" ]
+                    model: [ "Automatic: whole seconds, larger steps for longer views", "Custom step (1 second or more)" ]
                     currentIndex: config.options.timeTickMode
                     onActivated: config.setOption("timeTickMode", currentIndex)
                 }
-                Hint { text: "How the program chooses the ticks and the numbers of the time axis." }
+                Hint { text: "The labels are whole seconds, never fractions. A view of 15 seconds has a label each second. A view of 1 minute has a label every 5 seconds, and a view of 2 minutes every 10 seconds. A longer view has larger steps." }
                 OptionSwitch {
                     key: "flipTime"; text: "Newest sound at the left"
                     hint: "When this is on, new values appear at the left edge and old values move to the right. When it is off, the graph scrolls to the left as before."
+                    more: "Most graphs of speech put the newest sound at the right edge, and the old sound moves to the left. InFormant can do the opposite. The newest sound is at the left edge, and the old sound moves to the right. The time axis then counts back from the left edge. The wheel and the trackpad follow the direction. Choose the direction that is easier for you to read."
                 }
                 RowLayout {
                     visible: config.options.timeTickMode === 1
@@ -491,10 +566,12 @@ ApplicationWindow {
                         font.family: ui.font.mono
                         text: config.options.timeTickStep
                         inputMethodHints: Qt.ImhFormattedNumbersOnly
-                        validator: DoubleValidator { bottom: 0.001; top: 86400 }
-                        onEditingFinished: config.setOption("timeTickStep", parseFloat(text))
+                        validator: DoubleValidator { bottom: 1; top: 86400 }
+                        onEditingFinished: config.setOption("timeTickStep", Math.max(1, parseFloat(text)))
                     }
                 }
+                // Space below the last control, so the text does not touch the edge of the window.
+                Item { Layout.preferredHeight: ui.space.xxl }
             }
         }
 
@@ -551,6 +628,8 @@ ApplicationWindow {
                     key: "dotRadius"; title: "Dot size"; unit: " px"; from: 1; to: 8; stepSize: 0.5; decimals: 1
                     hint: "The size of the dots of the tracks."
                 }
+                // Space below the last control, so the text does not touch the edge of the window.
+                Item { Layout.preferredHeight: ui.space.xxl }
             }
         }
 
@@ -598,7 +677,7 @@ ApplicationWindow {
                 Heading { text: "On the graph" }
                 OptionSwitch {
                     key: "showLegend"; text: "Legend, in a box in the bar above the graph"
-                    hint: "The names and the colours of the tracks."
+                    hint: "The names and the colors of the tracks."
                 }
                 OptionSwitch {
                     key: "showDebug"; text: "Frame times, in a box in the bar above the graph"
@@ -663,6 +742,8 @@ ApplicationWindow {
                     }
                     Hint { text: "The time that the statistics cover. A short window follows your voice. A long window gives a steadier result." }
                 }
+                // Space below the last control, so the text does not touch the edge of the window.
+                Item { Layout.preferredHeight: ui.space.xxl }
             }
         }
 
@@ -674,7 +755,7 @@ ApplicationWindow {
                 x: ui.space.xl
                 spacing: ui.space.md
 
-                Heading { text: "Colour theme"; first: true }
+                Heading { text: "Color theme"; first: true }
                 ComboBox {
                     id: themeBox
                     Layout.fillWidth: true
@@ -682,9 +763,14 @@ ApplicationWindow {
                     currentIndex: Math.max(0, config.themeNames().indexOf(config.options.theme))
                     onActivated: config.setOption("theme", model[currentIndex])
                 }
-                Hint { text: "The strip below shows the colours from a quiet sound (left) to a loud sound (right)." }
+                OptionSwitch {
+                    key: "minVolumeBlack"; text: "Minimum volume is black"
+                    hint: "When this is off, the quietest sound has a dark tint of the theme, as in Viridis. A quiet sound then stands out from the black window. When this is on, the quietest sound is black."
+                    more: "A quiet sound uses the first color of the theme. Many themes start at black, the color of the window. A quiet sound then has no contrast with the window. When this switch is off, the app lifts the first colors to a dark tint of the theme hue, as the Viridis theme does. The upper colors stay the same. Turn this switch on to get black back."
+                }
+                Hint { text: "The strip below shows the colors from a quiet sound (left) to a loud sound (right)." }
 
-                // The preview of the colour map, from quiet to loud.
+                // The preview of the color map, from quiet to loud.
                 Row {
                     Layout.fillWidth: true
                     height: 36
@@ -699,7 +785,7 @@ ApplicationWindow {
                 }
 
                 ConfigSlider {
-                    hint: "Lower values make the colours greyer. Higher values make them stronger."
+                    hint: "Lower values make the colors grayer. Higher values make them stronger."
                     title: "Saturation"
                     valueText: Math.round(100 * config.options.colorSaturation) + "%"
                     from: 0.5; to: 1.5; stepSize: 0.05
@@ -707,7 +793,7 @@ ApplicationWindow {
                     onMoved: (v) => config.setOption("colorSaturation", Math.round(v * 20) / 20)
                 }
 
-                // The colours of the tracks.
+                // The colors of the tracks.
                 RowLayout {
                     Label { text: "Pitch"; color: ui.color.secondary }
                     Rectangle { width: 22; height: 22; radius: 11; color: config.themeColors.pitch; border.color: "black" }
@@ -719,7 +805,7 @@ ApplicationWindow {
                 }
 
                 Hint {
-                    text: "The theme sets the colours of the spectrogram, the pitch track, the formant tracks, and the plots of the oscilloscope and the synthesizer. Every theme works on a dark background. The pride themes use the flag colours at full strength, from dark to light. The brightness of the spectrogram has its own slider (Gain normalization) in the Display tab."
+                    text: "The theme sets the colors of the spectrogram, the pitch track, the formant tracks, and the plots of the oscilloscope and the synthesizer. Every theme works on a dark background. The pride themes use the flag colors at full strength, from dark to light. The brightness of the spectrogram has its own slider (Gain normalization) in the Display tab."
                 }
 
                 
@@ -728,21 +814,21 @@ ApplicationWindow {
                     visible: config.options.theme === "Custom"
                     Layout.fillWidth: true
                     Heading { text: "Custom theme" }
-                    Label { text: "Spectrogram colours, from quiet to loud (#rrggbb, separated by commas)"; color: ui.color.secondary }
+                    Label { text: "Spectrogram colors, from quiet to loud (#rrggbb, separated by commas)"; color: ui.color.secondary }
                     TextField {
                         Layout.fillWidth: true
                         font.family: ui.font.mono
                         text: config.options.customColors
                         onEditingFinished: config.setOption("customColors", text)
                     }
-                    Label { text: "Pitch track colour"; color: ui.color.secondary }
+                    Label { text: "Pitch track color"; color: ui.color.secondary }
                     TextField {
                         Layout.fillWidth: true
                         font.family: ui.font.mono
                         text: config.options.customPitch
                         onEditingFinished: config.setOption("customPitch", text)
                     }
-                    Label { text: "Formant track colours (F1 to F5)"; color: ui.color.secondary }
+                    Label { text: "Formant track colors (F1 to F5)"; color: ui.color.secondary }
                     TextField {
                         Layout.fillWidth: true
                         font.family: ui.font.mono
@@ -750,6 +836,8 @@ ApplicationWindow {
                         onEditingFinished: config.setOption("customFormants", text)
                     }
                 }
+                // Space below the last control, so the text does not touch the edge of the window.
+                Item { Layout.preferredHeight: ui.space.xxl }
             }
         }
     }
