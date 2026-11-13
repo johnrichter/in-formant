@@ -160,13 +160,11 @@ PracticeRecord PracticeWrapper::buildRecord(double t0, double t1, const QDateTim
     for (int i = 0; i < formantCount; ++i) r.formants[i] = statsFrom(summarizeTrack(store.getFormantTrack(i), t0, t1));
 
     // The median of each part of the session. The parts have equal length, and there are at most 12.
-    const double step = std::max(5.0, std::ceil((t1 - t0) / 12.0));
-    for (double a = t0; a < t1; a += step) {
-        const double b = std::min(a + step, t1);
+    for (const TimelinePart &part : timelineParts(t0, t1)) {
         PracticeTimelinePoint p;
-        p.time = a - t0;
-        p.pitch = medianIn(store.getPitchTrack(), a, b);
-        for (int i = 0; i < formantCount; ++i) p.formants[i] = medianIn(store.getFormantTrack(i), a, b);
+        p.time = part.begin - t0;
+        p.pitch = medianIn(store.getPitchTrack(), part.begin, part.end);
+        for (int i = 0; i < formantCount; ++i) p.formants[i] = medianIn(store.getFormantTrack(i), part.begin, part.end);
         r.timeline.append(p);
     }
     store.endRead();
@@ -175,26 +173,10 @@ PracticeRecord PracticeWrapper::buildRecord(double t0, double t1, const QDateTim
 
 void PracticeWrapper::writeBundle(const PracticeRecord &record, const QString &sessionFolder, double t0, double t1, bool waitForSound)
 {
-    QStringList files = { "session.json", "report.md", "stats.csv", "marks.csv" };
     const bool keepSound = mConfig->optionBool("practiceKeepAudio");
-    if (keepSound) files << "audio.wav";
+    const QStringList files = practiceBundleFiles(keepSound);
 
-    auto write = [&](const QString &name, const QString &text) {
-        QFile file(QDir(sessionFolder).filePath(name));
-        if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) file.write(text.toUtf8());
-    };
-
-    write("report.md", buildRecordingReport(*mConfig, *mSession->dataStore(), t0, t1, record.start, files));
-    write("stats.csv", historyCsv({ record }));
-
-    QString marks = "time_s,note,pitch_hz,f1_hz,f2_hz,f3_hz,f4_hz\n";
-    for (const PracticeMark &m : record.marks) {
-        QString note = m.note;
-        note.replace('"', "\"\"");
-        marks += QString("%1,\"%2\",%3,%4,%5,%6,%7\n").arg(m.time, 0, 'f', 1).arg(note).arg(m.pitch, 0, 'f', 1)
-            .arg(m.formants[0], 0, 'f', 0).arg(m.formants[1], 0, 'f', 0).arg(m.formants[2], 0, 'f', 0).arg(m.formants[3], 0, 'f', 0);
-    }
-    write("marks.csv", marks);
+    writeBundleText(sessionFolder, record, buildRecordingReport(*mConfig, *mSession->dataStore(), t0, t1, record.start, files));
 
     if (keepSound) {
         if (mSoundThread.joinable()) mSoundThread.join();
@@ -221,8 +203,8 @@ void PracticeWrapper::finish(bool quitting)
     emit activeChanged();
 
     const double t1 = mSession->dataStore()->session().duration();
-    const double minimum = std::max(1.0, mConfig->optionDouble("practiceMinSeconds"));
-    if (t1 - mT0 < minimum) {
+    const double minimum = practiceMinimumSeconds(mConfig->option("practiceMinSeconds"));
+    if (practiceTooShort(t1 - mT0, minimum)) {
         mMarks.clear();
         emit markCountChanged();
         mSession->showStatus(QString("The practice was shorter than %1 seconds. Nothing is saved.").arg(minimum, 0, 'f', 0));
@@ -306,29 +288,8 @@ void PracticeWrapper::exportAll()
         QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
     if (target.isEmpty()) return;
 
-    PracticeLibrary library(folder());
-    const QList<PracticeRecord> records = library.list();
-    const QString out = QDir(target).filePath("InFormant-practice-" + QDateTime::currentDateTime().toString("yyyyMMdd-HHmmss"));
-    QDir().mkpath(out);
-
-    int copied = 0;
-    for (const PracticeRecord &r : records) {
-        const QString source = library.sessionFolder(r);
-        const QString dest = QDir(out).filePath(QDir(library.root()).relativeFilePath(source));
-        QDir().mkpath(dest);
-        const QStringList names = QDir(source).entryList(QDir::Files);
-        bool ok = true;
-        for (const QString &name : names) {
-            QFile::remove(QDir(dest).filePath(name));
-            ok = QFile::copy(QDir(source).filePath(name), QDir(dest).filePath(name)) && ok;
-        }
-        if (ok) ++copied;
-    }
-
-    QFile history(QDir(out).filePath("history.csv"));
-    if (history.open(QIODevice::WriteOnly | QIODevice::Truncate)) history.write(historyCsv(records).toUtf8());
-
-    mSession->showStatus(QString("Exported %1 of %2 sessions").arg(copied).arg(records.size()));
+    const PracticeExport result = exportPracticeLibrary(PracticeLibrary(folder()), target, QDateTime::currentDateTime());
+    mSession->showStatus(result.message);
 }
 
 QVariantList PracticeWrapper::trend(const QString &track, const QString &stat, const QString &period, const QString &tag)

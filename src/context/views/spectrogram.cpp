@@ -1,5 +1,6 @@
 #include "spectrogram.h"
 #include "../../gui/pitchaxis.h"
+#include "../../gui/readoutstats.h"
 #include "../timings.h"
 #include <algorithm>
 #include <cmath>
@@ -285,7 +286,7 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
 
     // The values of a track in the window of the statistics.
     const double statsWindow = config->optionDouble("statsWindow");
-    const double statsStart = statsWindow > 0 ? timeEnd - statsWindow : timeStart;
+    const double statsStart = Gui::stats::statsWindowStart(timeStart, timeEnd, statsWindow);
 
     // The values for the statistics come from all entries of the window, not from the reduced
     // entries of the drawing. A pass over all entries is costly for a long window, so the values

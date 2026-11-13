@@ -429,6 +429,93 @@ QString Main::historyCsv(const QList<PracticeRecord> &records)
     return out;
 }
 
+double Main::practiceMinimumSeconds(const QVariant &option)
+{
+    bool ok = false;
+    const double value = option.toDouble(&ok);
+    if (!ok || std::isnan(value)) return 1.0;
+    return std::max(1.0, value);
+}
+
+bool Main::practiceTooShort(double lengthSeconds, double minimumSeconds)
+{
+    return lengthSeconds < minimumSeconds;
+}
+
+std::vector<TimelinePart> Main::timelineParts(double t0, double t1)
+{
+    std::vector<TimelinePart> parts;
+    if (!(t1 > t0)) return parts;
+    const double step = std::max(5.0, std::ceil((t1 - t0) / 12.0));
+    for (double a = t0; a < t1; a += step) {
+        parts.push_back({ a, std::min(a + step, t1) });
+    }
+    return parts;
+}
+
+QStringList Main::practiceBundleFiles(bool keepSound)
+{
+    QStringList files = { "session.json", "report.md", "stats.csv", "marks.csv" };
+    if (keepSound) files << "audio.wav";
+    return files;
+}
+
+QString Main::marksCsv(const QList<PracticeMark> &marks)
+{
+    QString out = "time_s,note,pitch_hz,f1_hz,f2_hz,f3_hz,f4_hz\n";
+    for (const PracticeMark &m : marks) {
+        out += QString("%1,%2,%3,%4,%5,%6,%7\n").arg(m.time, 0, 'f', 1).arg(csvField(m.note)).arg(m.pitch, 0, 'f', 1)
+            .arg(m.formants[0], 0, 'f', 0).arg(m.formants[1], 0, 'f', 0).arg(m.formants[2], 0, 'f', 0).arg(m.formants[3], 0, 'f', 0);
+    }
+    return out;
+}
+
+bool Main::writeBundleText(const QString &folder, const PracticeRecord &record, const QString &reportText)
+{
+    bool ok = true;
+    auto write = [&](const QString &name, const QString &text) {
+        QFile file(QDir(folder).filePath(name));
+        const QByteArray bytes = text.toUtf8();
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate) || file.write(bytes) != bytes.size()) ok = false;
+    };
+    write("report.md", reportText);
+    write("stats.csv", historyCsv({ record }));
+    write("marks.csv", marksCsv(record.marks));
+    return ok;
+}
+
+PracticeExport Main::exportPracticeLibrary(const PracticeLibrary &library, const QString &target, const QDateTime &now)
+{
+    PracticeExport result;
+    const QList<PracticeRecord> records = library.list();
+    result.total = records.size();
+    result.folder = QDir(target).filePath("InFormant-practice-" + now.toString("yyyyMMdd-HHmmss"));
+    if (!QDir().mkpath(result.folder)) {
+        result.message = QString("The target folder is not writable: %1").arg(target);
+        return result;
+    }
+
+    for (const PracticeRecord &r : records) {
+        const QString source = library.sessionFolder(r);
+        const QString dest = QDir(result.folder).filePath(QDir(library.root()).relativeFilePath(source));
+        bool ok = QDir().mkpath(dest);
+        for (const QString &name : QDir(source).entryList(QDir::Files)) {
+            QFile::remove(QDir(dest).filePath(name));
+            ok = QFile::copy(QDir(source).filePath(name), QDir(dest).filePath(name)) && ok;
+        }
+        if (ok) ++result.copied;
+    }
+
+    QFile history(QDir(result.folder).filePath("history.csv"));
+    const QByteArray csv = historyCsv(records).toUtf8();
+    const bool historyOk = history.open(QIODevice::WriteOnly | QIODevice::Truncate) && history.write(csv) == csv.size();
+
+    result.ok = historyOk && result.copied == result.total;
+    result.message = QString("Exported %1 of %2 sessions").arg(result.copied).arg(result.total);
+    if (!historyOk) result.message += ". The history file failed";
+    return result;
+}
+
 PracticeLibrary::PracticeLibrary(const QString &root)
     : mRoot(root)
 {

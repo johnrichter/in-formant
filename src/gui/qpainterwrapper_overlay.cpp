@@ -2,7 +2,7 @@
 #include "ticks.h"
 #include "readoutlayout.h"
 #include "uiscale.h"
-#include "statformat.h"
+#include "readoutstats.h"
 #include "../context/timings.h"
 #include <QElapsedTimer>
 #include <algorithm>
@@ -12,34 +12,13 @@
 #include <numeric>
 
 using namespace Gui;
+using namespace Gui::stats;
 
 namespace {
 
 const QColor outlineColor(0, 0, 0, 255);
 const QColor tickColor(255, 255, 255, 235);
 const QColor titleColor(200, 200, 210, 230);
-
-std::string format(const char *fmt, double value)
-{
-    char buffer[64];
-    std::snprintf(buffer, sizeof(buffer), fmt, value);
-    return buffer;
-}
-
-// A value of a statistic in the narrow columns. A value of 1000 or more has no decimals.
-std::string number(double value)
-{
-    return format(std::fabs(value) >= 1000.0 ? "%.0f" : "%.1f", value);
-}
-
-double percentile(const std::vector<double> &sorted, double fraction)
-{
-    if (sorted.empty()) return 0.0;
-    const double position = fraction * (sorted.size() - 1);
-    const size_t lo = (size_t) std::floor(position);
-    const size_t hi = std::min(lo + 1, sorted.size() - 1);
-    return sorted[lo] + (sorted[hi] - sorted[lo]) * (position - lo);
-}
 
 // One point of a track in the time and the transformed frequency.
 struct TrackPoint {
@@ -867,70 +846,6 @@ void QPainterWrapper::drawCursor(double time, const std::vector<CursorValue> &va
         rpm::vector<QPointF> dot(1, QPointF(x, l.anchorY));
         p->drawScatterWithOutline(dot, (float) (6.0 * dpr), l.color, QColor(255, 255, 255, 255));
     }
-}
-
-namespace {
-
-// The statistics of the values of one track.
-struct TrackStats {
-    std::vector<double> sorted;
-    double mean = 0.0;
-    double sd = 0.0;
-    double p5 = 0.0;
-    double p95 = 0.0;
-};
-
-TrackStats computeStats(const HudTrack &t)
-{
-    TrackStats s;
-    s.sorted = t.values;
-    std::sort(s.sorted.begin(), s.sorted.end());
-    if (s.sorted.empty()) return s;
-
-    s.mean = std::accumulate(s.sorted.begin(), s.sorted.end(), 0.0) / s.sorted.size();
-    double variance = 0;
-    for (double v : s.sorted) variance += (v - s.mean) * (v - s.mean);
-    s.sd = s.sorted.size() > 1 ? std::sqrt(variance / (s.sorted.size() - 1)) : 0.0;
-    s.p5 = percentile(s.sorted, 0.05);
-    s.p95 = percentile(s.sorted, 0.95);
-    return s;
-}
-
-// The text of one statistic of one track. A track with no value has a dash.
-std::string statText(const HudTrack &t, const TrackStats &s, int bit, bool rangeSemitones)
-{
-    if (bit == StatVoiced) {
-        return t.frames > 0 ? format("%.0f%%", 100.0 * (t.count > 0 ? t.count : t.values.size()) / t.frames) : "-";
-    }
-    if (s.sorted.empty()) return "-";
-
-    switch (bit) {
-    case StatCurrent: return number(t.values.back());
-    case StatMin: return number(s.sorted.front());
-    case StatP5: return number(s.p5);
-    case StatMean: return number(s.mean);
-    case StatMedian: return number(percentile(s.sorted, 0.5));
-    case StatStdDev: return number(s.sd);
-    case StatP95: return number(s.p95);
-    case StatMax: return number(s.sorted.back());
-    case StatRange:
-        if (rangeSemitones) return rangeSemitonesText(s.p5, s.p95);
-        return number(s.p95 - s.p5);
-    case StatCV: return s.mean > 0 ? format("%.1f%%", 100.0 * s.sd / s.mean) : "-";
-    case StatCount: return std::to_string(t.count > 0 ? t.count : s.sorted.size());
-    case StatNote:
-        if (t.isPitch) {
-            double cents = 0;
-            const std::string note = noteName(s.mean, &cents);
-            char buffer[32];
-            std::snprintf(buffer, sizeof(buffer), "%s %+.0fc", note.c_str(), cents);
-            return buffer;
-        }
-        break;
-    }
-    return "-";
-}
-
 }
 
 void QPainterWrapper::drawHud(const std::vector<HudTrack> &tracks)

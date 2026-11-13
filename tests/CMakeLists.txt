@@ -67,6 +67,9 @@ informant_add_test(NAME config_tests
     LABELS config)
 target_include_directories(config_tests SYSTEM PRIVATE ${ARMADILLO_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/external/libsamplerate/src)
 
+# The statistics in the table of the readouts. They need the note names of the tick code.
+informant_add_test(NAME readout_stats_tests SOURCES readout_stats_test.cpp ${SRC}/gui/ticks.cpp LIBS Qt6::Gui LABELS readout_stats)
+
 # The practice library uses QDir, QFile, and QDateTime, and the tests use QTemporaryDir for the files.
 informant_add_test(NAME practice_tests SOURCES practice_test.cpp ${SRC}/context/practicelib.cpp LIBS Qt6::Core LABELS practice)
 

@@ -7,6 +7,7 @@
 #include <QList>
 #include <QString>
 #include <QStringList>
+#include <QVariant>
 #include <vector>
 
 #include "summary.h"
@@ -120,6 +121,43 @@ namespace Main {
     // One line for each session, as CSV text, for the export of the whole history.
     QString historyCsv(const QList<PracticeRecord> &records);
 
+    // The shortest session that the program keeps, in seconds. The option holds a number. A value of 0,
+    // a negative value, a text that is not a number, or no value gives 1 second.
+    double practiceMinimumSeconds(const QVariant &option);
+
+    // A session is too short when its length is below the minimum. A length equal to the minimum stays.
+    bool practiceTooShort(double lengthSeconds, double minimumSeconds);
+
+    // One part of the session for a point of the timeline. The times are in seconds of the session.
+    struct TimelinePart {
+        double begin = 0.0;
+        double end = 0.0;
+    };
+
+    // The parts of a session from t0 to t1 that have equal length. A part is 5 seconds or longer, and a
+    // session has at most 12 parts. A session with no length has no part.
+    std::vector<TimelinePart> timelineParts(double t0, double t1);
+
+    // The files in the folder of a session. The sound file is in the list only when the person keeps the sound.
+    QStringList practiceBundleFiles(bool keepSound);
+
+    // The marks as CSV text with a header line.
+    QString marksCsv(const QList<PracticeMark> &marks);
+
+    class PracticeLibrary;
+
+    // Write report.md, stats.csv, and marks.csv into a folder that exists. The result is false when a file fails.
+    bool writeBundleText(const QString &folder, const PracticeRecord &record, const QString &reportText);
+
+    // The result of the export of a whole library.
+    struct PracticeExport {
+        bool ok = false;
+        int copied = 0;         // the sessions that were copied without an error
+        int total = 0;          // all sessions of the library
+        QString folder;         // the folder that holds the copy
+        QString message;        // the text for the status line
+    };
+
     // The folder tree of the sessions: root/YYYY/MM/DD/<id>/session.json.
     class PracticeLibrary {
     public:
@@ -139,6 +177,10 @@ namespace Main {
     private:
         QString mRoot;
     };
+
+    // Copy each session folder and a history.csv into a new folder InFormant-practice-<time> in the target.
+    // The result says how many sessions were copied. A target that cannot be written gives ok false.
+    PracticeExport exportPracticeLibrary(const PracticeLibrary &library, const QString &target, const QDateTime &now);
 
 }
 

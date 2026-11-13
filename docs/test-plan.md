@@ -510,7 +510,7 @@ The scroll views of the settings, the help pages, the help boxes, the Synthesize
 
 - **TP-STA-01** (Unit, P1). Check that the report and the live table use the standard deviation with N minus 1.
 - **TP-STA-02** (Unit, P2). Check the percentiles for 1, 2, 3, and 1000 values, and for equal values.
-- **TP-STA-03** (Unit, P2). Check CV, Voiced share, and N for a window with no values.
+- **TP-STA-03** (Unit, P2). Check CV, Voiced share, and N for a window with no values. When the window has frames, expect a dash for the CV, 0% for the share, and 0 for N. With no frame, expect a dash for all three.
 - **TP-STA-04** (Unit, P2). Check the statistics window (visible, 5, 10, 30, and 60 seconds) at the start of a session, when less data exists than the window.
 - **TP-STA-05** (Unit, P2). Check the note name and the cents for 440 Hz, for 435 Hz, for the lowest and the highest pitch, and for 0.
 - **TP-STA-06** (Unit, P3). Check the number format for values of 999.95 and 1000.
@@ -592,4 +592,4 @@ Some cases need a small change in the code. Do these changes first, because they
 Each entry names the case, the bug, the version of the fix, and the test that guards it.
 
 - **A file with a syntax error stopped the program at launch (3.2.2).** The parser threw an error that no code caught, so the user could not start the program until the file was removed. Now the program starts with the defaults and keeps the broken file as `informant.conf.broken`. TP-SET-08 and TP-SET-18.
-- **A file with a formant count above 4 could read past the four track switches (3.2.2).** The getter now clamps the count to 0 to 4. TP-TRACK-08.
+- **An export to a folder that cannot be written gave no reason (3.2.3).** The status said "Exported 0 of N sessions". Now the status says that the target folder is not writable and names it. TP-PRA-11.
