@@ -29,7 +29,7 @@ namespace Gui {
         bool showAxisLabels = true;
         bool showAxisTitles = true;
         bool showLegend = true;
-        bool showStats = false;
+        bool showStats = true;
         // Hide the frame timing box. The recorder grabs the whole window, so the box would be in the video.
         bool hideDebug = false;
 
@@ -40,7 +40,7 @@ namespace Gui {
         // The readout boxes: the keys in their order, the side of the graph, and the box of each track.
         // Index 0 is the pitch. Indexes 1 to 4 are the formants F1 to F4.
         std::string readoutOrder = "legend,pitch,f1,f2,f3,f4";
-        bool readoutLeft = false;
+        bool readoutLeft = true;
         bool trackBoxShown[5] = { true, true, true, true, true };
 
         int freqTickMode = 0;

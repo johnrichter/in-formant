@@ -46,7 +46,14 @@ PracticeWrapper::PracticeWrapper(Config *config, SessionWrapper *session)
 
     // A session that is still open at the end of the program is written to the folder first.
     connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, this, [this]() {
-        if (mActive) finish(true);
+        if (mActive) {
+            finish(true);
+        }
+        else if (mPending) {
+            // The question is open at the quit. The session stays, because the person cannot answer.
+            mPending = false;
+            commit(true);
+        }
     });
 }
 
@@ -207,20 +214,59 @@ void PracticeWrapper::stop()
     if (mActive) finish(false);
 }
 
-void PracticeWrapper::finish(bool waitForSound)
+void PracticeWrapper::finish(bool quitting)
 {
     mTimer.stop();
     mActive = false;
     emit activeChanged();
 
     const double t1 = mSession->dataStore()->session().duration();
-    if (t1 - mT0 < 2.0) {
+    const double minimum = std::max(1.0, mConfig->optionDouble("practiceMinSeconds"));
+    if (t1 - mT0 < minimum) {
         mMarks.clear();
         emit markCountChanged();
-        mSession->showStatus(QStringLiteral("The practice was shorter than 2 seconds. Nothing is saved."));
+        mSession->showStatus(QString("The practice was shorter than %1 seconds. Nothing is saved.").arg(minimum, 0, 'f', 0));
         return;
     }
 
+    mPendingT1 = t1;
+    mPending = true;
+
+    // A quit saves the session without a question, because the person cannot answer.
+    if (quitting) {
+        mPending = false;
+        commit(true);
+        return;
+    }
+
+    // The person decides. The text shows the length, the marks, and the comparison with the last session of the task.
+    const PracticeRecord record = buildRecord(mT0, t1, mStart);
+    PracticeLibrary library(folder());
+    QStringList lines;
+    lines << QString("Task: %1. Length: %2. Marks: %3.").arg(record.tag, clockText(record.duration)).arg(record.marks.size());
+    lines << compareSessions(record, previousSameTag(library.list(), record));
+    emit confirm(lines.join('\n'));
+}
+
+void PracticeWrapper::keep()
+{
+    if (!mPending) return;
+    mPending = false;
+    commit(false);
+}
+
+void PracticeWrapper::discard()
+{
+    if (!mPending) return;
+    mPending = false;
+    mMarks.clear();
+    emit markCountChanged();
+    mSession->showStatus(QStringLiteral("The practice is discarded. Nothing is saved."));
+}
+
+void PracticeWrapper::commit(bool waitForSound)
+{
+    const double t1 = mPendingT1;
     PracticeRecord record = buildRecord(mT0, t1, mStart);
 
     PracticeLibrary library(folder());
@@ -285,10 +331,11 @@ void PracticeWrapper::exportAll()
     mSession->showStatus(QString("Exported %1 of %2 sessions").arg(copied).arg(records.size()));
 }
 
-QVariantList PracticeWrapper::trend(const QString &measure, const QString &period, const QString &tag)
+QVariantList PracticeWrapper::trend(const QString &track, const QString &stat, const QString &period, const QString &tag)
 {
     PracticeLibrary library(folder());
-    const auto points = buildTrend(library.list(), trendMeasureFromName(measure), trendPeriodFromName(period), tag);
+    const auto points = buildTrend(library.list(), trendTrackFromName(track), trendStatFromName(stat),
+                                   trendPeriodFromName(period), tag);
 
     QVariantList out;
     for (const TrendPoint &p : points) {

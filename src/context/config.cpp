@@ -154,7 +154,7 @@ QVariantMap Config::defaultOptions()
     // Readouts and overlays.
     m["showDebug"] = false;
     m["showLegend"] = true;
-    m["showStats"] = false;
+    m["showStats"] = true;
     m["showMiniMap"] = true;
     m["pitchAxisMin"] = 0.0;     // Hz: the low edge of the pitch-only graph
     m["pitchAxisMax"] = 500.0;   // Hz: the high edge of the pitch-only graph
@@ -162,6 +162,7 @@ QVariantMap Config::defaultOptions()
     m["practiceTag"] = QString("Free");      // the task of the next practice session
     m["practiceFolder"] = QString("");       // the folder of the sessions, empty for Documents/InFormant/Practice
     m["practiceKeepAudio"] = true;           // write the sound of a session into its folder
+    m["practiceMinSeconds"] = 5;             // a session shorter than this time is dropped
     m["graphMode"] = QString("full");  // "full" for the spectrogram and all tracks, "pitch" for the pitch track alone
     m["rangeSemitones"] = false; // show the Range statistic in semitones and not in Hz
     m["showBands"] = false;      // show the pitch zones in the graph
@@ -171,7 +172,7 @@ QVariantMap Config::defaultOptions()
 
     // The readout boxes. The order lists the keys. The side is "bottom" or "left". One switch for each track box.
     m["readoutOrder"] = QString("legend,pitch,f1,f2,f3,f4");
-    m["readoutSide"] = QString("bottom");
+    m["readoutSide"] = QString("left");
     m["showBoxPitch"] = true;
     m["showBoxF1"] = true;
     m["showBoxF2"] = true;

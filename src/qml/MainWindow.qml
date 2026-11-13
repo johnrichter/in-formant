@@ -69,7 +69,7 @@ ApplicationWindow {
                     Label {
                         Layout.alignment: Qt.AlignHCenter
                         text: (Math.round(100 * config.viewZoom)) + "%"
-                        color: "lightgrey"
+                        color: ui.color.secondary
                     }
 
                     ToolButton {
@@ -90,14 +90,14 @@ ApplicationWindow {
                     Button {
                         text: "Full"
                         flat: true
-                        font.pixelSize: 12
+                        font.pixelSize: ui.type.caption
                         highlighted: config.options.graphMode !== "pitch"
                         onClicked: config.setOption("graphMode", "full")
                     }
                     Button {
                         text: "Pitch only"
                         flat: true
-                        font.pixelSize: 12
+                        font.pixelSize: ui.type.caption
                         highlighted: config.options.graphMode === "pitch"
                         onClicked: config.setOption("graphMode", "pitch")
                     }
@@ -185,8 +185,8 @@ ApplicationWindow {
             id: playHint
             anchors.centerIn: parent
             text: "Press play to start"
-            color: "lightgrey"
-            font.pixelSize: 24
+            color: ui.color.secondary
+            font.pixelSize: ui.type.headline
             property bool noSound: true
             visible: config.paused && !sessionControl.fileMode && noSound
 
@@ -242,7 +242,7 @@ ApplicationWindow {
 
                 component BarButton: Button {
                     flat: true
-                    font.pixelSize: 12
+                    font.pixelSize: ui.type.caption
                     implicitHeight: 30
                     topInset: 0
                     bottomInset: 0
@@ -295,9 +295,11 @@ ApplicationWindow {
 
                 ComboBox {
                     id: taskBox
-                    Layout.preferredWidth: 118
+                    // The box is as wide as its longest entry, so "Conversation" shows in full.
+                    implicitContentWidthPolicy: ComboBox.WidestText
+                    Layout.preferredWidth: implicitWidth
                     implicitHeight: 30
-                    font.pixelSize: 12
+                    font.pixelSize: ui.type.caption
                     topInset: 0
                     bottomInset: 0
                     model: practice.tags
@@ -319,7 +321,7 @@ ApplicationWindow {
                     visible: practice.active
                     Layout.preferredWidth: 110
                     implicitHeight: 28
-                    font.pixelSize: 12
+                    font.pixelSize: ui.type.caption
                     topPadding: 0
                     bottomPadding: 0
                     topInset: 0
@@ -336,18 +338,19 @@ ApplicationWindow {
                 Label {
                     Layout.fillWidth: true
                     text: sessionControl.status
-                    color: "lightgrey"
-                    font.pixelSize: 12
+                    color: ui.color.secondary
+                    font.pixelSize: ui.type.caption
                     elide: Text.ElideRight
                 }
 
                 // The time of the view. The map below this bar shows the same time in its frame.
-                Label { text: "View"; color: "lightgrey"; font.pixelSize: 12 }
+                Label { text: "View"; color: ui.color.secondary; font.pixelSize: ui.type.caption }
                 TextField {
                     id: timeSpanField
                     Layout.preferredWidth: 72
                     implicitHeight: 28
-                    font.pixelSize: 12
+                    font.pixelSize: ui.type.caption
+                    font.family: ui.font.mono
                     topPadding: 0
                     bottomPadding: 0
                     topInset: 0
@@ -366,7 +369,7 @@ ApplicationWindow {
                         focus = false
                     }
                 }
-                Label { text: "s"; color: "lightgrey"; font.pixelSize: 12 }
+                Label { text: "s"; color: ui.color.secondary; font.pixelSize: ui.type.caption }
             }
 
             IfOverview {
@@ -401,31 +404,44 @@ ApplicationWindow {
         id: progressWindow
     }
 
-    // The summary after a practice session, with the comparison to the last session of the same task.
+    // The question after a practice session: keep it or discard it. The text shows the length, the marks, and
+    // the comparison with the last session of the same task. The person must choose, so no other action closes it.
     Dialog {
         id: practiceDone
-        title: "Practice saved"
+        objectName: "practiceDone"
+        title: "Keep this practice session?"
         modal: true
+        closePolicy: Dialog.NoAutoClose
         anchors.centerIn: Overlay.overlay
-        standardButtons: Dialog.Close
+        standardButtons: Dialog.Save | Dialog.Discard
+        property string text: ""
+
+        Component.onCompleted: {
+            standardButton(Dialog.Save).text = "Keep"
+            standardButton(Dialog.Discard).text = "Discard"
+        }
+        onAccepted: practice.keep()
+        onDiscarded: practice.discard()
 
         ColumnLayout {
-            spacing: 10
+            spacing: ui.space.md
             Label {
                 Layout.preferredWidth: 520
                 wrapMode: Text.WordWrap
-                text: practice.summary
+                text: practiceDone.text
             }
-            Button {
-                text: "Open the folder"
-                onClicked: practice.openFolder()
+            Hint {
+                text: "Keep saves the statistics, the marks, a report, and the sound in the folder of the practice sessions. Discard saves nothing."
             }
         }
     }
 
     Connections {
         target: practice
-        function onSaved() { practiceDone.open() }
+        function onConfirm(text) {
+            practiceDone.text = text
+            practiceDone.open()
+        }
     }
 
     Component.onCompleted: {

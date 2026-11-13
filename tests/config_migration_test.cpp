@@ -83,5 +83,41 @@ int main()
         CHECK(tbl["options"]["trackStylePitch"].value<int64_t>() == 3);
     }
 
+    // The statistics boxes show by default. A file with the old default "off" turns them on one time.
+    {
+        toml::table tbl = makeTable("[meta]\nversion = 5\n[options]\nshowStats = false\n");
+        migrateConfig(tbl);
+        CHECK(tbl["options"]["showStats"].value<bool>() == true);
+        // The user turns them off after the migration. The next start keeps the choice.
+        tbl["options"].as_table()->insert_or_assign("showStats", false);
+        migrateConfig(tbl);
+        CHECK(tbl["options"]["showStats"].value<bool>() == false);
+    }
+
+    // A file with no value for the statistics keeps no value, so the default of the program applies.
+    {
+        toml::table tbl = makeTable("[meta]\nversion = 5\n");
+        migrateConfig(tbl);
+        CHECK(!tbl["options"]["showStats"]);
+    }
+
+    // The boxes stand at the left by default. A file with the old default "bottom" changes one time.
+    {
+        toml::table tbl = makeTable("[meta]\nversion = 6\n[options]\nreadoutSide = \"bottom\"\n");
+        migrateConfig(tbl);
+        CHECK(tbl["options"]["readoutSide"].value<std::string>() == "left");
+        // The user chooses the row after the migration. The next start keeps the choice.
+        tbl["options"].as_table()->insert_or_assign("readoutSide", "bottom");
+        migrateConfig(tbl);
+        CHECK(tbl["options"]["readoutSide"].value<std::string>() == "bottom");
+    }
+
+    // A file with no value keeps no value, so the default of the program applies.
+    {
+        toml::table tbl = makeTable("[meta]\nversion = 6\n");
+        migrateConfig(tbl);
+        CHECK(!tbl["options"]["readoutSide"]);
+    }
+
     return TEST_RESULT();
 }

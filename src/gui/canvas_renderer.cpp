@@ -126,6 +126,7 @@ void CanvasRenderer::render()
     glDisable(GL_CULL_FACE);
     glEnable(GL_MULTISAMPLE);
 
+    mOriginY = 0;
     setProjections();
 
     QPainterWrapper painter(this);
@@ -380,11 +381,11 @@ void CanvasRenderer::drawSpectrogram(
     // The picture fills the graph, which is the canvas without the margins of the axes. The
     // projection places the picture, and the viewport stays the whole canvas.
     const float w = mWidth - mPlotLeft;
-    const float h = mHeight - mPlotBottom;
+    const float h = mHeight - mPlotBottom - mPlotTop;
     glViewport(0, 0, mWidth, mHeight);
 
     QMatrix4x4 projection;
-    projection.ortho(0, mWidth, 0, mHeight, -1, 1);
+    projection.ortho(0, mWidth, -mOriginY, mHeight - mOriginY, -1, 1);
     mSpecProgram->setUniformValue(mSpecLoc.projection, projection);
 
     mSpecProgram->setUniformValue(mSpecLoc.frequencyScale, static_cast<int>(freqScale));
@@ -464,7 +465,7 @@ void CanvasRenderer::setClip(int x, int y, int width, int height)
 {
     glEnable(GL_SCISSOR_TEST);
     // The canvas shows with its bottom row at the top, so y counts from the top of the picture and is the row of the framebuffer.
-    glScissor(x, y, std::max(width, 0), std::max(height, 0));
+    glScissor(x, y + mOriginY, std::max(width, 0), std::max(height, 0));
 }
 
 void CanvasRenderer::clearClip()
@@ -485,14 +486,25 @@ void CanvasRenderer::drawTextOutlined(Font *font, float x, float y, const QColor
 void CanvasRenderer::drawTextRotated(int size, float x, float y, float angleDegrees, const QColor &color,
                                      const std::string &text, const QColor &outline)
 {
-    Font *font = size == 0 ? mFontNormal : (size == 1 ? mFontSmall : mFontSmaller);
+    Font *font = fontOfSize(size);
     drawGlyphs(font, x, y, angleDegrees, color, text, outline.alpha() > 0 ? &outline : nullptr);
 }
 
 QRect CanvasRenderer::textBoundsOfSize(int size, const std::string &text)
 {
-    Font *font = size == 0 ? mFontNormal : (size == 1 ? mFontSmall : mFontSmaller);
-    return textBounds(font, text);
+    return textBounds(fontOfSize(size), text);
+}
+
+Font *CanvasRenderer::fontOfSize(int size) const
+{
+    switch (size) {
+    case 0: return mFontNormal;
+    case 1: return mFontSmall;
+    case 3: return mFontMono;
+    case 4: return mFontMonoSmall;
+    case 5: return mFontMonoSmaller;
+    default: return mFontSmaller;
+    }
 }
 
 void CanvasRenderer::drawGlyphs(Font *font, float x, float y, float angleDegrees, const QColor &color,
@@ -638,6 +650,9 @@ void CanvasRenderer::initFonts()
     mFontNormal = new Font(ft, ":/Roboto.ttf", std::min(14 * mDevicePixelRatio * mZoomScaleText, 24.0), mDpi);
     mFontSmall = new Font(ft, ":/Roboto.ttf", std::min(12 * mDevicePixelRatio * mZoomScaleText, 20.0), mDpi);
     mFontSmaller = new Font(ft, ":/Roboto.ttf", std::min(10 * mDevicePixelRatio * mZoomScaleText, 18.0), mDpi);
+    mFontMono = new Font(ft, ":/RobotoMono-Regular.ttf", std::min(14 * mDevicePixelRatio * mZoomScaleText, 24.0), mDpi);
+    mFontMonoSmall = new Font(ft, ":/RobotoMono-Regular.ttf", std::min(12 * mDevicePixelRatio * mZoomScaleText, 20.0), mDpi);
+    mFontMonoSmaller = new Font(ft, ":/RobotoMono-Regular.ttf", std::min(10 * mDevicePixelRatio * mZoomScaleText, 18.0), mDpi);
 
     FT_Done_FreeType(ft);
 }
@@ -702,6 +717,7 @@ void CanvasRenderer::initShaders()
     mCircleLoc.centers = mCircleProgram->uniformLocation("centers");
     mCircleLoc.radius = mCircleProgram->uniformLocation("radius");
     mCircleLoc.fillColor = mCircleProgram->uniformLocation("fillColor");
+    mCircleLoc.originY = mCircleProgram->uniformLocation("originY");
 
     glGenVertexArrays(1, &mCircleVao);
 
@@ -711,6 +727,7 @@ void CanvasRenderer::initShaders()
     mSegmentLoc.segments = mSegmentProgram->uniformLocation("segments");
     mSegmentLoc.halfWidth = mSegmentProgram->uniformLocation("halfWidth");
     mSegmentLoc.color = mSegmentProgram->uniformLocation("color");
+    mSegmentLoc.originY = mSegmentProgram->uniformLocation("originY");
 
     glGenVertexArrays(1, &mSegmentVao);
 
@@ -722,29 +739,42 @@ void CanvasRenderer::initShaders()
     mRectLoc.fillColor = mRectProgram->uniformLocation("fillColor");
     mRectLoc.borderColor = mRectProgram->uniformLocation("borderColor");
     mRectLoc.borderWidth = mRectProgram->uniformLocation("borderWidth");
+    mRectLoc.originY = mRectProgram->uniformLocation("originY");
 
     glGenVertexArrays(1, &mRectVao);
+}
+
+void CanvasRenderer::setOriginY(int pixels)
+{
+    mOriginY = pixels;
+    setProjections();
 }
 
 void CanvasRenderer::setProjections()
 {
     // The text program draws with the y axis pointing down. The other programs use the y axis pointing up.
+    // The origin moves all drawing down by mOriginY pixels.
     QMatrix4x4 up;
-    up.ortho(0, mWidth, 0, mHeight, -1, 1);
+    up.ortho(0, mWidth, -mOriginY, mHeight - mOriginY, -1, 1);
     QMatrix4x4 down;
-    down.ortho(0, mWidth, mHeight, 0, -1, 1);
+    down.ortho(0, mWidth, mHeight + mOriginY, mOriginY, -1, 1);
 
     mTextProgram->bind();
     mTextProgram->setUniformValue(mTextLoc.projection, down);
 
+    // The fragment shaders of the shapes compare window coordinates with the coordinates of the drawing,
+    // so they must know the origin too.
     mCircleProgram->bind();
     mCircleProgram->setUniformValue(mCircleLoc.projection, up);
+    mCircleProgram->setUniformValue(mCircleLoc.originY, (float) mOriginY);
 
     mSegmentProgram->bind();
     mSegmentProgram->setUniformValue(mSegmentLoc.projection, up);
+    mSegmentProgram->setUniformValue(mSegmentLoc.originY, (float) mOriginY);
 
     mRectProgram->bind();
     mRectProgram->setUniformValue(mRectLoc.projection, up);
+    mRectProgram->setUniformValue(mRectLoc.originY, (float) mOriginY);
     mRectProgram->release();
 }
 
@@ -753,6 +783,9 @@ void CanvasRenderer::deleteFonts()
     delete mFontNormal;
     delete mFontSmall;
     delete mFontSmaller;
+    delete mFontMono;
+    delete mFontMonoSmall;
+    delete mFontMonoSmaller;
 }
 
 void CanvasRenderer::deleteShaders()

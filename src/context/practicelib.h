@@ -71,6 +71,21 @@ namespace Main {
     TrendMeasure trendMeasureFromName(const QString &name);
     TrendPeriod trendPeriodFromName(const QString &name);
 
+    // The statistic of one track that a trend can show. The track is 0 for the pitch and 1 to 4 for F1 to F4.
+    // Range is P95 minus P5 in Hz. RangeSemitones is the same range in semitones. Voiced is the share of
+    // frames with a value in percent. Count is the number of values.
+    enum class TrendStat { Median, Mean, SD, CV, Min, P5, P25, P75, P95, Max, Range, RangeSemitones, Voiced, Count };
+
+    // The names are "median", "mean", "sd", "cv", "min", "p5", "p25", "p75", "p95", "max", "range",
+    // "range_st", "voiced", and "count". An unknown name gives the median.
+    TrendStat trendStatFromName(const QString &name);
+
+    // The track of a name: "pitch" is 0 and "f1" to "f4" are 1 to 4. An unknown name gives 0.
+    int trendTrackFromName(const QString &name);
+
+    // The value of a statistic of one track in one session. The result is false when the session has no value.
+    bool statValue(const PracticeRecord &record, int track, TrendStat stat, double *value);
+
     // The value of a measure for one session. The result is false when the session has no value for it.
     bool measureValue(const PracticeRecord &record, TrendMeasure measure, double *value);
 
@@ -90,6 +105,10 @@ namespace Main {
     // The trend of a measure. A tag filter keeps only the sessions of one task. An empty filter keeps all.
     // A period with no session that has a value is not in the result.
     std::vector<TrendPoint> buildTrend(const QList<PracticeRecord> &records, TrendMeasure measure,
+                                       TrendPeriod period, const QString &tagFilter);
+
+    // The same trend for any statistic of any track.
+    std::vector<TrendPoint> buildTrend(const QList<PracticeRecord> &records, int track, TrendStat stat,
                                        TrendPeriod period, const QString &tagFilter);
 
     // The newest session before this one that has the same task. The result is null when none exists.

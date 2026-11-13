@@ -81,6 +81,55 @@ int main()
         CHECK(measureValue(r, TrendMeasure::Variation, &v) && std::fabs(v - 10.0) < 1e-9);
     }
 
+    // Each statistic of each track. The helper makes a session with known statistics.
+    {
+        PracticeRecord r = make("s", "2026-11-13T09:00:00", "Free", 200.0);
+        r.pitch.count = 80;
+        r.pitch.frames = 100;
+        r.pitch.mean = 210.0;
+        r.pitch.sd = 21.0;
+        r.pitch.min = 150.0;
+        r.pitch.max = 300.0;
+        r.pitch.p5 = 160.0;
+        r.pitch.p25 = 190.0;
+        r.pitch.p75 = 230.0;
+        r.pitch.p95 = 280.0;
+        double v = 0.0;
+        CHECK(statValue(r, 0, TrendStat::Mean, &v) && v == 210.0);
+        CHECK(statValue(r, 0, TrendStat::SD, &v) && v == 21.0);
+        CHECK(statValue(r, 0, TrendStat::CV, &v) && std::fabs(v - 10.0) < 1e-9);
+        CHECK(statValue(r, 0, TrendStat::Min, &v) && v == 150.0);
+        CHECK(statValue(r, 0, TrendStat::Max, &v) && v == 300.0);
+        CHECK(statValue(r, 0, TrendStat::P5, &v) && v == 160.0);
+        CHECK(statValue(r, 0, TrendStat::P25, &v) && v == 190.0);
+        CHECK(statValue(r, 0, TrendStat::P75, &v) && v == 230.0);
+        CHECK(statValue(r, 0, TrendStat::P95, &v) && v == 280.0);
+        CHECK(statValue(r, 0, TrendStat::Range, &v) && v == 120.0);
+        CHECK(statValue(r, 0, TrendStat::RangeSemitones, &v));
+        CHECK_NEAR(v, 12.0 * std::log2(280.0 / 160.0), 1e-9);
+        CHECK(statValue(r, 0, TrendStat::Voiced, &v) && v == 80.0);
+        CHECK(statValue(r, 0, TrendStat::Count, &v) && v == 80.0);
+        // A track with no frames has no value. A track with frames and no values has a share and a count.
+        CHECK(!statValue(r, 2, TrendStat::Median, &v));
+        CHECK(!statValue(r, 2, TrendStat::Voiced, &v));
+        r.formants[1].frames = 50;
+        CHECK(statValue(r, 2, TrendStat::Voiced, &v) && v == 0.0);
+        CHECK(statValue(r, 2, TrendStat::Count, &v) && v == 0.0);
+        CHECK(!statValue(r, 2, TrendStat::Mean, &v));
+        // A track outside 0 to 4 has no value.
+        CHECK(!statValue(r, 5, TrendStat::Mean, &v));
+        CHECK(!statValue(r, -1, TrendStat::Mean, &v));
+        // The names of the statistics and the tracks.
+        CHECK(trendStatFromName("RANGE_ST") == TrendStat::RangeSemitones);
+        CHECK(trendStatFromName("nonsense") == TrendStat::Median);
+        CHECK(trendTrackFromName("F3") == 3 && trendTrackFromName("pitch") == 0 && trendTrackFromName("x") == 0);
+        // The trend of a statistic uses the same grouping as the trend of a measure.
+        QList<PracticeRecord> records;
+        records << r;
+        const auto sd = buildTrend(records, 0, TrendStat::SD, TrendPeriod::Day, "");
+        CHECK(sd.size() == 1 && sd[0].median == 21.0);
+    }
+
     // The keys of the periods sort in time order, and a week follows the ISO rule.
     {
         const QDate d(2026, 11, 13);

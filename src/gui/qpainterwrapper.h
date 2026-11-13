@@ -122,6 +122,8 @@ private:
     // The margins of the axes, in pixels.
     int mPlotLeft = 0;
     int mPlotBottom = 0;
+    // The height of the bar at the top of the canvas. The graph starts below it.
+    int mPlotTop = 0;
     // The height of the row of readout boxes below the time axis. The row is part of the bottom margin.
     int mStripHeight = 0;
 
@@ -145,9 +147,15 @@ private:
         double swatchWidth = 0.0;
         double debugWidth = 0.0;
         double debugHeight = 0.0;
+        // The bar at the top holds the legend and the frame timing, centred over the graph.
+        Gui::BoxPlacement legend;
+        bool hasLegend = false;
+        double debugX = 0.0;
+        double debugY = 0.0;
+        bool hasDebug = false;
     } mReadout;
     int plotWidth() const { return viewport().width() - mPlotLeft; }
-    int plotHeight() const { return viewport().height() - mPlotBottom; }
+    int plotHeight() const { return viewport().height() - mPlotBottom - mPlotTop; }
 
     FrequencyScale mFrequencyScale;
     double mMinFrequency;

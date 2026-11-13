@@ -178,30 +178,95 @@ TrendPeriod Main::trendPeriodFromName(const QString &name)
     return TrendPeriod::Day;
 }
 
+TrendStat Main::trendStatFromName(const QString &name)
+{
+    const QString n = name.toLower();
+    if (n == "mean") return TrendStat::Mean;
+    if (n == "sd") return TrendStat::SD;
+    if (n == "cv") return TrendStat::CV;
+    if (n == "min") return TrendStat::Min;
+    if (n == "p5") return TrendStat::P5;
+    if (n == "p25") return TrendStat::P25;
+    if (n == "p75") return TrendStat::P75;
+    if (n == "p95") return TrendStat::P95;
+    if (n == "max") return TrendStat::Max;
+    if (n == "range") return TrendStat::Range;
+    if (n == "range_st") return TrendStat::RangeSemitones;
+    if (n == "voiced") return TrendStat::Voiced;
+    if (n == "count") return TrendStat::Count;
+    return TrendStat::Median;
+}
+
+int Main::trendTrackFromName(const QString &name)
+{
+    const QString n = name.toLower();
+    if (n == "f1") return 1;
+    if (n == "f2") return 2;
+    if (n == "f3") return 3;
+    if (n == "f4") return 4;
+    return 0;
+}
+
+bool Main::statValue(const PracticeRecord &r, int track, TrendStat stat, double *value)
+{
+    if (track < 0 || track > 4) return false;
+    const TrackStats &s = track == 0 ? r.pitch : r.formants[track - 1];
+
+    // The share and the number of values need only the frames. The other statistics need values.
+    if (stat == TrendStat::Voiced) {
+        if (s.frames <= 0) return false;
+        *value = 100.0 * s.count / s.frames;
+        return true;
+    }
+    if (stat == TrendStat::Count) {
+        if (s.frames <= 0) return false;
+        *value = s.count;
+        return true;
+    }
+    if (s.count <= 0) return false;
+
+    switch (stat) {
+    case TrendStat::Median: *value = s.median; return true;
+    case TrendStat::Mean: *value = s.mean; return true;
+    case TrendStat::Min: *value = s.min; return true;
+    case TrendStat::P5: *value = s.p5; return true;
+    case TrendStat::P25: *value = s.p25; return true;
+    case TrendStat::P75: *value = s.p75; return true;
+    case TrendStat::P95: *value = s.p95; return true;
+    case TrendStat::Max: *value = s.max; return true;
+    case TrendStat::SD:
+        if (s.count < 2) return false;
+        *value = s.sd;
+        return true;
+    case TrendStat::CV:
+        if (s.count < 2 || !(s.mean > 0.0)) return false;
+        *value = 100.0 * s.sd / s.mean;
+        return true;
+    case TrendStat::Range:
+        if (s.count < 5 || !(s.p95 >= s.p5)) return false;
+        *value = s.p95 - s.p5;
+        return true;
+    case TrendStat::RangeSemitones:
+        if (s.count < 5 || !(s.p5 > 0.0) || !(s.p95 >= s.p5)) return false;
+        *value = semitones(s.p5, s.p95);
+        return true;
+    case TrendStat::Voiced:
+    case TrendStat::Count:
+        break;
+    }
+    return false;
+}
+
 bool Main::measureValue(const PracticeRecord &r, TrendMeasure measure, double *value)
 {
     switch (measure) {
-    case TrendMeasure::Pitch:
-        if (r.pitch.count <= 0) return false;
-        *value = r.pitch.median;
-        return true;
-    case TrendMeasure::F1:
-    case TrendMeasure::F2:
-    case TrendMeasure::F3:
-    case TrendMeasure::F4: {
-        const int i = (int) measure - (int) TrendMeasure::F1;
-        if (r.formants[i].count <= 0) return false;
-        *value = r.formants[i].median;
-        return true;
-    }
-    case TrendMeasure::Range:
-        if (r.pitch.count < 5 || !(r.pitch.p5 > 0.0) || !(r.pitch.p95 >= r.pitch.p5)) return false;
-        *value = semitones(r.pitch.p5, r.pitch.p95);
-        return true;
-    case TrendMeasure::Variation:
-        if (r.pitch.count < 2 || !(r.pitch.mean > 0.0)) return false;
-        *value = 100.0 * r.pitch.sd / r.pitch.mean;
-        return true;
+    case TrendMeasure::Pitch: return statValue(r, 0, TrendStat::Median, value);
+    case TrendMeasure::F1: return statValue(r, 1, TrendStat::Median, value);
+    case TrendMeasure::F2: return statValue(r, 2, TrendStat::Median, value);
+    case TrendMeasure::F3: return statValue(r, 3, TrendStat::Median, value);
+    case TrendMeasure::F4: return statValue(r, 4, TrendStat::Median, value);
+    case TrendMeasure::Range: return statValue(r, 0, TrendStat::RangeSemitones, value);
+    case TrendMeasure::Variation: return statValue(r, 0, TrendStat::CV, value);
     }
     return false;
 }
@@ -246,6 +311,21 @@ double medianOf(std::vector<double> v)
 std::vector<TrendPoint> Main::buildTrend(const QList<PracticeRecord> &records, TrendMeasure measure,
                                          TrendPeriod period, const QString &tagFilter)
 {
+    switch (measure) {
+    case TrendMeasure::Pitch: return buildTrend(records, 0, TrendStat::Median, period, tagFilter);
+    case TrendMeasure::F1: return buildTrend(records, 1, TrendStat::Median, period, tagFilter);
+    case TrendMeasure::F2: return buildTrend(records, 2, TrendStat::Median, period, tagFilter);
+    case TrendMeasure::F3: return buildTrend(records, 3, TrendStat::Median, period, tagFilter);
+    case TrendMeasure::F4: return buildTrend(records, 4, TrendStat::Median, period, tagFilter);
+    case TrendMeasure::Range: return buildTrend(records, 0, TrendStat::RangeSemitones, period, tagFilter);
+    case TrendMeasure::Variation: return buildTrend(records, 0, TrendStat::CV, period, tagFilter);
+    }
+    return {};
+}
+
+std::vector<TrendPoint> Main::buildTrend(const QList<PracticeRecord> &records, int track, TrendStat stat,
+                                         TrendPeriod period, const QString &tagFilter)
+{
     struct Group {
         QDate start;
         std::vector<double> values;
@@ -256,7 +336,7 @@ std::vector<TrendPoint> Main::buildTrend(const QList<PracticeRecord> &records, T
     for (const PracticeRecord &r : records) {
         if (!tagFilter.isEmpty() && r.tag.compare(tagFilter, Qt::CaseInsensitive) != 0) continue;
         double value = 0.0;
-        if (!measureValue(r, measure, &value)) continue;
+        if (!statValue(r, track, stat, &value)) continue;
 
         const QDate date = r.start.date();
         Group &g = groups[periodKey(date, period)];

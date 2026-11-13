@@ -11,13 +11,14 @@ ColumnLayout {
     property real to: 100
     property real stepSize: 1
     property int decimals: 0
+    property string hint: ""
     Layout.fillWidth: true
-    spacing: 0
+    spacing: ui.space.xs
 
     RowLayout {
         Layout.fillWidth: true
-        Label { text: title; Layout.fillWidth: true }
-        Label { text: Number(config.options[key]).toFixed(decimals) + unit; color: "lightgrey" }
+        Label { text: title; Layout.fillWidth: true; font.weight: Font.Medium }
+        Label { text: Number(config.options[key]).toFixed(decimals) + unit; color: ui.color.secondary; font.family: ui.font.mono }
     }
     Slider {
         Layout.fillWidth: true
@@ -26,5 +27,9 @@ ColumnLayout {
         stepSize: parent.stepSize
         value: config.options[key]
         onMoved: config.setOption(key, value)
+    }
+    Hint {
+        visible: parent.hint !== ""
+        text: parent.hint
     }
 }

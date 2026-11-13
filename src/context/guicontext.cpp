@@ -1,14 +1,18 @@
 #include "../gui/canvas.h"
 #include "../gui/overviewitem.h"
 #include "../gui/plotitem.h"
+#include "../gui/uiscale.h"
 #include "contextmanager.h"
 #include "practicewrapper.h"
 #include "qsgrendererinterface.h"
 #include "qsurfaceformat.h"
 #include "rendercontext.h"
+#include <QColor>
+#include <QFontDatabase>
 #include <QQmlContext>
 #include <iostream>
 #include <chrono>
+#include <cstring>
 
 using namespace Main;
 using namespace std::chrono_literals;
@@ -52,6 +56,33 @@ GuiContext::GuiContext(Config *config, RenderContext *renderContext, DataVisWrap
 #endif
 
     mQmlEngine->rootContext()->setContextProperty("appName", "InFormant " INFORMANT_VERSION_STR);
+
+    // The type scale, the spacing scale, and the radii of all windows. The numbers are in gui/uiscale.h.
+    {
+        QVariantMap type;
+        for (const Gui::UiScale::TypeStep &step : Gui::UiScale::typeSteps) {
+            type[step.name] = step.size;
+            type[QString(step.name) + "Line"] = step.line;
+        }
+        QVariantMap space;
+        for (const Gui::UiScale::SpaceStep &step : Gui::UiScale::spaceSteps) space[step.name] = step.size;
+        QVariantMap radius;
+        for (const Gui::UiScale::RadiusStep &step : Gui::UiScale::radiusSteps) radius[step.name] = step.size;
+        // The fonts of the windows: Roboto for text, and Roboto Mono for numbers and labels that line up.
+        // The two files are in the resources, so the windows do not depend on the fonts of the system.
+        QVariantMap font { { "sans", "Roboto" }, { "mono", "Roboto Mono" } };
+        for (const char *path : { ":/Roboto.ttf", ":/Roboto-Medium.ttf", ":/Roboto-Bold.ttf", ":/RobotoMono-Regular.ttf" }) {
+            const int id = QFontDatabase::addApplicationFont(path);
+            const QStringList families = QFontDatabase::applicationFontFamilies(id);
+            if (id >= 0 && !families.isEmpty() && std::strcmp(path, ":/RobotoMono-Regular.ttf") == 0) font["mono"] = families.first();
+        }
+        QVariantMap color;
+        for (const Gui::UiScale::ColorToken &token : Gui::UiScale::textColors) {
+            color[token.name] = QColor::fromRgb(token.rgb);
+        }
+        mQmlEngine->rootContext()->setContextProperty("ui", QVariantMap { { "type", type }, { "space", space }, { "radius", radius },
+                                                                           { "color", color }, { "font", font }, { "measure", Gui::UiScale::textMeasure } });
+    }
 
     mQmlEngine->rootContext()->setContextProperty("config", mConfig);
     mQmlEngine->rootContext()->setContextProperty("sessionControl", sessionWrapper);

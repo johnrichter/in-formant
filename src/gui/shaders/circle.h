@@ -40,10 +40,12 @@ out vec4 FragColor;
 
 uniform float radius;
 uniform vec3 fillColor;
+// The drawing starts this many pixels below the top of the canvas.
+uniform float originY;
 
 void main()
 {
-    float d = length(Center - gl_FragCoord.xy) - radius;
+    float d = length(Center - (gl_FragCoord.xy - vec2(0.0, originY))) - radius;
     float t = clamp(d, 0.0, 1.0);
     FragColor = vec4(fillColor, 1.0 - t);
 }

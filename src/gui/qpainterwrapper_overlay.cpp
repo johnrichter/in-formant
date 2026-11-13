@@ -88,7 +88,7 @@ void QPainterWrapper::updateLayout(const std::vector<std::string> &trackNames)
 {
     const double dpr = p->devicePixelRatio();
     const double majorLength = 9.0 * dpr;
-    const double labelHeight = p->textBoundsOfSize(1, "0").height();
+    const double labelHeight = p->textBoundsOfSize(4, "0").height();
 
     // The bottom margin holds the ticks, the numbers and the title of the time axis.
     double bottom = majorLength + 6.0 * dpr;
@@ -98,7 +98,7 @@ void QPainterWrapper::updateLayout(const std::vector<std::string> &trackNames)
     // The left margin holds the ticks, the numbers and the title of the frequency axis. The widest number has 5 digits.
     double left = majorLength + 6.0 * dpr;
     if (mOptions.showAxisLabels) {
-        const QRect widest = p->textBoundsOfSize(0, "00000");
+        const QRect widest = p->textBoundsOfSize(3, "00000");
         left += widest.x() + widest.width() + 4.0 * dpr;
     }
     if (mOptions.showAxisTitles) left += labelHeight + 10.0 * dpr;
@@ -118,7 +118,12 @@ void QPainterWrapper::updateLayout(const std::vector<std::string> &trackNames)
             widestDigit = c;
         }
     }
-    auto fixedWidth = [&](const char *pattern) { return textWidth(fixedWidthSample(pattern, widestDigit)); };
+    // The boxes of the tracks and the frame times use the monospace font, so each digit has the same width.
+    auto monoWidth = [&](const std::string &text) {
+        const QRect b = p->textBoundsOfSize(3, text);
+        return (double) (b.x() + b.width());
+    };
+    auto fixedWidth = [&](const char *pattern) { return monoWidth(fixedWidthSample(pattern, '0')); };
 
     const double pad = readoutPad * dpr;
     const double gap = stripGap * dpr;
@@ -138,23 +143,8 @@ void QPainterWrapper::updateLayout(const std::vector<std::string> &trackNames)
         BoxSize size;
         size.key = key;
 
-        if (key == "legend") {
-            if (!mOptions.showLegend || trackNames.empty()) continue;
-            if (mOptions.readoutLeft) {
-                double widest = 0.0;
-                for (const auto &name : trackNames) widest = std::max(widest, textWidth(name));
-                size.width = 2.0 * pad + r.swatchWidth + widest;
-                size.height = 2.0 * pad + trackNames.size() * r.rowHeight - 3.0 * dpr;
-            }
-            else {
-                const double entryGap = 14.0 * dpr;
-                double width = 0.0;
-                for (const auto &name : trackNames) width += r.swatchWidth + textWidth(name) + entryGap;
-                width -= entryGap;
-                size.width = 2.0 * pad + width;
-                size.height = 2.0 * pad + std::max(digit + 6.0 * dpr, 14.0 * dpr) - 2.0 * dpr;
-            }
-        }
+        // The legend and the frame timing stand in the bar at the top of the graph.
+        if (key == "legend") continue;
         else {
             if (!mOptions.showStats || mOptions.statsMask == 0) continue;
             const std::string *track = nullptr;
@@ -173,13 +163,13 @@ void QPainterWrapper::updateLayout(const std::vector<std::string> &trackNames)
                 }
                 else if (c.bit != StatNote || isPitch) {
                     content.bits.push_back(c.bit);
-                    content.labelWidth = std::max(content.labelWidth, textWidth(c.title));
+                    content.labelWidth = std::max(content.labelWidth, monoWidth(c.title));
                     content.valueWidth = std::max(content.valueWidth, fixedWidth(c.pattern));
                 }
             }
             if (!content.showCurrent && content.bits.empty()) continue;
 
-            content.nameWidth = textWidth(*track);
+            content.nameWidth = monoWidth(*track);
             const double header = r.swatchWidth + content.nameWidth + (content.showCurrent ? 10.0 * dpr + content.headerValueWidth : 0.0);
             const double body = content.bits.empty() ? 0.0 : content.labelWidth + 14.0 * dpr + content.valueWidth;
             size.width = 2.0 * pad + std::max(header, body);
@@ -189,12 +179,44 @@ void QPainterWrapper::updateLayout(const std::vector<std::string> &trackNames)
         sizes.push_back(size);
     }
 
-    // The box with the frame timing has one fixed size. It floats over the graph.
+    // The box with the frame timing has one fixed size.
     r.debugWidth = 2.0 * pad + fixedWidth("Render 00.00 ms    Update 00.00 ms    Frame 000.0 ms (000 fps)");
     r.debugHeight = 2.0 * pad + std::max(digit + 6.0 * dpr, 14.0 * dpr) - 2.0 * dpr;
 
+    // The legend is one row of entries. It has one size for the names of the tracks.
+    BoxSize legendSize;
+    legendSize.key = "legend";
+    r.hasLegend = mOptions.showLegend && !trackNames.empty();
+    if (r.hasLegend) {
+        const double entryGap = 14.0 * dpr;
+        double width = 0.0;
+        for (const auto &name : trackNames) width += r.swatchWidth + textWidth(name) + entryGap;
+        width -= entryGap;
+        legendSize.width = 2.0 * pad + width;
+        legendSize.height = 2.0 * pad + std::max(digit + 6.0 * dpr, 14.0 * dpr) - 2.0 * dpr;
+    }
+    // The bar keeps the space of the frame timing while a recording hides the box, so the graph does not move.
+    r.hasDebug = mOptions.showDebug;
+
+    // The bar at the top holds the legend and the frame timing. The two boxes stand side by side,
+    // centred over the graph. The bar has a gap above it and a gap below it.
+    double barHeight = 0.0;
+    double barWidth = 0.0;
+    if (r.hasLegend) {
+        barHeight = std::max(barHeight, legendSize.height);
+        barWidth += legendSize.width;
+    }
+    if (r.hasDebug) {
+        barHeight = std::max(barHeight, r.debugHeight);
+        barWidth += r.debugWidth + (r.hasLegend ? gap : 0.0);
+    }
+    const double barTotal = barHeight > 0.0 ? barHeight + 2.0 * gap : 0.0;
+    const int top = (int) std::ceil(barTotal);
+
     const double viewWidth = viewport().width();
     const double viewHeight = viewport().height();
+
+    mPlotLeft = (int) std::ceil(left);
 
     if (!mOptions.readoutLeft) {
         // The boxes stand in a row below the time axis. The row is as high as the highest box.
@@ -203,19 +225,43 @@ void QPainterWrapper::updateLayout(const std::vector<std::string> &trackNames)
         // The strip has a gap above it and a margin below it.
         if (strip > 0.0) strip += 2.0 * gap;
         mStripHeight = (int) std::ceil(strip);
-        mPlotLeft = (int) std::ceil(left);
         mPlotBottom = (int) std::ceil(bottom) + mStripHeight;
         r.boxes = placeInRow(sizes, margin, viewHeight - mStripHeight + gap, viewWidth - margin, gap);
     }
     else {
-        // The boxes stand in a column at the left of the axis. A column that is too high wraps.
+        // The boxes stand in a column at the left of the axis, below the bar. A column that is too high wraps.
+        // The column goes from the top to the bottom in the order of the tracks in the graph. The graph
+        // shows the highest formant at the top and the pitch at the bottom, so the order is reversed.
+        std::reverse(sizes.begin(), sizes.end());
         mStripHeight = 0;
         mPlotBottom = (int) std::ceil(bottom);
         double total = 0.0;
-        r.boxes = placeInColumns(sizes, margin, gap, viewHeight - mPlotBottom - 2.0 * gap, gap, total);
+        r.boxes = placeInColumns(sizes, margin, barTotal + gap, viewHeight - mPlotBottom - barTotal - 2.0 * gap, gap, total);
         mPlotLeft = (int) std::ceil(left + (sizes.empty() ? 0.0 : total + 2.0 * margin));
     }
-    p->setPlotMargins(mPlotLeft, mPlotBottom);
+    mPlotTop = top;
+
+    // The bar is centred over the graph. A bar that is wider than the graph starts at the left edge of the graph.
+    if (barHeight > 0.0) {
+        const double plotWide = viewWidth - mPlotLeft;
+        double x = mPlotLeft + std::max(0.0, 0.5 * (plotWide - barWidth));
+        if (r.hasLegend) {
+            r.legend.key = "legend";
+            r.legend.width = legendSize.width;
+            r.legend.height = legendSize.height;
+            r.legend.x = x;
+            r.legend.y = gap + 0.5 * (barHeight - legendSize.height);
+            x += legendSize.width + gap;
+        }
+        if (r.hasDebug) {
+            r.debugX = x;
+            r.debugY = gap + 0.5 * (barHeight - r.debugHeight);
+        }
+    }
+
+    p->setPlotMargins(mPlotLeft, mPlotBottom, mPlotTop);
+    // The code of the graph counts from the top of the graph.
+    p->setOriginY(mPlotTop);
 }
 
 void QPainterWrapper::beginPlot()
@@ -234,15 +280,15 @@ void QPainterWrapper::drawTimeAxis()
     const int width = viewport().width();
     const int height = viewport().height();
 
-    const double label0Height = p->textBoundsOfSize(1, "0").height();
+    const double label0Height = p->textBoundsOfSize(4, "0").height();
 
     // The axis is below the graph. The ticks start at the lower edge of the graph and point down.
     const double tickBase = plotHeight();
 
     // The widest label has the most digits. Use the time labels at the ends as the estimate.
     const double sampleWidth = std::max<double>(
-        p->textBoundsOfSize(1, formatTime(mTimeEnd, 0.001)).width(),
-        p->textBoundsOfSize(1, "00.000").width());
+        p->textBoundsOfSize(4, formatTime(mTimeEnd, 0.001)).width(),
+        p->textBoundsOfSize(4, "00.000").width());
 
     auto toPixel = [&](double t) { return mapTimeToX(t); };
     const auto ticks = makeTimeTicks(static_cast<TimeTickMode>(mOptions.timeTickMode), mOptions.timeTickStep,
@@ -268,7 +314,7 @@ void QPainterWrapper::drawTimeAxis()
         list.insert(list.end(), { (float) x, (float) tickBase, (float) x, (float) (tickBase + (labeled ? majorLength : minorLength)) });
 
         if (labeled && mOptions.showAxisLabels) {
-            const QRect bounds = p->textBoundsOfSize(1, tick.label);
+            const QRect bounds = p->textBoundsOfSize(4, tick.label);
             const double start = x - (bounds.x() + bounds.width() / 2.0);
             const double left = start + bounds.x();
             const double right = left + bounds.width();
@@ -279,7 +325,7 @@ void QPainterWrapper::drawTimeAxis()
                 if (covered[tx]) { free = false; break; }
             }
             if (free) {
-                p->drawTextRotated(1, start, tickBase + majorLength + 4.0 * dpr + label0Height, 0.0f, Qt::white, tick.label, outlineColor);
+                p->drawTextRotated(4, start, tickBase + majorLength + 4.0 * dpr + label0Height, 0.0f, Qt::white, tick.label, outlineColor);
                 for (int tx = std::max(0, (int) std::floor(left)); tx <= std::min(width - 1, (int) std::ceil(right)); ++tx) {
                     covered[tx] = true;
                 }
@@ -361,7 +407,7 @@ void QPainterWrapper::drawFrequencyScale()
     const int width = viewport().width();
     const int height = viewport().height();
 
-    const double digitHeight = p->textBoundsOfSize(0, "0").height();
+    const double digitHeight = p->textBoundsOfSize(3, "0").height();
 
     auto toPixel = [&](double f) { return mapFrequencyToY(f); };
     const auto ticks = makeFrequencyTicks(static_cast<FrequencyTickMode>(mOptions.freqTickMode), mOptions.freqTickStep,
@@ -393,7 +439,7 @@ void QPainterWrapper::drawFrequencyScale()
         }
 
         if (labeled && mOptions.showAxisLabels) {
-            const int size = tick.level == 0 ? 0 : 1;
+            const int size = tick.level == 0 ? 3 : 4;
             const QRect bounds = p->textBoundsOfSize(size, tick.label);
             const double digit = p->textBoundsOfSize(size, "0").height();
             // A label that crosses the top edge, or the lower edge of the graph, is not readable. Skip it.
@@ -643,7 +689,8 @@ void QPainterWrapper::drawFrequencyTrack(
 
 bool QPainterWrapper::plotContains(double x, double y) const
 {
-    return x >= mPlotLeft && x <= viewport().width() && y >= 0 && y <= plotHeight();
+    // The point is in pixels of the canvas. The graph starts below the bar at the top.
+    return x >= mPlotLeft && x <= viewport().width() && y >= mPlotTop && y <= mPlotTop + plotHeight();
 }
 
 double QPainterWrapper::timeAtX(double x) const
@@ -696,10 +743,10 @@ void QPainterWrapper::drawCursor(double time, const std::vector<CursorValue> &va
     const double edge = 4.0 * dpr;
     // The top of the canvas lies a little under the toolbar, so the first label keeps off the edge.
     const double topEdge = 14.0 * dpr;
-    const double digit = p->textBoundsOfSize(0, "0").height();
+    const double digit = p->textBoundsOfSize(3, "0").height();
     double widest = 0;
     for (Label &l : labels) {
-        const QRect b = p->textBoundsOfSize(0, l.text);
+        const QRect b = p->textBoundsOfSize(3, l.text);
         l.width = b.x() + b.width() + 2.0 * padX;
         l.height = digit + 2.0 * padY;
         widest = std::max(widest, l.width);
@@ -732,7 +779,7 @@ void QPainterWrapper::drawCursor(double time, const std::vector<CursorValue> &va
         p->drawRoundedRect((float) left, (float) l.top, (float) l.width, (float) l.height, 5.0f * (float) dpr,
                            panel, core, (float) (1.4 * dpr));
         const double baseline = l.top + 0.5 * l.height + 0.5 * digit;
-        p->drawTextRotated(0, (float) (left + padX), (float) baseline, 0.0f, l.color, l.text, outlineColor);
+        p->drawTextRotated(3, (float) (left + padX), (float) baseline, 0.0f, l.color, l.text, outlineColor);
     }
 
     // The dots lie on the bar at the value of each track.
@@ -813,6 +860,9 @@ void QPainterWrapper::drawHud(const std::vector<HudTrack> &tracks)
     const ReadoutLayout &r = mReadout;
     const double pad = r.pad;
 
+    // The boxes use the origin of the canvas, and the graph uses the origin below the bar at the top.
+    p->setOriginY(0);
+
     const QColor fill(8, 8, 12, 200);
     const QColor border(255, 255, 255, 48);
     const QColor greyText(170, 170, 185);
@@ -820,6 +870,10 @@ void QPainterWrapper::drawHud(const std::vector<HudTrack> &tracks)
     const double digit = p->textBoundsOfSize(0, "0").height();
     auto textRight = [&](const std::string &text) {
         const QRect b = p->textBoundsOfSize(0, text);
+        return (double) (b.x() + b.width());
+    };
+    auto monoRight = [&](const std::string &text) {
+        const QRect b = p->textBoundsOfSize(3, text);
         return (double) (b.x() + b.width());
     };
 
@@ -836,32 +890,24 @@ void QPainterWrapper::drawHud(const std::vector<HudTrack> &tracks)
         }
     };
 
+    // The legend is a row of entries in the bar at the top.
+    if (r.hasLegend) {
+        const BoxPlacement &box = r.legend;
+        p->drawRoundedRect(box.x, box.y, box.width, box.height, 6.0 * dpr, fill, border, 1.0f);
+        const double entryGap = 14.0 * dpr;
+        const double cy = box.y + 0.5 * box.height;
+        double ex = box.x + pad;
+        for (const auto &t : tracks) {
+            drawSwatch(ex, cy, t);
+            p->drawTextRotated(0, ex + r.swatchWidth, cy + 0.5 * digit, 0.0f, Qt::white, t.name, outlineColor);
+            ex += r.swatchWidth + textRight(t.name) + entryGap;
+        }
+    }
+
     for (const BoxPlacement &box : r.boxes) {
         if (!box.visible) continue;
 
         p->drawRoundedRect(box.x, box.y, box.width, box.height, 6.0 * dpr, fill, border, 1.0f);
-
-        if (box.key == "legend") {
-            if (mOptions.readoutLeft) {
-                double cy = box.y + pad + 0.5 * (r.rowHeight - 3.0 * dpr);
-                for (const auto &t : tracks) {
-                    drawSwatch(box.x + pad, cy, t);
-                    p->drawTextRotated(0, box.x + pad + r.swatchWidth, cy + 0.5 * digit, 0.0f, Qt::white, t.name, outlineColor);
-                    cy += r.rowHeight;
-                }
-            }
-            else {
-                const double entryGap = 14.0 * dpr;
-                const double cy = box.y + 0.5 * box.height;
-                double ex = box.x + pad;
-                for (const auto &t : tracks) {
-                    drawSwatch(ex, cy, t);
-                    p->drawTextRotated(0, ex + r.swatchWidth, cy + 0.5 * digit, 0.0f, Qt::white, t.name, outlineColor);
-                    ex += r.swatchWidth + textRight(t.name) + entryGap;
-                }
-            }
-            continue;
-        }
 
         // A box of one track: a header with the name and the live value, and a line for each statistic.
         const auto content = r.content.find(box.key);
@@ -879,26 +925,26 @@ void QPainterWrapper::drawHud(const std::vector<HudTrack> &tracks)
 
         double base = box.y + pad + r.rowHeight - 4.0 * dpr;
         drawSwatch(box.x + pad, base - 0.5 * digit, *track);
-        p->drawTextRotated(0, box.x + pad + r.swatchWidth, base, 0.0f, track->color, track->name, outlineColor);
+        p->drawTextRotated(3, box.x + pad + r.swatchWidth, base, 0.0f, track->color, track->name, outlineColor);
         if (c.showCurrent) {
             const std::string text = statText(*track, stats, StatCurrent, mOptions.rangeSemitones);
-            p->drawTextRotated(0, valueRight - textRight(text), base, 0.0f, Qt::white, text, outlineColor);
+            p->drawTextRotated(3, valueRight - monoRight(text), base, 0.0f, Qt::white, text, outlineColor);
         }
 
         for (const int bit : c.bits) {
             base += r.rowHeight;
             for (const auto &col : statColumns) {
                 if (col.bit != bit) continue;
-                p->drawTextRotated(0, box.x + pad, base, 0.0f, greyText, col.title, outlineColor);
+                p->drawTextRotated(3, box.x + pad, base, 0.0f, greyText, col.title, outlineColor);
                 const std::string text = statText(*track, stats, bit, mOptions.rangeSemitones);
-                p->drawTextRotated(0, valueRight - textRight(text), base, 0.0f, Qt::white, text, outlineColor);
+                p->drawTextRotated(3, valueRight - monoRight(text), base, 0.0f, Qt::white, text, outlineColor);
             }
         }
     }
 
     // The frame timing is a box at the top centre of the graph. It stays out of the list of boxes,
     // and it has one size, so it does not move when the numbers change.
-    if (mOptions.showDebug && !mOptions.hideDebug) {
+    if (r.hasDebug && !mOptions.hideDebug) {
         static QElapsedTimer clock;
         static double smoothedFrame = 16.7;
         if (clock.isValid()) {
@@ -907,13 +953,16 @@ void QPainterWrapper::drawHud(const std::vector<HudTrack> &tracks)
         }
         clock.restart();
 
-        const std::string text = "Render " + format("%.2f", (double) timings::render) + " ms    Update "
-            + format("%.2f", (double) timings::update) + " ms    Frame " + format("%.1f", smoothedFrame)
-            + " ms (" + format("%.0f", 1000.0 / std::max(smoothedFrame, 0.1)) + " fps)";
+        // Each number has a fixed width, so the text keeps its shape in the monospace font.
+        const std::string text = "Render " + format("%5.2f", (double) timings::render) + " ms    Update "
+            + format("%5.2f", (double) timings::update) + " ms    Frame " + format("%5.1f", smoothedFrame)
+            + " ms (" + format("%3.0f", 1000.0 / std::max(smoothedFrame, 0.1)) + " fps)";
 
-        const double x = mPlotLeft + 0.5 * (plotWidth() - r.debugWidth);
-        const double y = stripGap * dpr;
+        const double x = r.debugX;
+        const double y = r.debugY;
         p->drawRoundedRect(x, y, r.debugWidth, r.debugHeight, 6.0 * dpr, fill, border, 1.0f);
-        p->drawTextRotated(0, x + pad, y + pad + 0.5 * (r.debugHeight - 2.0 * pad) + 0.5 * digit, 0.0f, Qt::white, text, outlineColor);
+        p->drawTextRotated(3, x + pad, y + pad + 0.5 * (r.debugHeight - 2.0 * pad) + 0.5 * digit, 0.0f, Qt::white, text, outlineColor);
     }
+
+    p->setOriginY(mPlotTop);
 }

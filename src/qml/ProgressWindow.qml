@@ -14,17 +14,33 @@ ApplicationWindow {
     minimumWidth: 520
     minimumHeight: 420
 
+    font.pixelSize: ui.type.body
     Material.theme: Material.Dark
     Material.accent: Material.DeepPurple
 
+    // The measure is a track. The statistic is one value of that track in a session.
     readonly property var measures: [
-        { name: "Median pitch", key: "pitch", unit: "Hz", digits: 1 },
-        { name: "Median F1", key: "f1", unit: "Hz", digits: 0 },
-        { name: "Median F2", key: "f2", unit: "Hz", digits: 0 },
-        { name: "Median F3", key: "f3", unit: "Hz", digits: 0 },
-        { name: "Median F4", key: "f4", unit: "Hz", digits: 0 },
-        { name: "Pitch range (5th to 95th percentile)", key: "range", unit: "semitones", digits: 1 },
-        { name: "Pitch variation (SD divided by mean)", key: "variation", unit: "%", digits: 1 }
+        { name: "Pitch", key: "pitch" },
+        { name: "F1", key: "f1" },
+        { name: "F2", key: "f2" },
+        { name: "F3", key: "f3" },
+        { name: "F4", key: "f4" }
+    ]
+    readonly property var stats: [
+        { name: "Median", key: "median", unit: "Hz", digits: 1 },
+        { name: "Mean", key: "mean", unit: "Hz", digits: 1 },
+        { name: "Standard deviation (SD)", key: "sd", unit: "Hz", digits: 1 },
+        { name: "Variation (SD / mean)", key: "cv", unit: "%", digits: 1 },
+        { name: "Minimum", key: "min", unit: "Hz", digits: 1 },
+        { name: "5th percentile (P5)", key: "p5", unit: "Hz", digits: 1 },
+        { name: "25th percentile (P25)", key: "p25", unit: "Hz", digits: 1 },
+        { name: "75th percentile (P75)", key: "p75", unit: "Hz", digits: 1 },
+        { name: "95th percentile (P95)", key: "p95", unit: "Hz", digits: 1 },
+        { name: "Maximum", key: "max", unit: "Hz", digits: 1 },
+        { name: "Range (P95 minus P5), in Hz", key: "range", unit: "Hz", digits: 1 },
+        { name: "Range (P95 to P5), in semitones", key: "range_st", unit: "semitones", digits: 1 },
+        { name: "Voiced share", key: "voiced", unit: "%", digits: 0 },
+        { name: "Number of values", key: "count", unit: "values", digits: 0 }
     ]
     readonly property var periods: [
         { name: "Day", key: "day" },
@@ -36,6 +52,7 @@ ApplicationWindow {
     property var points: []
     property var tagNames: ["All tasks"]
     readonly property var measure: measures[measureBox.currentIndex]
+    readonly property var stat: stats[statBox.currentIndex]
 
     function refresh() {
         const names = practice.libraryTags()
@@ -44,12 +61,12 @@ ApplicationWindow {
         // The task of the last practice is the default filter, because a formant over mixed tasks says little.
         const wanted = keep && tagNames.indexOf(keep) >= 0 ? keep : (tagNames.indexOf(practice.tag) >= 0 ? practice.tag : "All tasks")
         taskBox.currentIndex = Math.max(0, tagNames.indexOf(wanted))
-        points = practice.trend(measure.key, periods[periodBox.currentIndex].key, taskBox.currentIndex > 0 ? tagNames[taskBox.currentIndex] : "")
+        points = practice.trend(measure.key, stat.key, periods[periodBox.currentIndex].key, taskBox.currentIndex > 0 ? tagNames[taskBox.currentIndex] : "")
         chart.requestPaint()
     }
 
     function formatValue(v) {
-        return Number(v).toFixed(measure.digits)
+        return Number(v).toFixed(stat.digits)
     }
 
     onVisibleChanged: if (visible) refresh()
@@ -61,40 +78,72 @@ ApplicationWindow {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 14
-        spacing: 10
+        anchors.margins: ui.space.lg
+        spacing: ui.space.md
 
         RowLayout {
             Layout.fillWidth: true
             spacing: 10
 
-            ComboBox {
-                id: measureBox
-                Layout.fillWidth: true
-                model: progressWindow.measures.map(m => m.name)
-                onActivated: progressWindow.refresh()
-            }
-            ComboBox {
-                id: taskBox
-                Layout.preferredWidth: 150
-                model: progressWindow.tagNames
-                onActivated: progressWindow.refresh()
-            }
-            ComboBox {
-                id: periodBox
+            // Each box has a small title above it.
+            ColumnLayout {
                 Layout.preferredWidth: 110
-                model: progressWindow.periods.map(p => p.name)
-                currentIndex: 1
-                onActivated: progressWindow.refresh()
+                spacing: 2
+                Label { text: "Measure"; color: ui.color.secondary; font.pixelSize: ui.type.caption }
+                ComboBox {
+                    id: measureBox
+                    Layout.fillWidth: true
+                    model: progressWindow.measures.map(m => m.name)
+                    onActivated: progressWindow.refresh()
+                }
             }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
+                Label { text: "Statistic"; color: ui.color.secondary; font.pixelSize: ui.type.caption }
+                ComboBox {
+                    id: statBox
+                    Layout.fillWidth: true
+                    model: progressWindow.stats.map(m => m.name)
+                    onActivated: progressWindow.refresh()
+                }
+            }
+            ColumnLayout {
+                Layout.preferredWidth: 170
+                spacing: 2
+                Label { text: "Task"; color: ui.color.secondary; font.pixelSize: ui.type.caption }
+                ComboBox {
+                    id: taskBox
+                    implicitContentWidthPolicy: ComboBox.WidestText
+                    Layout.fillWidth: true
+                    model: progressWindow.tagNames
+                    onActivated: progressWindow.refresh()
+                }
+            }
+            ColumnLayout {
+                Layout.preferredWidth: 110
+                spacing: 2
+                Label { text: "Period"; color: ui.color.secondary; font.pixelSize: ui.type.caption }
+                ComboBox {
+                    id: periodBox
+                    Layout.fillWidth: true
+                    model: progressWindow.periods.map(p => p.name)
+                    currentIndex: 1
+                    onActivated: progressWindow.refresh()
+                }
+            }
+        }
+
+        Hint {
+            text: "Measure is the track. Statistic is the value of that track in each session. Task keeps the sessions of one task. Period groups the sessions by day, week, month, or year."
         }
 
         Label {
             Layout.fillWidth: true
             visible: progressWindow.points.length === 0
             wrapMode: Text.WordWrap
-            color: "lightgrey"
-            text: "No session has a value for this choice. Practice with the Practice button, or choose another task or measure."
+            color: ui.color.secondary
+            text: "No session has a value for this choice. Practice with the Practice button, or choose another task, measure, or statistic."
         }
 
         Canvas {
@@ -129,7 +178,7 @@ ApplicationWindow {
                 const xAt = i => left + (pts.length === 1 ? 0.5 * w : (w * i) / (pts.length - 1))
                 const yAt = v => top + h * (1 - (v - lo) / (hi - lo))
 
-                ctx.font = "12px sans-serif"
+                ctx.font = "12px '" + ui.font.mono + "'"
                 ctx.fillStyle = "#c8c8c8"
                 ctx.strokeStyle = "#3c3c46"
                 ctx.lineWidth = 1
@@ -143,7 +192,7 @@ ApplicationWindow {
                     ctx.lineTo(left + w, y)
                     ctx.stroke()
                     ctx.textAlign = "right"
-                    ctx.fillText(Number(v).toFixed(progressWindow.measure.digits), left - 8, y + 4)
+                    ctx.fillText(Number(v).toFixed(progressWindow.stat.digits), left - 8, y + 4)
                 }
 
                 // The labels of the horizontal axis. A long list shows some of its keys.
@@ -153,7 +202,8 @@ ApplicationWindow {
                     ctx.fillText(pts[i].key, xAt(i), height - 12)
                 }
 
-                const color = config.themeColors.pitch
+                const colors = config.themeColors
+                const color = progressWindow.measure.key === "pitch" ? colors.pitch : colors.formants[Math.max(0, Number(progressWindow.measure.key.substring(1)) - 1)]
                 // The range from the lowest to the highest session value of each period.
                 ctx.strokeStyle = Qt.rgba(color.r, color.g, color.b, 0.45)
                 ctx.lineWidth = 6
@@ -184,9 +234,9 @@ ApplicationWindow {
 
         Label {
             Layout.fillWidth: true
-            color: "lightgrey"
-            font.pixelSize: 12
-            text: progressWindow.measure.name + " in " + progressWindow.measure.unit + ". The line shows the median of the sessions in each period. The bar shows the lowest and the highest session."
+            color: ui.color.secondary
+            font.pixelSize: ui.type.caption
+            text: progressWindow.stat.name + " of " + progressWindow.measure.name + ", in " + progressWindow.stat.unit + ". The line shows the median of the sessions in each period. The bar shows the lowest and the highest session."
             wrapMode: Text.WordWrap
         }
 
@@ -225,12 +275,12 @@ ApplicationWindow {
                     anchors.fill: parent
                     anchors.leftMargin: 8
                     anchors.rightMargin: 8
-                    Label { text: modelData.key; Layout.preferredWidth: 130 }
-                    Label { text: modelData.sessions; Layout.preferredWidth: 70; horizontalAlignment: Text.AlignRight }
-                    Label { text: Number(modelData.minutes).toFixed(1); Layout.preferredWidth: 70; horizontalAlignment: Text.AlignRight }
-                    Label { text: progressWindow.formatValue(modelData.median); Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
-                    Label { text: progressWindow.formatValue(modelData.min); Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
-                    Label { text: progressWindow.formatValue(modelData.max); Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
+                    Label { text: modelData.key; Layout.preferredWidth: 130; font.family: ui.font.mono }
+                    Label { text: modelData.sessions; font.family: ui.font.mono; Layout.preferredWidth: 70; horizontalAlignment: Text.AlignRight }
+                    Label { text: Number(modelData.minutes).toFixed(1); font.family: ui.font.mono; Layout.preferredWidth: 70; horizontalAlignment: Text.AlignRight }
+                    Label { text: progressWindow.formatValue(modelData.median); font.family: ui.font.mono; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
+                    Label { text: progressWindow.formatValue(modelData.min); font.family: ui.font.mono; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
+                    Label { text: progressWindow.formatValue(modelData.max); font.family: ui.font.mono; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
                 }
             }
 

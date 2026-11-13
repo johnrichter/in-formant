@@ -23,8 +23,18 @@ ApplicationWindow {
         { title: "Masculinization", file: "masculinization" },
         { title: "Singing", file: "singing" },
         { title: "Warm-ups", file: "warmups-and-vocal-health" },
+        { title: "Synthesizer", file: "synthesizer" },
         { title: "The math", file: "the-math" }
     ]
+
+    // Show the window on the page of a file.
+    function showPage(file) {
+        for (let i = 0; i < pages.length; ++i) {
+            if (pages[i].file === file) tabs.currentIndex = i
+        }
+        show()
+        raise()
+    }
 
     header: TabBar {
         id: tabs

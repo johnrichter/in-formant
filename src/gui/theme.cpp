@@ -87,10 +87,9 @@ struct Tone {
     double hue;
 };
 
-std::vector<Stop> ramp(const std::array<Tone, 7> &tones)
+std::vector<Stop> ramp(const std::array<Tone, 7> &tones, const std::array<double, 7> &lightness = { 0.07, 0.28, 0.48, 0.64, 0.75, 0.82, 0.86 })
 {
     static const double positions[7] = { 0.00, 0.18, 0.38, 0.58, 0.76, 0.90, 1.00 };
-    static const double lightness[7] = { 0.07, 0.28, 0.48, 0.64, 0.75, 0.82, 0.86 };
     std::vector<Stop> stops;
     for (int i = 0; i < 7; ++i) {
         stops.push_back({ positions[i], labToRgb(lchToLab(lightness[i], tones[i].chroma, tones[i].hue)) });
@@ -136,7 +135,9 @@ const std::vector<Definition> &definitions()
             0x4dd0e1, { 0x7cff9a, 0x82b1ff, 0xffffff, 0xe1a8ff, 0xb0ff7c }, 0xd94a00 },
 
         // Pride themes. A pitch colour of 0 means that the tracks take their colours from the table.
-        { "Trans (Dark)", "Pride", ramp({ { {0.03, 260}, {0.09, 255}, {0.14, 245}, {0.11, 225}, {0.1, 5}, {0.06, 5}, {0.03, 350} } }), 0, { 0, 0, 0, 0, 0 }, 0 },
+        { "Trans (Dark)", "Pride", ramp({ { {0.03, 260}, {0.09, 255}, {0.14, 245}, {0.11, 225}, {0.19, 355}, {0.20, 350}, {0.17, 348} } },
+                                                    // The top stops stay darker than the other themes, because a pink that is vivid needs less light.
+                                                    { 0.07, 0.28, 0.48, 0.64, 0.72, 0.75, 0.79 }), 0, { 0, 0, 0, 0, 0 }, 0 },
         { "Transfeminine (Dark)", "Pride", ramp({ { {0.03, 340}, {0.09, 340}, {0.15, 350}, {0.14, 358}, {0.1, 5}, {0.06, 10}, {0.03, 350} } }), 0, { 0, 0, 0, 0, 0 }, 0 },
         { "Transmasculine (Dark)", "Pride", ramp({ { {0.03, 260}, {0.1, 262}, {0.15, 255}, {0.12, 240}, {0.09, 225}, {0.05, 225}, {0.03, 230} } }), 0, { 0, 0, 0, 0, 0 }, 0 },
         { "Rainbow (Dark)", "Pride", ramp({ { {0.03, 300}, {0.1, 305}, {0.12, 265}, {0.13, 150}, {0.15, 100}, {0.12, 60}, {0.04, 60} } }), 0, { 0, 0, 0, 0, 0 }, 0 },

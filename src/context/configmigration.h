@@ -7,7 +7,7 @@
 namespace Main {
 
 // The version of the configuration file that this program writes.
-constexpr int64_t kConfigVersion = 5;
+constexpr int64_t kConfigVersion = 7;
 
 // The default values of the statistics before version 4, and the median bit that version 4 adds.
 constexpr int64_t kOldStatsMask = 0x1 | 0x2 | 0x8 | 0x40 | 0x80;
@@ -72,6 +72,22 @@ inline void migrateConfig(toml::table &tbl)
                 if (!options[key]) options.insert(key, mask);
             }
             options.erase("trackStyle");
+        }
+    }
+
+    if (fileVersion < 6) {
+        // The statistics boxes show by default. The program wrote the old default "off" to the file.
+        toml::table &options = *tbl["options"].as_table();
+        if (const auto shown = options["showStats"].value<bool>()) {
+            if (!*shown) options.insert_or_assign("showStats", true);
+        }
+    }
+
+    if (fileVersion < 7) {
+        // The boxes of the tracks stand at the left of the graph by default. The program wrote the old default "bottom".
+        toml::table &options = *tbl["options"].as_table();
+        if (const auto side = options["readoutSide"].value<std::string>()) {
+            if (*side == "bottom") options.insert_or_assign("readoutSide", "left");
         }
     }
 

@@ -55,10 +55,12 @@ out vec4 FragColor;
 
 uniform float halfWidth;
 uniform vec4 color;
+// The drawing starts this many pixels below the top of the canvas.
+uniform float originY;
 
 void main()
 {
-    vec2 p = gl_FragCoord.xy;
+    vec2 p = gl_FragCoord.xy - vec2(0.0, originY);
     vec2 a = Seg.xy;
     vec2 ab = Seg.zw - a;
     float t = clamp(dot(p - a, ab) / max(dot(ab, ab), 1e-8), 0.0, 1.0);
@@ -99,11 +101,13 @@ uniform float radius;
 uniform vec4 fillColor;
 uniform vec4 borderColor;
 uniform float borderWidth;
+// The drawing starts this many pixels below the top of the canvas.
+uniform float originY;
 
 void main()
 {
     vec2 half_size = 0.5 * rect.zw;
-    vec2 p = gl_FragCoord.xy - (rect.xy + half_size);
+    vec2 p = gl_FragCoord.xy - vec2(0.0, originY) - (rect.xy + half_size);
     vec2 q = abs(p) - (half_size - radius);
     float d = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
 

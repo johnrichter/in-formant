@@ -105,9 +105,13 @@ namespace Gui {
 
         QRect viewport() const;
 
-        // The margins at the left and at the bottom that hold the axes. The spectrogram fills the
-        // rest of the canvas, which is the area of the graph.
-        void setPlotMargins(int left, int bottom) { mPlotLeft = left; mPlotBottom = bottom; }
+        // The margins at the left and at the bottom that hold the axes, and the margin at the top that
+        // holds the bar of boxes. The spectrogram fills the rest of the canvas, which is the area of the graph.
+        void setPlotMargins(int left, int bottom, int top = 0) { mPlotLeft = left; mPlotBottom = bottom; mPlotTop = top; }
+
+        // Move the origin of all drawing down by a number of pixels. The graph uses the top margin as its
+        // origin, so its code counts from the top of the graph. A value of zero restores the canvas origin.
+        void setOriginY(int pixels);
 
         // Limit the drawing to a rectangle, in pixels from the top left corner, or remove the limit.
         void setClip(int x, int y, int width, int height);
@@ -126,6 +130,8 @@ namespace Gui {
         SpectrogramStored mSpectrogramStored;
         int mPlotLeft = 0;
         int mPlotBottom = 0;
+        int mPlotTop = 0;
+        int mOriginY = 0;
 
         void initFonts();
         void initShaders();
@@ -152,6 +158,11 @@ namespace Gui {
         Font *mFontNormal;
         Font *mFontSmall;
         Font *mFontSmaller;
+        // The monospace fonts. The size indexes 3, 4, and 5 of the text functions use them.
+        Font *mFontMono;
+        Font *mFontMonoSmall;
+        Font *mFontMonoSmaller;
+        Font *fontOfSize(int size) const;
 
         QOpenGLShaderProgram *mTextProgram;
         GLuint mTextVao;
@@ -189,17 +200,17 @@ namespace Gui {
 
         // Uniform locations of the circle program.
         struct {
-            int projection, centers, radius, fillColor;
+            int projection, centers, radius, fillColor, originY;
         } mCircleLoc;
 
         // Uniform locations of the segment program.
         struct {
-            int projection, segments, halfWidth, color;
+            int projection, segments, halfWidth, color, originY;
         } mSegmentLoc;
 
         // Uniform locations of the rectangle program.
         struct {
-            int projection, rect, radius, fillColor, borderColor, borderWidth;
+            int projection, rect, radius, fillColor, borderColor, borderWidth, originY;
         } mRectLoc;
     };
 

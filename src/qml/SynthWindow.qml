@@ -22,8 +22,78 @@ ApplicationWindow {
         }
     }
 
+    font.pixelSize: ui.type.body
     Material.theme: Material.Dark
     Material.accent: Material.DeepPurple
+
+    // The first three formants of ten vowels for an average adult man and an average adult woman (Peterson and
+    // Barney, 1952, American English). F4 is a typical value, because the study has no F4.
+    readonly property var vowels: [
+        { name: "ee, as in see",      male: [270, 2290, 3010], female: [310, 2790, 3310] },
+        { name: "ih, as in sit",      male: [390, 1990, 2550], female: [430, 2480, 3070] },
+        { name: "eh, as in bed",      male: [530, 1840, 2480], female: [610, 2330, 2990] },
+        { name: "ae, as in cat",      male: [660, 1720, 2410], female: [860, 2050, 2850] },
+        { name: "ah, as in father",   male: [730, 1090, 2440], female: [850, 1220, 2810] },
+        { name: "aw, as in thought",  male: [570, 840, 2410],  female: [590, 920, 2710] },
+        { name: "uh, as in book",     male: [440, 1020, 2240], female: [470, 1160, 2680] },
+        { name: "oo, as in food",     male: [300, 870, 2240],  female: [370, 950, 2670] },
+        { name: "u, as in cup",       male: [640, 1190, 2390], female: [760, 1400, 2780] },
+        { name: "er, as in bird",     male: [490, 1350, 1690], female: [500, 1640, 1960] }
+    ]
+    readonly property var voices: [
+        { name: "Lower voice (average man)", key: "male", pitch: 120, f4: 3500 },
+        { name: "Higher voice (average woman)", key: "female", pitch: 210, f4: 4000 }
+    ]
+    readonly property var defaultBandwidths: [60, 90, 120, 150]
+
+    // Set the four formants to one vowel, and optionally the pitch. The follow modes go off, because they
+    // would replace the values at once.
+    function applyPreset() {
+        const voice = voices[voiceBox.currentIndex]
+        const set = vowels[vowelBox.currentIndex][voice.key]
+        synth.followFormants = false
+        for (let i = 0; i < 3; ++i) {
+            synth.setFormantFrequency(i, set[i])
+        }
+        synth.setFormantFrequency(3, voice.f4)
+        for (let i = 0; i < 4; ++i) {
+            synth.setFormantBandwidth(i, defaultBandwidths[i])
+        }
+        if (presetPitch.checked) {
+            synth.followPitch = false
+            synth.glotPitch = voice.pitch
+        }
+    }
+
+    // Return every control to the value that the program has at the start.
+    function resetAll() {
+        synth.followPitch = false
+        synth.followFormants = false
+        synth.noiseGain = 0.3
+        synth.glotGain = 1.0
+        synth.glotPitch = 170
+        synth.glotRd = 1.7
+        synth.glotTc = 1.0
+        synth.filterShift = 1.0
+        synth.voiced = true
+        synth.jitter = 0.0
+        const neutral = [500, 1500, 2500, 3500]
+        for (let i = 0; i < 4; ++i) {
+            synth.setFormantFrequency(i, neutral[i])
+            synth.setFormantBandwidth(i, defaultBandwidths[i])
+        }
+    }
+
+    // A short grey line under a control.
+    component SmallHint: Label {
+        Layout.fillWidth: true
+        Layout.maximumWidth: 300
+        wrapMode: Text.WordWrap
+        color: ui.color.secondary
+        font.pixelSize: ui.type.caption
+        lineHeight: ui.type.captionLine
+        lineHeightMode: Text.FixedHeight
+    }
 
     Flickable {
         id: container
@@ -40,17 +110,20 @@ ApplicationWindow {
             height: Math.max(implicitHeight, synthWindow.height)
 
             ColumnLayout {
-                Layout.margins: 10
+                Layout.margins: ui.space.lg
+                spacing: ui.space.sm
 
                 Switch {
                     text: "Turn on/off"
                     checked: synth.enabled
                     onToggled: synth.enabled = checked
                 }
+                SmallHint { text: "Use headphones. The microphone can hear the speakers and change the sound."; Layout.topMargin: ui.space.xs }
 
                 MenuSeparator {}
 
                 Label { text: "Aspirate noise volume" }
+                SmallHint { text: "Breath noise. 0% is a clean voice. 30% is a little breathy. 100% is very breathy." }
                 Slider {
                     value: synth.noiseGain
                     onMoved: synth.noiseGain = value
@@ -59,6 +132,7 @@ ApplicationWindow {
                         anchors.top: parent.handle.bottom
                         anchors.topMargin: 5
                         anchors.horizontalCenter: parent.handle.horizontalCenter
+                        font.family: ui.font.mono
                         text: Math.round(100 * synth.noiseGain) + "%"
                     }
 
@@ -67,6 +141,7 @@ ApplicationWindow {
                 MenuSeparator {}
 
                 Label { text: "Glottal source volume" }
+                SmallHint { text: "The loudness of the buzz of the vocal folds. Keep it at 100% for a normal voice." }
                 Slider {
                     value: synth.glotGain
                     onMoved: synth.glotGain = value
@@ -75,6 +150,7 @@ ApplicationWindow {
                         anchors.top: parent.handle.bottom
                         anchors.topMargin: 5
                         anchors.horizontalCenter: parent.handle.horizontalCenter
+                        font.family: ui.font.mono
                         text: Math.round(100 * synth.glotGain) + "%"
                     }
 
@@ -83,6 +159,19 @@ ApplicationWindow {
                 MenuSeparator {}
 
                 Label { text: "Glottal source pitch" }
+                SmallHint { text: "How high the voice is. About 120 Hz is a low voice, 170 Hz is in the middle, and 210 Hz is a high voice." }
+                SpinBox {
+                    from: 60
+                    to: 1500
+                    stepSize: 5
+                    editable: true
+                    value: Math.round(synth.glotPitch)
+                    font.family: ui.font.mono
+                    textFromValue: (v) => v + " Hz"
+                    valueFromText: (t) => parseInt(t)
+                    enabled: !synth.followPitch
+                    onValueModified: synth.glotPitch = value
+                }
                 Slider {
                     from: mel(60)
                     to: mel(1500)
@@ -93,6 +182,7 @@ ApplicationWindow {
                         anchors.top: parent.handle.bottom
                         anchors.topMargin: 5
                         anchors.horizontalCenter: parent.handle.horizontalCenter
+                        font.family: ui.font.mono
                         text: Math.round(synth.glotPitch) + " Hz"
                     }
                 }
@@ -110,6 +200,7 @@ ApplicationWindow {
                     textFormat: Text.RichText
                     text: "Glottal source <var>R<sub>d</sub></var>"
                 }
+                SmallHint { text: "How soft the buzz is. A low value (0.7) is pressed, bright, and loud. A high value (2.6) is soft, breathy, and dark." }
                 Slider {
                     from: 0.7
                     to: 2.6
@@ -120,6 +211,7 @@ ApplicationWindow {
                         anchors.top: parent.handle.bottom
                         anchors.topMargin: 5
                         anchors.horizontalCenter: parent.handle.horizontalCenter
+                        font.family: ui.font.mono
                         text: +synth.glotRd.toFixed(2)
                     }
                 }
@@ -130,6 +222,7 @@ ApplicationWindow {
                     textFormat: Text.RichText
                     text: "Glottal source <var>T<sub>c</sub></var>"
                 }
+                SmallHint { text: "The share of each cycle in which the vocal folds move. At 1.0 the folds never rest. A lower value adds a short rest. Small steps only." }
                 Slider {
                     from: 0.9
                     to: 1.0
@@ -140,6 +233,7 @@ ApplicationWindow {
                         anchors.top: parent.handle.bottom
                         anchors.topMargin: 5
                         anchors.horizontalCenter: parent.handle.horizontalCenter
+                        font.family: ui.font.mono
                         text: +synth.glotTc.toFixed(2)
                     }
                 }
@@ -147,6 +241,7 @@ ApplicationWindow {
                 MenuSeparator {}
 
                 Label { text: "Vocal tract filter shift" }
+                SmallHint { text: "Moves all formants up or down at one time. Keep it at 100% when you set the formants yourself." }
                 Slider {
                     from: 0.2
                     to: 2.0
@@ -157,6 +252,7 @@ ApplicationWindow {
                         anchors.top: parent.handle.bottom
                         anchors.topMargin: 5
                         anchors.horizontalCenter: parent.handle.horizontalCenter
+                        font.family: ui.font.mono
                         text: Math.round(100 * synth.filterShift) + "%"
                     }
                 }
@@ -168,10 +264,12 @@ ApplicationWindow {
                     checked: synth.voiced
                     onToggled: synth.voiced = checked
                 }
+                SmallHint { text: "Off removes the buzz, and only the breath noise stays. This makes a whisper."; Layout.topMargin: ui.space.xs }
 
                 MenuSeparator {}
 
                 Label { text: "Pitch jitter" }
+                SmallHint { text: "Small random changes of the pitch. 0% is a perfect machine voice. A few percent sounds more human." }
                 Slider {
                     from: 0
                     to: 1
@@ -182,6 +280,7 @@ ApplicationWindow {
                         anchors.top: parent.handle.bottom
                         anchors.topMargin: 5
                         anchors.horizontalCenter: parent.handle.horizontalCenter
+                        font.family: ui.font.mono
                         text: Math.round(100 * synth.jitter) + "%"
                     }
                 }
@@ -195,7 +294,47 @@ ApplicationWindow {
             }
 
             ColumnLayout {
-                Layout.margins: 10
+                Layout.margins: ui.space.lg
+                spacing: ui.space.sm
+
+                Heading { text: "Quick start"; first: true }
+                Label {
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 520
+                    wrapMode: Text.WordWrap
+                    color: ui.color.secondary
+                    text: "1. Wear headphones.  2. Choose a vowel and a voice.  3. Press Apply.  4. Start the synthesizer with the switch at the top left.  5. Change one control at a time, and listen after each change."
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    ComboBox {
+                        id: vowelBox
+                        Layout.fillWidth: true
+                        implicitContentWidthPolicy: ComboBox.WidestText
+                        model: synthWindow.vowels.map(v => v.name)
+                        currentIndex: 4
+                    }
+                    ComboBox {
+                        id: voiceBox
+                        Layout.fillWidth: true
+                        implicitContentWidthPolicy: ComboBox.WidestText
+                        model: synthWindow.voices.map(v => v.name)
+                    }
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    CheckBox {
+                        id: presetPitch
+                        text: "Also set the pitch"
+                        checked: true
+                    }
+                    Item { Layout.fillWidth: true }
+                    Button { text: "Apply"; highlighted: true; onClicked: synthWindow.applyPreset() }
+                    Button { text: "Reset all"; onClicked: synthWindow.resetAll() }
+                    Button { text: "How to use"; onClicked: helpWindow.showPage("synthesizer") }
+                }
+
+                MenuSeparator { Layout.fillWidth: true }
 
                 CheckBox {
                     font.italic: true
@@ -217,7 +356,7 @@ ApplicationWindow {
 
                 Label {
                     text: "Formants (used when follow formants is off)"
-                    color: "lightgrey"
+                    color: ui.color.secondary
                 }
 
                 GridLayout {
@@ -250,15 +389,24 @@ ApplicationWindow {
                         }
                     }
 
+                    // A box for each formant. Click the number and type a value, or use the arrows.
                     Repeater {
                         model: 4
 
-                        Label {
+                        SpinBox {
                             Layout.row: index
                             Layout.column: 2
-                            Layout.preferredWidth: 60
-                            horizontalAlignment: Text.AlignRight
-                            text: Math.round(synth.formantFrequencies[index]) + " Hz"
+                            Layout.preferredWidth: 180
+                            from: 150
+                            to: 5500
+                            stepSize: 10
+                            editable: true
+                            value: Math.round(synth.formantFrequencies[index])
+                            font.family: ui.font.mono
+                    textFromValue: (v) => v + " Hz"
+                            valueFromText: (t) => parseInt(t)
+                            enabled: !synth.followFormants
+                            onValueModified: synth.setFormantFrequency(index, value)
                         }
                     }
 
@@ -284,6 +432,7 @@ ApplicationWindow {
                             Layout.column: 4
                             Layout.preferredWidth: 90
                             horizontalAlignment: Text.AlignRight
+                            font.family: ui.font.mono
                             text: "bw " + Math.round(synth.formantBandwidths[index]) + " Hz"
                         }
                     }

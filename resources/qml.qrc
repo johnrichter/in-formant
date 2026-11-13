@@ -5,6 +5,8 @@
         <file alias="SynthWindow.qml">../src/qml/SynthWindow.qml</file>
         <file alias="SettingsWindow.qml">../src/qml/SettingsWindow.qml</file>
         <file alias="OscilloscopeWindow.qml">../src/qml/OscilloscopeWindow.qml</file>
+        <file alias="Hint.qml">../src/qml/Hint.qml</file>
+        <file alias="Heading.qml">../src/qml/Heading.qml</file>
         <file alias="OptionSwitch.qml">../src/qml/OptionSwitch.qml</file>
         <file alias="OptionSlider.qml">../src/qml/OptionSlider.qml</file>
         <file alias="RecordSheet.qml">../src/qml/RecordSheet.qml</file>
@@ -14,6 +16,7 @@
         <file alias="help/feminization.md">../docs/feminization.md</file>
         <file alias="help/masculinization.md">../docs/masculinization.md</file>
         <file alias="help/singing.md">../docs/singing.md</file>
+        <file alias="help/synthesizer.md">../docs/synthesizer.md</file>
         <file alias="help/warmups-and-vocal-health.md">../docs/warmups-and-vocal-health.md</file>
         <file alias="help/the-math.md">../docs/the-math.md</file>
     </qresource>

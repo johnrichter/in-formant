@@ -33,7 +33,7 @@ The statistics show in boxes. They are on by default. Each track has its own box
 
 The Readouts tab of the settings has these choices:
 
-- The place of the boxes: below the graph, or at the left of the graph. A column at the left wraps into a second column when it is too high.
+- The place of the boxes: at the left of the graph (the default), or below the graph. A column at the left wraps into a second column when it is too high.
 - The order of the boxes, and a switch for each box.
 - The statistics that have a line in the boxes.
 

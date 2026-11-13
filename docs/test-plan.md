@@ -186,6 +186,7 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-SET-04** (Unit, P1). Migrate a file of each version from 0 to 5. Expect the chain to end at version 6 with the right defaults.
 - **TP-SET-05** (Unit, P1). Migrate a version 5 file with `showStats = false`. Expect `true`. Migrate it again. Expect no change.
 - **TP-SET-06** (Unit, P2). Migrate a version 5 file with no `showStats`. Expect no value, so the default `true` applies.
+- **TP-SET-15** (Unit, P2). Start with no file. Expect the boxes at the left of the graph. Migrate a version 6 file with `readoutSide = "bottom"`. Expect `left`, and expect no second change.
 - **TP-SET-07** (Unit, P2). Start with no file. Expect `showStats` on, and expect the boxes of the five tracks with the default statistics.
 - **TP-SET-08** (Unit, P2). Load a file with an unknown key, a wrong type, and a broken line. Expect the app to start with defaults for the broken parts.
 - **TP-SET-09** (Qt, P2). Change the practice settings fields (folder, task, keep audio). Expect the practice mode to use them at the next session.
