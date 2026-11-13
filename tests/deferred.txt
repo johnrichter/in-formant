@@ -4,38 +4,6 @@
 
 TP-PITCH-05 | NOTBUILT | tests a feature that does not exist, so write a DISABLED_ test when the feature exists
 TP-PITCH-06 | NOTBUILT | needs a feature that does not exist and a CPU measure
-TP-AXT-02 | WP4 | planned in WP4
-TP-AXT-04 | WP4 | planned in WP4
-TP-AXT-06 | WP4 | planned in WP4
-TP-FLIP-07 | WP4 | planned in WP4
-TP-FLIP-13 | WP4 | planned in WP4
-TP-GRID-08 | WP4 | planned in WP4
-TP-GRID-09 | WP4 | planned in WP4
-TP-LAY-01 | WP4 | planned in WP4
-TP-LAY-02 | WP4 | planned in WP4
-TP-LAY-03 | WP4 | planned in WP4
-TP-LAY-04 | WP4 | planned in WP4
-TP-LAY-05 | WP4 | planned in WP4
-TP-LAY-06 | WP4 | planned in WP4
-TP-LAY-07 | WP4 | planned in WP4
-TP-LAY-08 | WP4 | planned in WP4
-TP-LAY-09 | WP4 | planned in WP4
-TP-LAY-10 | WP4 | planned in WP4
-TP-LAY-11 | WP4 | planned in WP4
-TP-LAY-12 | WP4 | planned in WP4
-TP-LAY-14 | WP4 | planned in WP4
-TP-LAY-16 | WP4 | planned in WP4
-TP-LAY-19 | WP4 | planned in WP4
-TP-LAY-20 | WP4 | planned in WP4
-TP-LAY-23 | WP4 | planned in WP4
-TP-LAY-29 | WP4 | planned in WP4
-TP-LAY-30 | WP4 | planned in WP4
-TP-LFT-05 | WP4 | planned in WP4
-TP-PITCH-01 | WP4 | planned in WP4
-TP-PITCH-02 | WP4 | planned in WP4
-TP-PITCH-03 | WP4 | planned in WP4
-TP-ZONE-02 | WP4 | planned in WP4
-TP-ZONE-06 | WP4 | planned in WP4
 TP-COL-01 | WP5 | planned in WP5
 TP-COL-02 | WP5 | planned in WP5
 TP-COL-03 | WP5 | planned in WP5

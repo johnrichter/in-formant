@@ -13,6 +13,19 @@ namespace Gui {
 
 using BandEdges = std::array<double, 4>;
 
+// The colours of the three zones, from the lowest zone to the highest. The middle zone has a yellow-green
+// colour, so it is not on the pink and blue axis.
+struct ZoneColor {
+    int r, g, b;
+    const char *name;
+};
+
+inline constexpr ZoneColor zoneColors[3] = {
+    { 74, 144, 226, "Masculine" },
+    { 190, 205, 70, "Androgynous" },
+    { 232, 111, 164, "Feminine" },
+};
+
 // The default edges: 60 to 150 Hz, 150 to 180 Hz, and 180 to 300 Hz.
 constexpr BandEdges defaultBandEdges = { 60.0, 150.0, 180.0, 300.0 };
 

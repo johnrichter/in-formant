@@ -80,8 +80,7 @@ double QPainterWrapper::inverseFrequency(double value)
 
 double QPainterWrapper::mapTimeToX(double time)
 {
-    const double offset = mapTimeToX(time, plotWidth(), mTimeStart, mTimeEnd);
-    return mPlotLeft + (mOptions.timeFlipped ? plotWidth() - offset : offset);
+    return Gui::plotTimeToX(plotFrame(), time);
 }
 
 double QPainterWrapper::mapFrequencyToY(double frequency)

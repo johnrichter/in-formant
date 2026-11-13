@@ -5,6 +5,8 @@
 #include "canvas_renderer.h"
 #include "renderoptions.h"
 #include "readoutlayout.h"
+#include "graphlayout.h"
+#include "plotmap.h"
 #include "ticks.h"
 #include <map>
 #include <string>
@@ -141,33 +143,10 @@ private:
     // The height of the row of readout boxes below the time axis. The row is part of the bottom margin.
     int mStripHeight = 0;
 
-    // What a box of one track shows, and the sizes of its parts. The sizes come from the settings and
-    // the fonts only, so they stay the same when the values change.
-    struct BoxContent {
-        std::vector<int> bits;          // the statistics that have a line, in the order of the lines
-        bool showCurrent = false;       // the header shows the live value
-        double labelWidth = 0.0;
-        double valueWidth = 0.0;
-        double nameWidth = 0.0;
-        double headerValueWidth = 0.0;
-    };
-
     // The layout of the readout boxes of the frame. updateLayout computes it and drawHud reads it.
-    struct ReadoutLayout {
-        std::vector<Gui::BoxPlacement> boxes;
-        std::map<std::string, BoxContent> content;
-        double pad = 0.0;
-        double rowHeight = 0.0;
-        double swatchWidth = 0.0;
-        double debugWidth = 0.0;
-        double debugHeight = 0.0;
-        // The bar at the top holds the legend and the frame timing, centred over the graph.
-        Gui::BoxPlacement legend;
-        bool hasLegend = false;
-        double debugX = 0.0;
-        double debugY = 0.0;
-        bool hasDebug = false;
-    } mReadout;
+    Gui::ReadoutLayout mReadout;
+    // The graph and the time range, for the map between the time and the pixel.
+    Gui::PlotFrame plotFrame() const { return { mPlotLeft, mPlotTop, plotWidth(), plotHeight(), mTimeStart, mTimeEnd, mOptions.timeFlipped }; }
     int plotWidth() const { return viewport().width() - mPlotLeft - mPlotRight; }
     int plotHeight() const { return viewport().height() - mPlotBottom - mPlotTop; }
 

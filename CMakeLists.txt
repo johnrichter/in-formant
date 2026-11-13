@@ -12,7 +12,7 @@ elseif(NOT CMAKE_OSX_DEPLOYMENT_TARGET)
 endif()
 
 if("x${CUR_VERSION}" STREQUAL "x")
-    set(CUR_VERSION "3.2.3")
+    set(CUR_VERSION "3.2.4")
 endif()
 
 string(FIND "${CUR_VERSION}" "-" dash_pos)

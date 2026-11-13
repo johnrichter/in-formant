@@ -2,6 +2,7 @@
 #include "../../gui/pitchaxis.h"
 #include "../../gui/readoutstats.h"
 #include "../timings.h"
+#include "../viewrange.h"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -153,13 +154,10 @@ void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *da
         // With the time flipped, the newest sound is always at the left edge, next to the axis, and the old
         // sound flows to the right. The view then starts before time zero. The part before time zero is empty,
         // and it fills as the sound grows. Without the flip, the graph fills from the left to the right.
-        timeEnd = config->optionBool("flipTime") ? realTimeEnd - timeDelay
-                                                 : std::max(realTimeEnd - timeDelay, viewDuration);
+        timeEnd = liveViewEnd(realTimeEnd, timeDelay, viewDuration, config->optionBool("flipTime"));
     }
     else {
-        const double length = session.duration();
-        timeEnd = fileMode ? std::clamp(config->getViewEnd(), viewDuration, std::max(length, viewDuration))
-                           : std::clamp(config->getViewEnd(), std::min(viewDuration, length), length);
+        timeEnd = pastViewEnd(fileMode, config->getViewEnd(), viewDuration, session.duration());
     }
     const double timeStart = timeEnd - viewDuration;
 

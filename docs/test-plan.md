@@ -122,7 +122,7 @@ The project never played the sound through a speaker. These cases use rendered s
 
 - **TP-LAY-01** (Unit, P1). Compute the layout with the legend and the frame times on. Expect the two boxes side by side and centred over the graph.
 - **TP-LAY-02** (Unit, P1). Compute the layout with the frame times on and `hideDebug` on (a recording). Expect the same top margin and the same graph size.
-- **TP-LAY-03** (Unit, P2). Compute the layout with both boxes off. Expect a top margin of zero.
+- **TP-LAY-03** (Unit, P2). Compute the layout with both boxes off. Expect a top margin of the graph padding and nothing more.
 - **TP-LAY-04** (Unit, P2). Make the bar wider than the graph. Expect the bar to start at the left edge of the graph and to stay inside the window.
 - **TP-LAY-05** (Unit, P2). Set the side to "left". Expect the column order to be F4, F3, F2, F1, Pitch from the top to the bottom.
 - **TP-LAY-06** (Unit, P2). Set the side to "left" with a custom order (for example F2, Pitch, F4). Expect the reverse of that order in the column.
@@ -580,9 +580,9 @@ These items need a person.
 
 Some cases need a small change in the code. Do these changes first, because they make many cases cheap.
 
-- **A free function for the time mapping.** `mapTimeToX` and `timeAtX` are members of the painter, and they read the options. A free function with the plot size, the time range, and the flip as arguments makes TP-FLIP-07 and TP-FLIP-13 plain unit tests.
+- **A free function for the time mapping.** Done. `plotTimeToX` and `plotXToTime` in `src/gui/plotmap.h` take the graph, the time range, and the flip. TP-FLIP-07 uses them.
 - **A `Config` on a table in memory.** Done. The constructor `Config(toml::table)` never reads or writes the file. TP-RST-02 to TP-RST-04, TP-SET-16, and TP-SET-17 use it.
-- **The layout of the graph without a window.** The functions `updateLayout` and `drawFrequencyGrid` need a renderer. A function that returns the list of lines (a plain list of numbers) makes TP-GRID-01 to TP-GRID-09 unit tests.
+- **The layout of the graph without a window.** Done for the layout and for the grid lines. `computeGraphLayout` in `src/gui/graphlayout.h` takes a text measure, and `makeGridLines` in `src/gui/gridlines.h` returns the rows. The cases TP-LAY and TP-GRID-08 to TP-GRID-09 use them.
 - **A hook for tests that stays out of release builds.** The project used a temporary hook in `src/context/guicontext.cpp` for each screenshot. A test-only target with its own entry point replaces it, so no test depends on a hook that must never be committed.
 - **Names for objects in QML.** Give an `objectName` to each control that a test must press (the reset button, the reset dialog, the segmented control, and the tabs).
 - Whether the warm-up ranks are right for a given voice.
@@ -593,3 +593,7 @@ Each entry names the case, the bug, the version of the fix, and the test that gu
 
 - **A file with a syntax error stopped the program at launch (3.2.2).** The parser threw an error that no code caught, so the user could not start the program until the file was removed. Now the program starts with the defaults and keeps the broken file as `informant.conf.broken`. TP-SET-08 and TP-SET-18.
 - **An export to a folder that cannot be written gave no reason (3.2.3).** The status said "Exported 0 of N sessions". Now the status says that the target folder is not writable and names it. TP-PRA-11.
+- **A window that was narrower than the margins gave a graph of negative width (3.2.4).** The margins now leave one pixel for the graph, and the boxes go away. TP-LAY-16.
+- **A click on the first pixel of the margin counted as a click on the graph (3.2.4).** The test of the graph now ends before the last pixel row and the last pixel column. TP-LAY-19, TP-LAY-20, and TP-LAY-23.
+- **The column N was too narrow for a count above 999999 (3.2.4).** A window of 24 hours has about 8.6 million frames, so the pattern now has 7 digits. TP-LAY-12.
+- **Two grid lines on one pixel row looked brighter than one line (3.2.4).** The grid now draws one line for each pixel row, and a major line wins over a minor line. TP-GRID-09.

@@ -70,6 +70,13 @@ target_include_directories(config_tests SYSTEM PRIVATE ${ARMADILLO_INCLUDE_DIR} 
 # The statistics in the table of the readouts. They need the note names of the tick code.
 informant_add_test(NAME readout_stats_tests SOURCES readout_stats_test.cpp ${SRC}/gui/ticks.cpp LIBS Qt6::Gui LABELS readout_stats)
 
+# The layout of the graph, the map between the time and the pixel, and the range of the view. The tests
+# give the layout a fake font, so no window is needed.
+informant_add_test(NAME graph_layout_tests SOURCES graph_layout_test.cpp ${SRC}/gui/ticks.cpp LIBS Qt6::Gui LABELS graph_layout)
+
+# The axes: the tick marks, the grid lines, the pitch axis, and the pitch zones.
+informant_add_test(NAME axes_tests SOURCES axes_test.cpp ${SRC}/gui/ticks.cpp LIBS Eigen3::Eigen LABELS axes)
+
 # The practice library uses QDir, QFile, and QDateTime, and the tests use QTemporaryDir for the files.
 informant_add_test(NAME practice_tests SOURCES practice_test.cpp ${SRC}/context/practicelib.cpp LIBS Qt6::Core LABELS practice)
 
