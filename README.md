@@ -167,6 +167,6 @@ Application:
 * The disk image of this build has an Apple Development signature and no notarization. This signature works on this Mac only. The script can sign and notarize with a Developer ID, but nobody tested this path, because this Mac has no such identity.
 * The log file is `~/Library/Logs/InFormant/InFormant.log`. A file over 5 MB moves to `InFormant.1.log` at the next start.
 * The application asks for the microphone when you press play for the first time. When you deny it, the application stays paused and shows a message.
-* The application reads its configuration from `~/Library/Application/informant.conf`.
+* The application reads its configuration from `~/Library/Application Support/informant.conf`.
 * The checks of the playback confirmed the data flow, the position, and the view that follows the sound. Nobody listened to the sound.
 * The checks covered views up to 5 minutes, a 20 second speech file in two formats (AIFF and AAC), and recordings of 13 seconds. A view of many hours uses one short analysis for each column. This path has no test with hours of sound.
