@@ -100,9 +100,13 @@ Spectrogram::~Spectrogram()
 
 void Spectrogram::render(QPainterWrapper *painter, Config *config, DataStore *dataStore)
 {
-    const double realTimeEnd = dataStore->getRealTime();
     const bool fileMode = config->getSessionMode() == 1;
     Session &session = dataStore->session();
+
+    // The end of the sound that the live view follows. The clock counts the stored sound, and not the wall time,
+    // so the end of the picture has no lag after a pause or a stall.
+    const double wallSeconds = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    const double realTimeEnd = mLiveClock.advance(session.duration(), wallSeconds);
 
     // The pitch-only mode shows the pitch track alone, on an axis that fits the pitch.
     const bool pitchOnly = config->optionString("graphMode") == "pitch";

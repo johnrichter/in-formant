@@ -213,6 +213,10 @@ The renderer shifts all drawing by the height of the bar. The fragment shaders c
 - **TP-EDGE-04** (Image, P2). Repeat while the canvas width changes.
 - **TP-EDGE-05** (Unit, P1). Give a picture that is older than the view by 0.1 seconds. Expect the newest column to fill the span up to the view. Give a lag of more than 0.25 seconds, a newer picture, and a past view. Expect no hold.
 - **TP-EDGE-06** (Image, P1). Capture a live view with a span of 60 seconds. Expect no empty strip between the axis and the newest sound, in 10 frames that follow each other.
+- **TP-EDGE-07** (Unit, P1). Give the clock of the live view a steady stream of sound in steps of 0.02 seconds. Expect an end that is never behind the stored sound, never more than 0.1 seconds beyond it, and never goes back. Read the source of the view. Expect the clock to take the stored sound, and expect no use of the wall clock. Expect the time of the slices to count the samples of each block.
+- **TP-EDGE-08** (Unit, P1). Stop the sound for 3 seconds and restart it after 0.17 seconds. Expect the end to stay within 0.1 seconds of the stored sound. Stall the sound for a long time. Expect the end to stop at the cap.
+- **TP-EDGE-09** (Unit, P2). Clear the stored sound, as the reset of the graph does. Expect the clock to start again, with no old end.
+- **TP-EDGE-10** (Image, P1). Record live with a span of 77 seconds. Open the oscilloscope and the synthesizer, switch the synthesizer on, toggle the voicing, then pause and restart three times. Expect no empty strip next to the axis after each restart.
 
 ## 6b. Time direction, grid lines, and track switches
 
@@ -687,3 +691,5 @@ Each entry names the case, the bug, the version of the fix, and the test that gu
 - **A full disk could replace the settings file with a cut file (3.4.2).** The program checked the stream before the close, and the close writes the rest of the buffer. Now it checks after the close. No test can reach this code. The change has a review only.
 - **FFTW is 3.3.11 (3.4.2).** The version was 3.3.10. The checksum of the new file matches the checksum in the data of Homebrew. The file `.gitmodules` is gone, because the program has no submodule. TP-REL-09.
 - **A cached download stopped the build after a change of version (3.4.2).** The cache file had no version in its name, so the old file met the new checksum and failed. Now each cache file has the version in its name. TP-REL-09.
+- **The end of the live graph lagged more after each pause (3.4.3).** The view followed the wall clock, and the picture holds only the sound that the program stored. A pause, a restart of the input, or a stall each left a lead of about 0.17 seconds for ever. An empty strip then grew next to the axis. Now the view follows the stored sound, plus the wall time since the last step, up to 0.1 seconds. The strip stays below 0.06 seconds after three pauses. TP-EDGE-07, TP-EDGE-08, TP-EDGE-09, TP-EDGE-10.
+- **The time of the slices could run ahead of the stored sound (3.4.3).** The pipeline added the granularity to the time of each block, but a block has a whole number of samples. A rate of 22.05 kHz with 10 milliseconds gives a block of 220 samples, half a sample short. Now the time adds the samples of the block divided by the rate. TP-EDGE-07.

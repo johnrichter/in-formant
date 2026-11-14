@@ -38,13 +38,6 @@ namespace Main {
         double getTime() const;
         void setTime(double t);
 
-        double getRealTime() const;
-        void startRealTime();
-        void stopRealTime();
-
-        // Set the real time to zero. The clock keeps its state of running or stopped.
-        void resetRealTime();
-
         TimeTrack<SpectrogramCoefs>& getSpectrogram();
 
         OptionalTimeTrack<double>& getPitchTrack();
@@ -68,10 +61,6 @@ namespace Main {
         QReadWriteLock mLock;
 
         volatile double mTime;
-
-        bool mIsRealTimeStarted;
-        double mRealTimeOffset;
-        std::chrono::time_point<std::chrono::high_resolution_clock> mRealTimeStart;
 
         TimeTrack<SpectrogramCoefs> mSpectrogram;
         

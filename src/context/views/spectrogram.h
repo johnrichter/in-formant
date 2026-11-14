@@ -7,6 +7,7 @@
 
 #include "../../gui/pitchaxis.h"
 #include "../reviewspectrogram.h"
+#include "../viewrange.h"
 #include "views.h"
 
 namespace Main::View {
@@ -25,6 +26,9 @@ namespace Main::View {
         // The spectrogram of the stored sound. It serves long views and views of a past time.
         std::unique_ptr<ReviewSpectrogram> mReview;
         ReviewRequest mLastRequest;
+
+        // The clock of the live view. It follows the stored sound.
+        LiveClock mLiveClock;
         bool mHasRequest = false;
 
         // The axis of the pitch-only graph.

@@ -87,8 +87,10 @@ void Pipeline::callbackProcessing()
                 slidingWindow.end());
         std::copy(block.begin(), block.end(), std::prev(slidingWindow.end(), block.size()));
 
-        // The sliding window ends at the end of the new block.
-        time += granularity;
+        // The sliding window ends at the end of the new block. The time follows the samples of the block. The block
+        // has a whole number of samples, so a sum of the granularity can differ from it, and the slices would then
+        // run ahead of the stored sound.
+        time += (double) block.size() / mSampleRate;
 
         mDataVis->pushAudio(block.data(), (int) block.size(), mSampleRate);
 

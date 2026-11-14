@@ -549,3 +549,77 @@ TEST(GraphLayout, TheTrackIndexHandlesUnknownNames)
     EXPECT_EQ(trackIndex(""), 1);
     EXPECT_EQ(trackIndex("F"), 1);
 }
+
+// The clock of the live view follows the stored sound. A steady stream of sound in small steps gives an end that is
+// never behind the stored sound, never more than 0.1 seconds beyond it, and never goes back.
+TEST(LiveClock, TP_EDGE_07_ASteadyStreamKeepsTheEndNearTheStoredSound)
+{
+    Main::LiveClock clock;
+    double previous = -1.0;
+    double stored = 0.0;
+    for (int frame = 0; frame < 3000; ++frame) {
+        const double wall = 100.0 + frame * 0.004;
+        // The sound arrives in steps of 0.02 seconds.
+        if (frame % 5 == 0) stored += 0.02;
+        const double end = clock.advance(stored, wall);
+        EXPECT_GE(end, stored - 1e-12) << frame;
+        EXPECT_LE(end, stored + 0.1 + 1e-12) << frame;
+        EXPECT_GE(end, previous) << frame;
+        previous = end;
+    }
+}
+
+// A pause leaves no lag. The old clock followed the wall time, so a pause and a restart left a lead of about 0.17
+// seconds each time. The new clock gives the stored sound plus the wall time since the last step, up to 0.1 seconds.
+TEST(LiveClock, TP_EDGE_08_APauseAndARestartLeaveNoLagAtTheEnd)
+{
+    Main::LiveClock clock;
+    double wall = 50.0;
+    double stored = 0.0;
+    for (int i = 0; i < 500; ++i) {
+        wall += 0.01;
+        stored += 0.01;
+        clock.advance(stored, wall);
+    }
+    // The pause: the stored sound stands still for 3 seconds.
+    for (int i = 0; i < 300; ++i) {
+        wall += 0.01;
+        const double end = clock.advance(stored, wall);
+        EXPECT_LE(end, stored + 0.1 + 1e-12);
+    }
+    // The restart: the input needs 0.17 seconds before the first sound comes.
+    for (int i = 0; i < 17; ++i) {
+        wall += 0.01;
+        EXPECT_LE(clock.advance(stored, wall), stored + 0.1 + 1e-12);
+    }
+    for (int i = 0; i < 500; ++i) {
+        wall += 0.01;
+        stored += 0.01;
+        const double end = clock.advance(stored, wall);
+        EXPECT_LE(end - stored, 0.1 + 1e-12) << i;
+        EXPECT_GE(end, stored - 1e-12) << i;
+    }
+}
+
+// A stall of the sound gives a clock that stops at the cap. The end goes on when the sound comes back.
+TEST(LiveClock, TP_EDGE_08_AStallStopsTheEndAtTheCap)
+{
+    Main::LiveClock clock;
+    clock.advance(10.0, 1000.0);
+    EXPECT_DOUBLE_EQ(clock.advance(10.0, 1010.0), 10.1);
+    EXPECT_DOUBLE_EQ(clock.advance(10.0, 1100.0), 10.1);
+    EXPECT_GE(clock.advance(10.5, 1100.01), 10.5);
+}
+
+// A reset of the graph clears the sound. The clock starts again, and it does not hold the old end.
+TEST(LiveClock, TP_EDGE_09_AResetOfTheGraphStartsTheClockAgain)
+{
+    Main::LiveClock clock;
+    for (int i = 1; i <= 100; ++i) clock.advance(i * 0.1, 10.0 + i * 0.1);
+    EXPECT_GT(clock.advance(10.0, 21.0), 10.0);
+
+    const double afterReset = clock.advance(0.0, 21.5);
+    EXPECT_LT(afterReset, 0.2);
+    EXPECT_GE(afterReset, 0.0);
+    EXPECT_LE(clock.advance(0.05, 21.55), 0.05 + 0.1 + 1e-12);
+}

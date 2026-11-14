@@ -7,6 +7,36 @@
 
 namespace Main {
 
+    // The clock of the live view. It follows the stored sound, which the program counts in samples. Between two
+    // steps of the stored sound, the clock goes on with the wall time, so the picture moves with no jerk. It never
+    // goes more than maxLead seconds beyond the stored sound. A pause, a restart of the input, a stall, and the
+    // small difference between the clock of the device and the wall clock then leave no lag at the end of the
+    // picture. A clock that only follows the wall time keeps each of these errors for ever.
+    class LiveClock {
+    public:
+        // The seconds of sound that the program stored, and the wall time in seconds on a steady clock.
+        double advance(double stored, double wall, double maxLead = 0.1)
+        {
+            if (stored < mStored) {
+                // The sound went away, for example at the reset of the graph. Start again.
+                mEnd = -1e300;
+            }
+            if (stored != mStored) {
+                mStored = stored;
+                mWall = wall;
+            }
+            const double estimate = mStored + std::clamp(wall - mWall, 0.0, maxLead);
+            // The clock never goes back, so the picture never jumps back.
+            mEnd = std::max(mEnd, estimate);
+            return mEnd;
+        }
+
+    private:
+        double mStored = -1.0;
+        double mWall = 0.0;
+        double mEnd = -1e300;
+    };
+
     // The end of the live view, in seconds of the session. The newest slice is older than the newest sound by
     // timeDelay. With the flip, the view follows the newest sound from the first moment, and the start
     // is below 0 for a young capture. Without the flip, the graph fills from the left, and the view ends

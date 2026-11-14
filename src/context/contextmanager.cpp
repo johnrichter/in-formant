@@ -34,7 +34,7 @@ ContextManager::ContextManager(
       mDataStore(std::make_unique<DataStore>()),
       mSessionPlayer(std::make_unique<SessionPlayer>(&mDataStore->session(), mPlaybackQueue.get())),
       mSessionWrapper(std::make_unique<SessionWrapper>(mConfig.get(), mDataStore.get(), mSessionPlayer.get(), captureSampleRate,
-                  [this]() { mPipeline->restart(); mDataStore->resetRealTime(); })),
+                  [this]() { mPipeline->restart(); })),
       mPipeline(std::make_unique<App::Pipeline>(
                   mCaptureBuffer.get(), mDataStore.get(), mConfig.get(),
                   &mDataVisWrapper,
@@ -80,7 +80,6 @@ ContextManager::ContextManager(
             [this](bool paused) {
                 if (paused) {
                     mAudioContext->stopCaptureStream();
-                    mDataStore->stopRealTime();
                 }
                 else {
                     requestMicrophoneThen([this]() {
@@ -330,7 +329,6 @@ void ContextManager::startCapture()
 {
     try {
         mAudioContext->startCaptureStream();
-        mDataStore->startRealTime();
     }
     catch (const std::exception &e) {
         std::cout << "ContextManager] The capture did not start: " << e.what() << std::endl;
@@ -344,11 +342,8 @@ void ContextManager::onAudioDevicesChanged()
     // While the question of the microphone is open, the capture is not on yet. The list of devices still updates.
     const bool running = !mConfig->isPaused() && mCaptureOpen;
 
-    // While the capture runs, its clock stops for the short gap of the restart.
-    if (running) mDataStore->stopRealTime();
     reinitializeAudio(running);
-    if (running && mAudioReady && mCaptureOpen) mDataStore->startRealTime();
-    else if (running) mConfig->setPaused(true);
+    if (running && !(mAudioReady && mCaptureOpen)) mConfig->setPaused(true);
 }
 
 void ContextManager::startAnalysisThread()

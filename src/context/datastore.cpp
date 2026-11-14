@@ -5,9 +5,7 @@ using namespace Main;
 
 DataStore::DataStore()
     : mTrackLength(0),
-      mTime(0),
-      mIsRealTimeStarted(false),
-      mRealTimeOffset(0)
+      mTime(0)
 {
 }
 
@@ -39,39 +37,6 @@ double DataStore::getTime() const
 void DataStore::setTime(double t)
 {
     mTime = t;
-}
-
-double DataStore::getRealTime() const
-{
-    if (!mIsRealTimeStarted)
-        return mRealTimeOffset;
-
-    auto now = std::chrono::high_resolution_clock::now();
-    return mRealTimeOffset +
-        std::chrono::duration_cast<std::chrono::duration<double>>(
-                now - mRealTimeStart).count();
-}
-
-void DataStore::startRealTime()
-{
-    // A second call while the clock runs must not restart it.
-    if (mIsRealTimeStarted)
-        return;
-
-    mRealTimeStart = std::chrono::high_resolution_clock::now();
-    mIsRealTimeStarted = true;
-}
-
-void DataStore::resetRealTime()
-{
-    mRealTimeOffset = 0;
-    mRealTimeStart = std::chrono::high_resolution_clock::now();
-}
-
-void DataStore::stopRealTime()
-{
-    mRealTimeOffset = getRealTime();
-    mIsRealTimeStarted = false;
 }
 
 TimeTrack<SpectrogramCoefs>& DataStore::getSpectrogram()

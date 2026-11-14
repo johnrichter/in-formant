@@ -745,3 +745,19 @@ TEST(Docs, TP_GDE_02_TheFftTableMatchesTheFormulaForAViewUpTo5500Hz)
     }
     EXPECT_EQ(sizes, (std::vector<int>{ 512, 1024, 2048, 4096 }));
 }
+
+// The live view follows the stored sound. The test reads the source, because no test can run the view without a window.
+TEST(Release, TP_EDGE_07_TheLiveViewFollowsTheStoredSoundAndNotTheWallClock)
+{
+    const std::string view = readFile(root / "src" / "context" / "views" / "spectrogram.cpp");
+    EXPECT_NE(view.find("mLiveClock.advance(session.duration()"), std::string::npos);
+    EXPECT_EQ(view.find("getRealTime"), std::string::npos);
+
+    const std::string store = readFile(root / "src" / "context" / "datastore.h");
+    EXPECT_EQ(store.find("RealTime"), std::string::npos);
+
+    // The time of the slices counts the samples of each block, so it agrees with the stored sound.
+    const std::string pipeline = readFile(root / "src" / "modules" / "app" / "pipeline" / "pipeline.cpp");
+    EXPECT_NE(pipeline.find("time += (double) block.size() / mSampleRate;"), std::string::npos);
+    EXPECT_EQ(pipeline.find("time += granularity;"), std::string::npos);
+}
