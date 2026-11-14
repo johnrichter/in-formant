@@ -71,4 +71,5 @@ Short-lived threads load files, export sound, and build the spectrogram of long 
 - The macOS microphone permission belongs to the bundle ID. To ask again, run `tccutil reset Microphone fr.cloyunhee.InFormant`.
 - The config file is `~/Library/Application Support/informant.conf`. Write the "Application Support" part in full. A broken file starts the app with defaults and moves to `informant.conf.broken`.
 - `macdeployqt` prints three errors about SQL plugins. Ignore them.
-- The ASan build can report an overflow inside GoogleTest registration, with no InFormant frame on the stack. Check the stack before you change InFormant code.
+- The ASan build can report an overflow inside GoogleTest registration, with no InFormant frame on the stack. `run-tests.sh` sets `ASAN_OPTIONS=detect_container_overflow=0` before the build to stop it. Nobody found the cause. Check the stack before you change InFormant code.
+- `App.TP_IDLE_03` can fail in a full run on a busy machine, at about 6 percent CPU against a limit of 6 percent. Run it alone with `./run-tests.sh -R TP_IDLE_03` before you act on it. Do not raise its limit.
