@@ -171,3 +171,27 @@ endforeach()
 
 # The choice of the program for each state of the microphone permission.
 informant_add_test(NAME mic_access_tests SOURCES mic_access_test.cpp LABELS mic_access)
+
+# The analysis code with no window and no sound device: the pitch solvers, the glottal solvers, and the shared state.
+# The solvers need FFTW, the filters, and the linear prediction code.
+set(ANALYSIS_SOURCES
+    ${SRC}/analysis/fft/realfft.cpp ${SRC}/analysis/fft/complexfft.cpp ${SRC}/analysis/fft/wisdom.cpp
+    ${SRC}/analysis/util/parabolic_interpolation.cpp ${SRC}/analysis/util/find_peaks.cpp
+    ${SRC}/analysis/filter/butterworth.cpp ${SRC}/analysis/filter/zpk2sos.cpp
+    ${SRC}/analysis/filter/sosfilter.cpp ${SRC}/analysis/filter/filter.cpp
+    ${SRC}/analysis/linpred/autocorr.cpp ${SRC}/analysis/linpred/covar.cpp ${SRC}/analysis/linpred/burg.cpp
+    ${SRC}/analysis/util/aberth.cpp ${SRC}/synthesis/polyFromRoots.cpp)
+function(informant_add_analysis_test name source label)
+    informant_add_test(NAME ${name}
+        SOURCES ${source} ${ANALYSIS_SOURCES}
+        LIBS Eigen3::Eigen rpcxx_only Qt6::Core SampleRate::samplerate ${FFTW_LIBRARIES}
+        LABELS ${label})
+    target_include_directories(${name} SYSTEM PRIVATE ${FFTW_INCLUDE_DIRS})
+    target_link_directories(${name} PRIVATE ${FFTW_LIBRARY_DIRS})
+endfunction()
+informant_add_analysis_test(pitch_tests pitch_test.cpp pitch)
+target_sources(pitch_tests PRIVATE ${SRC}/analysis/pitch/yin.cpp ${SRC}/analysis/pitch/mpm.cpp
+    ${SRC}/analysis/pitch/rapt.cpp)
+informant_add_analysis_test(invglot_tests invglot_test.cpp invglot)
+target_sources(invglot_tests PRIVATE ${SRC}/analysis/invglot/iaif.cpp ${SRC}/analysis/invglot/gfm_iaif.cpp)
+informant_add_analysis_test(analysis_state_tests analysis_state_test.cpp analysis_state)

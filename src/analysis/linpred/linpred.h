@@ -24,6 +24,8 @@ namespace Analysis {
             rpm::vector<double> solve(const double *x, int length, int lpcOrder, double *gain) override;
         private:
             rpm::vector<double> r, a, rc;
+            // The work buffers of one solver. Two solvers never share them.
+            rpm::vector<double> b, grc, beta, cc;
         };
 
         class Burg : public LinpredSolver {

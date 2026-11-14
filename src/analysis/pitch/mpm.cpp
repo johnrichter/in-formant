@@ -69,7 +69,7 @@ pow2roundup (int x)
 
 template <typename T>
 void
-acorr_r(rpm::vector<T> &audio_buffer)
+acorr_r(rpm::vector<T> &audio_buffer, std::shared_ptr<Analysis::RealFFT> &fft)
 {
 	if (audio_buffer.size() == 0)
 		throw std::invalid_argument("audio_buffer shouldn't be empty");
@@ -78,8 +78,6 @@ acorr_r(rpm::vector<T> &audio_buffer)
 
         int nfft = 2 * N - 1;
  
-        static std::shared_ptr<Analysis::RealFFT> fft(nullptr);
-
         if (!fft || fft->getInputLength() != nfft) {
             fft.reset(new Analysis::RealFFT(nfft));
         }
@@ -104,6 +102,11 @@ acorr_r(rpm::vector<T> &audio_buffer)
         }
 }
 
+Analysis::Pitch::MPM::MPM()
+    : mFFT(nullptr)
+{
+}
+
 Analysis::PitchResult
 Analysis::Pitch::MPM::solve(const double *data, int length, int sample_rate)
 {
@@ -111,7 +114,7 @@ Analysis::Pitch::MPM::solve(const double *data, int length, int sample_rate)
 
     rpm::vector<T> audio_buffer(data, data + length);
 
-	acorr_r(audio_buffer);
+	acorr_r(audio_buffer, mFFT);
 
         double max = 0.02;
         for (int i = 0; i < length; ++i) {

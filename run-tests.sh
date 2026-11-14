@@ -64,8 +64,10 @@ cmake -S "$root" -B "$build" -G Ninja \
     -DINFORMANT_APP_PATH="$work/stage/InFormant.app" \
     -DINFORMANT_SANITIZE_TESTS="$sanitize"
 
+# The prebuilt Qt has no instrumentation, so the sanitizer reports false overflows in containers of Qt.
+# The setting must be active during the build too, because CTest discovers the tests by running each test program.
+export ASAN_OPTIONS=${ASAN_OPTIONS:-detect_container_overflow=0}
+
 cmake --build "$build" --target unit_tests --parallel "$jobs"
 
-# The prebuilt Qt has no instrumentation, so the sanitizer reports false overflows in containers of Qt.
-export ASAN_OPTIONS=${ASAN_OPTIONS:-detect_container_overflow=0}
 ctest --test-dir "$build" --output-on-failure "$@"

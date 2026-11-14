@@ -61,7 +61,7 @@ With the linear prediction coefficients estimated, we also have our transfer fun
 
 The accuracy of the polynomial root finder is absolutely key to the accuracy of the formant estimation.
 
-In this particular implementation, the Laguerre root finding method is used for its simplicity and great accuracy. Since we're only dealing with relatively small polynomials, the tradeoff in time spent is acceptable.
+The program finds the roots with the Aberth method. The method starts with random guesses for all roots. It improves all guesses together in each step, and it stops when the steps are very small. The polynomials are small, so the time is short.
 
 To help us visualize the relationship between the polynomial roots and the estimated resonances, we can plot them on a complex unit circle:
 

@@ -52,6 +52,10 @@ namespace Analysis {
 
     private:
         rpm::deque<Frame> frames;
+        double lpcOrderRate = 0.0;
+        rpm::vector<rpm::vector<rpm::vector<double>>> transitionMatrices;
+        rpm::vector<rpm::vector<double>> D;
+        rpm::vector<rpm::vector<int>> ks;
     };
 }
 

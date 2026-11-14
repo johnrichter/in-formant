@@ -44,14 +44,18 @@ namespace Analysis {
         private:
             double mThreshold;
             std::shared_ptr<ComplexFFT> mFFT;
-            rpm::vector<double> mAutocorrelation;
+            rpm::vector<std::dcomplex> mWindowSpectrum;
+            rpm::vector<double> mCumulative;
             rpm::vector<double> mDifference;
             rpm::vector<double> mCMND;
         };
 
         class MPM : public PitchSolver {
         public:
+            MPM();
             PitchResult solve(const double *data, int length, int sampleRate) override;
+        private:
+            std::shared_ptr<RealFFT> mFFT;
         };
 
         class RAPT : public PitchSolver, public Analysis::RAPT {

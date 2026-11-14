@@ -2,11 +2,11 @@
 #include "aberth.h"
 #include <random>
 
-static std::random_device rd;
+// Each thread has its own random engine, so two threads never share its state.
 #if CMAKE_SIZE_OF_VOID_P == 4
-static std::mt19937 gen(rd());
+static thread_local std::mt19937 gen{std::random_device{}()};
 #else
-static std::mt19937_64 gen(rd());
+static thread_local std::mt19937_64 gen{std::random_device{}()};
 #endif
 
 static std::pair<double, double> upperLowerBounds(const rpm::vector<double>& P)
@@ -34,8 +34,8 @@ static rpm::vector<std::complex<double>> initRoots(const rpm::vector<double>& P)
     const int degree = static_cast<int>(P.size()) - 1;
     const auto [upper, lower] = upperLowerBounds(P);
 
-    static std::uniform_real_distribution<> radius(lower, upper);
-    static std::uniform_real_distribution<> angle(0, 2 * M_PI);
+    std::uniform_real_distribution<> radius(lower, upper);
+    std::uniform_real_distribution<> angle(0, 2 * M_PI);
 
     rpm::vector<std::complex<double>> roots;
     for (int i = 0; i < degree; ++i) {
@@ -186,8 +186,8 @@ rpm::vector<Point> kMeansClustering(rpm::vector<Point>& points, int epochs, int 
 rpm::vector<std::complex<double>> Analysis::aberthRootsAroundInitial(
         const rpm::vector<double>& P, double r, double phi, int count)
 {
-    static std::uniform_real_distribution<> radius(r - 0.15, r + 0.15);
-    static std::uniform_real_distribution<> angle(phi - 0.15, phi + 0.15);
+    std::uniform_real_distribution<> radius(r - 0.15, r + 0.15);
+    std::uniform_real_distribution<> angle(phi - 0.15, phi + 0.15);
 
     const int degree = static_cast<int>(P.size()) - 1;
     rpm::vector<std::complex<double>> roots;

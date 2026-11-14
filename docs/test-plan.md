@@ -579,6 +579,29 @@ The scroll views of the settings, the help pages, the help boxes, the Synthesize
 - **TP-ANA-04** (Audio, P2). Run each formant method and each LPC method on the same file. Compare the tracks.
 - **TP-ANA-05** (Audio, P2). Test the formant limit of 5200 Hz and the view range of 5500 Hz. Expect the tracker not to follow the view range.
 - **TP-ANA-06** (Audio, P3). Test a very quiet file, a clipped file, and a file with a DC offset.
+- **TP-ANA-07** (Unit, P1). Run YIN on pure sines and on harmonic sums at 100, 220, and 440 Hz, at 16 kHz and at 48 kHz. Expect the pitch within 1 percent.
+- **TP-ANA-08** (Unit, P1). Run YIN on a harmonic sum whose level rises over the frame. Expect the pitch within 1 percent. The difference function uses a fixed window, so the rise does not move the minimum.
+- **TP-ANA-09** (Unit, P1). Run YIN on silence and on white noise. Expect no voiced result.
+- **TP-ANA-10** (Unit, P2). Run YIN on 440 Hz at 16 kHz. The period is 36.36 samples. Expect a result within 2 Hz, which needs the parabolic interpolation of the lag.
+- **TP-ANA-11** (Unit, P3). Run YIN on a frame, then on a frame of another length. Expect the same result as a new solver gives.
+- **TP-ANA-12** (Unit, P1). Run MPM on the signals of TP-ANA-07. Expect the pitch within 1 percent.
+- **TP-ANA-13** (Unit, P1). Run MPM on silence and on white noise. Expect no voiced result.
+- **TP-ANA-14** (Unit, P1). Run two MPM solvers in turn, with frames of different lengths and rates. Expect the right pitch from each.
+- **TP-ANA-15** (Unit, P1). Run two MPM solvers on two threads, with frames of different lengths. Expect the right pitch for every call. The solvers must not share an FFT.
+- **TP-ANA-16** (Unit, P2). Run RAPT at 16 kHz, then at 48 kHz, then at 16 kHz. Expect the LPC order to follow the sample rate each time.
+- **TP-ANA-17** (Unit, P2). Run two RAPT solvers on two threads. Expect the path of each to equal the path of a run on one thread.
+- **TP-ANA-18** (Unit, P1). Run IAIF at 16 kHz and at 48 kHz, in turn. Expect a finite output with a peak of 1 each time.
+- **TP-ANA-19** (Unit, P1). Run IAIF at 16 kHz, 48 kHz, 44.1 kHz, and 16 kHz again with one solver. Expect the output of each call to equal the output of a reference that holds no state. The filter and the window must follow the sample rate.
+- **TP-ANA-20** (Unit, P1). Run IAIF with frames of 1024, 512, 4096, 700, and 1024 samples. Expect no crash, a finite output of the frame length, and the output of the reference. The Hann window must have `lpW` points and divide by `lpW - 1`.
+- **TP-ANA-21** (Unit, P2). Run two IAIF solvers on two threads, at two rates. Expect the output of the reference from each.
+- **TP-ANA-22** (Unit, P1). Run GFM-IAIF with the case of TP-ANA-18.
+- **TP-ANA-23** (Unit, P1). Run GFM-IAIF with the case of TP-ANA-19.
+- **TP-ANA-24** (Unit, P1). Run GFM-IAIF with the case of TP-ANA-20.
+- **TP-ANA-25** (Unit, P2). Run two GFM-IAIF solvers with the case of TP-ANA-21.
+- **TP-ANA-26** (Unit, P2). Run two covariance LPC solvers on two threads, with different orders and lengths. Expect the result of each to equal the result of a run on one thread.
+- **TP-ANA-27** (Unit, P3). Find the roots of a polynomial with small roots and of one with large roots, in turn. Expect all roots each time. The start values must come from the polynomial at hand.
+- **TP-ANA-28** (Unit, P3). Find the roots of two polynomials on two threads. Expect all roots on every call.
+- **TP-ANA-29** (Unit, P3). Call the root finder with start points near 0.4 rad and near 2.0 rad, in turn. Expect the same cluster center each time.
 
 ## 20. Build, release, and platform
 
@@ -693,3 +716,7 @@ Each entry names the case, the bug, the version of the fix, and the test that gu
 - **A cached download stopped the build after a change of version (3.4.2).** The cache file had no version in its name, so the old file met the new checksum and failed. Now each cache file has the version in its name. TP-REL-09.
 - **The end of the live graph lagged more after each pause (3.4.3).** The view followed the wall clock, and the picture holds only the sound that the program stored. A pause, a restart of the input, or a stall each left a lead of about 0.17 seconds for ever. An empty strip then grew next to the axis. Now the view follows the stored sound, plus the wall time since the last step, up to 0.1 seconds. The strip stays below 0.06 seconds after three pauses. TP-EDGE-07, TP-EDGE-08, TP-EDGE-09, TP-EDGE-10.
 - **The time of the slices could run ahead of the stored sound (3.4.3).** The pipeline added the granularity to the time of each block, but a block has a whole number of samples. A rate of 22.05 kHz with 10 milliseconds gives a block of 220 samples, half a sample short. Now the time adds the samples of the block divided by the rate. TP-EDGE-07.
+- **YIN used the wrong difference function (3.4.4).** It computed `r(0) + r(1) - 2 r(tau)` from the autocorrelation of the whole frame. The correct difference is `e(0..W) + e(tau..tau+W) - 2 r_W(tau)` over a fixed window. A signal with a rising level or a low pitch then moved the minimum. YIN also gave whole lags only, so 440 Hz at 16 kHz was 1 percent high. Now YIN uses a cumulative sum of squares for the energy terms and the FFT for the cross term, and it interpolates the lag. TP-ANA-07 to TP-ANA-10.
+- **Solvers shared buffers, an FFT, filters, and windows through `static` variables (3.4.4).** MPM, IAIF, GFM-IAIF, covariance LPC, and RAPT kept them in functions. Two solvers or two threads shared them. IAIF and GFM-IAIF also kept the high-pass filter of the first sample rate for ever. RAPT kept the LPC order of the first sample rate. Now each solver holds its own state, and the filter, the window, and the order follow the sample rate. TP-ANA-14 to TP-ANA-17, TP-ANA-19, TP-ANA-21, TP-ANA-23, TP-ANA-25, and TP-ANA-26.
+- **The Hann window of IAIF and GFM-IAIF divided by the frame length (3.4.4).** The window has `lpW` points, so it did not reach 0 at its end. Now it divides by `lpW - 1`. TP-ANA-20 and TP-ANA-24.
+- **The root finder kept the start values of its first call, and all threads shared its random engine (3.4.4).** The static distributions took their limits from the first polynomial. Now each call builds its own distributions, and each thread has its own engine. TP-ANA-27 to TP-ANA-29.

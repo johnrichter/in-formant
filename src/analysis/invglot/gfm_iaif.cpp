@@ -22,10 +22,9 @@ static void applyWindow(const rpm::vector<double>& w, const rpm::vector<double>&
 }
 */
 
-static rpm::vector<double> calculateLPC(const rpm::vector<double>& x, const rpm::vector<double>& w, int len, int order, std::unique_ptr<Analysis::LinpredSolver>& lpc)
+static rpm::vector<double> calculateLPC(const rpm::vector<double>& x, const rpm::vector<double>& w, int len, int order, std::unique_ptr<Analysis::LinpredSolver>& lpc, rpm::vector<double>& lpcIn)
 {
-    static rpm::vector<double> lpcIn;
-    static double gain;
+    double gain;
 
     lpcIn.resize(len);
     for (int i = 0; i < len; ++i) {
@@ -90,19 +89,18 @@ InvglotResult GFM_IAIF::solve(const double *xData, int length, double sampleRate
     rpm::vector<double> one({1.0});
     rpm::vector<double> oneMinusD({1.0, -d});
 
-    static rpm::vector<double> window;
-    if (window.size() != lpW) {
+    if ((int) window.size() != lpW) {
         window.resize(lpW);
         for (int i = 0; i < lpW; ++i) {
-            window[i] = 0.5 - 0.5 * cos((2.0 * M_PI * i) / (double) (length - 1));
+            window[i] = 0.5 - 0.5 * cos((2.0 * M_PI * i) / (double) (lpW - 1));
         }
     }
 
     rpm::vector<double> s_gvl(xData, xData + length);
 
-    static rpm::vector<std::array<double, 6>> hpfilt;
-    if (hpfilt.empty()) {
+    if (hpfilt.empty() || hpfiltRate != sampleRate) {
         hpfilt = Analysis::butterworthHighpass(10, 70.0, sampleRate);
+        hpfiltRate = sampleRate;
     }
     s_gvl = sosfilter(hpfilt, s_gvl);
 
@@ -117,28 +115,28 @@ InvglotResult GFM_IAIF::solve(const double *xData, int length, double sampleRate
     auto s_gv = filter(one, oneMinusD, s_gvl);
     auto x_gv = filter(one, oneMinusD, x_gvl);
     
-    auto ag1 = calculateLPC(s_gv, window, lpW, 1, lpc);
+    auto ag1 = calculateLPC(s_gv, window, lpW, 1, lpc, lpcIn);
 
     for (int i = 1; i < ng; ++i) {
         auto x_v1x = filter(ag1, x_gv);
         auto s_v1x = removePreRamp(x_v1x, Lpf);
         
-        auto ag1x = calculateLPC(s_v1x, window, lpW, 1, lpc); 
+        auto ag1x = calculateLPC(s_v1x, window, lpW, 1, lpc, lpcIn); 
 
         ag1 = conv(ag1, ag1x);
     }
 
     auto x_v1 = filter(ag1, x_gv);
     auto s_v1 = removePreRamp(x_v1, Lpf);
-    auto av1 = calculateLPC(s_v1, window, lpW, nv, lpc);
+    auto av1 = calculateLPC(s_v1, window, lpW, nv, lpc, lpcIn);
 
     auto x_g1 = filter(av1, x_gv);
     auto s_g1 = removePreRamp(x_g1, Lpf);
-    auto ag = calculateLPC(s_g1, window, lpW, ng, lpc);
+    auto ag = calculateLPC(s_g1, window, lpW, ng, lpc, lpcIn);
 
     auto x_v = filter(ag, x_gv);
     auto s_v = removePreRamp(x_v, Lpf);
-    auto av = calculateLPC(s_v, window, lpW, nv, lpc);
+    auto av = calculateLPC(s_v, window, lpW, nv, lpc, lpcIn);
 
     auto g = removePreRamp(filter(av, x_gv), Lpf);
 

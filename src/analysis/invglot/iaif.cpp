@@ -12,10 +12,9 @@ IAIF::IAIF(double d)
     lpc = std::make_unique<LP::Burg>();
 }
 
-static rpm::vector<double> calculateLPC(const rpm::vector<double>& x, const rpm::vector<double>& w, int len, int order, std::unique_ptr<Analysis::LinpredSolver>& lpc)
+static rpm::vector<double> calculateLPC(const rpm::vector<double>& x, const rpm::vector<double>& w, int len, int order, std::unique_ptr<Analysis::LinpredSolver>& lpc, rpm::vector<double>& lpcIn)
 {
-    static rpm::vector<double> lpcIn;
-    static double gain;
+    double gain;
 
     lpcIn.resize(len);
     for (int i = 0; i < len; ++i) {
@@ -41,19 +40,18 @@ InvglotResult IAIF::solve(const double *xData, int length, double sampleRate)
     rpm::vector<double> one({1.0});
     rpm::vector<double> oneMinusD({1.0, -d});
 
-    static rpm::vector<double> window;
-    if ((int)window.size() != lpW) {
+    if ((int) window.size() != lpW) {
         window.resize(lpW);
         for (int i = 0; i < lpW; ++i) {
-            window[i] = 0.5 - 0.5 * cos((2.0 * M_PI * i) / (double) (length - 1));
+            window[i] = 0.5 - 0.5 * cos((2.0 * M_PI * i) / (double) (lpW - 1));
         }
     }
 
     rpm::vector<double> x(xData, xData + length);
    
-    static rpm::vector<std::array<double, 6>> hpfilt;
-    if (hpfilt.empty()) {
+    if (hpfilt.empty() || hpfiltRate != sampleRate) {
         hpfilt = Analysis::butterworthHighpass(8, 70.0, sampleRate);
+        hpfiltRate = sampleRate;
     }
 
     int preflt = p_vt + 1;
@@ -69,16 +67,16 @@ InvglotResult IAIF::solve(const double *xData, int length, double sampleRate)
     xWithPreRamp = sosfilter(hpfilt, xWithPreRamp);
     x = removePreRamp(xWithPreRamp, preflt);
 
-    auto Hg1 = calculateLPC(x, window, lpW, 1, lpc);
+    auto Hg1 = calculateLPC(x, window, lpW, 1, lpc, lpcIn);
     auto y1 = removePreRamp(filter(Hg1, one, xWithPreRamp), preflt);
 
-    auto Hvt1 = calculateLPC(y1, window, lpW, p_vt, lpc);
+    auto Hvt1 = calculateLPC(y1, window, lpW, p_vt, lpc, lpcIn);
     auto g1 = removePreRamp(filter(one, oneMinusD, filter(Hvt1, one, xWithPreRamp)), preflt);
 
-    auto Hg2 = calculateLPC(g1, window, lpW, p_gl, lpc);
+    auto Hg2 = calculateLPC(g1, window, lpW, p_gl, lpc, lpcIn);
     auto y = removePreRamp(filter(one, oneMinusD, filter(Hg2, one, xWithPreRamp)), preflt);
 
-    auto Hvt2 = calculateLPC(y, window, lpW, p_vt, lpc);
+    auto Hvt2 = calculateLPC(y, window, lpW, p_vt, lpc, lpcIn);
     auto g = removePreRamp(filter(one, oneMinusD, filter(Hvt2, one, xWithPreRamp)), preflt);
 
     double gMax = 1e-10;

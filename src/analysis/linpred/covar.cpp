@@ -7,7 +7,6 @@ rpm::vector<double> Covar::solve(const double *data, int length, int lpcOrder, d
     const int n = length;
     const int m = lpcOrder;
 
-    static rpm::vector<double> b, grc, beta, a, cc;
     b.resize(1 + (m * (m + 1) / 2));
     grc.resize(1 + (m));
     beta.resize(1 + (m));

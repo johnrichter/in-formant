@@ -68,8 +68,9 @@ RAPT::RAPT()
 
 double RAPT::computeFrame(const double *data, int length, double Fs)
 {
-    if (lpcOrder < 0) {
+    if (lpcOrder < 0 || lpcOrderRate != Fs) {
         lpcOrder = 2 + std::round(Fs / 1000);
+        lpcOrderRate = Fs;
     }
 
     const double w = 0.0075;
@@ -159,8 +160,6 @@ double RAPT::computeFrame(const double *data, int length, double Fs)
 
 rpm::vector<double> RAPT::computePath()
 {
-    static rpm::vector<rpm::vector<rpm::vector<double>>> transitionMatrices;
-
     transitionMatrices.resize(nbFrames);
 
     for (int i = 1; i < nbFrames; ++i) {
@@ -200,9 +199,6 @@ rpm::vector<double> RAPT::computePath()
         }
     }
 
-    static rpm::vector<rpm::vector<double>> D;
-    static rpm::vector<rpm::vector<int>> ks;
-    
     D.resize(nbFrames + 1);
     D[0].resize(2, 0.0);
 
