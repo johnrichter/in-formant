@@ -1,5 +1,6 @@
 #include "invglot.h"
 #include "../filter/filter.h"
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 
@@ -85,6 +86,11 @@ InvglotResult GFM_IAIF::solve(const double *xData, int length, double sampleRate
     const int Lpf = nv + 1;
 
     const int lpW = std::round(0.015 * sampleRate);
+
+    // The LPC window takes 15 ms from the middle of the frame. A shorter frame has no flow estimate.
+    if (lpW < 2 || length < lpW) {
+        return {sampleRate, rpm::vector<double>(std::max(length, 0), 0.0)};
+    }
 
     rpm::vector<double> one({1.0});
     rpm::vector<double> oneMinusD({1.0, -d});

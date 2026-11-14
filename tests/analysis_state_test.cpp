@@ -131,3 +131,20 @@ TEST(AnalysisState, TP_ANA_29_AberthRootsAroundAnInitialPointUseThePointOfEachCa
         }
     }
 }
+
+TEST(AnalysisState, TP_ANA_32_AberthRootsAroundAnInitialPointNeverGiveNan)
+{
+    // Four clusters for four roots. The k-means start can pick one root twice, so one cluster stays empty.
+    // An empty cluster must keep its centroid, not divide by zero.
+    const std::vector<std::complex<double>> roots{std::polar(0.9, 0.4), std::polar(0.9, -0.4), std::polar(0.9, 2.0),
+                                                  std::polar(0.9, -2.0)};
+    const auto poly = polyFromRoots(roots);
+    for (int round = 0; round < 50; ++round) {
+        const auto picked = aberthRootsAroundInitial(poly, 0.9, 0.4, 4);
+        ASSERT_EQ(picked.size(), 4u);
+        for (const auto &z : picked) {
+            ASSERT_TRUE(std::isfinite(z.real())) << "round " << round;
+            ASSERT_TRUE(std::isfinite(z.imag())) << "round " << round;
+        }
+    }
+}

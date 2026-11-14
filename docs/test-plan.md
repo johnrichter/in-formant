@@ -602,6 +602,9 @@ The scroll views of the settings, the help pages, the help boxes, the Synthesize
 - **TP-ANA-27** (Unit, P3). Find the roots of a polynomial with small roots and of one with large roots, in turn. Expect all roots each time. The start values must come from the polynomial at hand.
 - **TP-ANA-28** (Unit, P3). Find the roots of two polynomials on two threads. Expect all roots on every call.
 - **TP-ANA-29** (Unit, P3). Call the root finder with start points near 0.4 rad and near 2.0 rad, in turn. Expect the same cluster center each time.
+- **TP-ANA-30** (Unit, P1). Run IAIF and GFM-IAIF on a frame of 100 samples at 16 kHz, which is shorter than the LPC window of 15 ms. Expect a silent output of the frame length and no read past the frame. Then expect a normal result for a frame of 1024 samples.
+- **TP-ANA-31** (Unit, P3). Run RAPT with a path of 5 frames on a steady tone of 150 Hz. Expect no crash, and expect each value of the path within 3 Hz.
+- **TP-ANA-32** (Unit, P2). Ask the root finder for 4 clusters around a polynomial with 4 roots, 50 times. Expect a finite center for each cluster every time.
 
 ## 20. Build, release, and platform
 
@@ -720,3 +723,6 @@ Each entry names the case, the bug, the version of the fix, and the test that gu
 - **Solvers shared buffers, an FFT, filters, and windows through `static` variables (3.4.4).** MPM, IAIF, GFM-IAIF, covariance LPC, and RAPT kept them in functions. Two solvers or two threads shared them. IAIF and GFM-IAIF also kept the high-pass filter of the first sample rate for ever. RAPT kept the LPC order of the first sample rate. Now each solver holds its own state, and the filter, the window, and the order follow the sample rate. TP-ANA-14 to TP-ANA-17, TP-ANA-19, TP-ANA-21, TP-ANA-23, TP-ANA-25, and TP-ANA-26.
 - **The Hann window of IAIF and GFM-IAIF divided by the frame length (3.4.4).** The window has `lpW` points, so it did not reach 0 at its end. Now it divides by `lpW - 1`. TP-ANA-20 and TP-ANA-24.
 - **The root finder kept the start values of its first call, and all threads shared its random engine (3.4.4).** The static distributions took their limits from the first polynomial. Now each call builds its own distributions, and each thread has its own engine. TP-ANA-27 to TP-ANA-29.
+- **IAIF and GFM-IAIF read past a short frame (3.4.4).** The LPC window takes 15 ms from the middle of the frame. A shorter frame made the window start before the frame. Now a short frame gives a silent output. TP-ANA-30.
+- **RAPT added the transition cost in the wrong place (3.4.4).** The expression `D[i][k] + i > 0 ? cost : 0.0` compared the sum with 0 and dropped the cost of the path so far. RAPT also read the spectrum of an empty first frame. A path of one frame, which the program uses, gave the right result by chance. A longer path crashed. Now the cost adds to the path, and a frame with no comparable spectrum keeps the value of the frame before. TP-ANA-31.
+- **The root finder could give NaN (3.4.4).** The k-means step divided by the size of each cluster, and a cluster could be empty. Now an empty cluster keeps its center. TP-ANA-32.

@@ -161,6 +161,8 @@ rpm::vector<Point> kMeansClustering(rpm::vector<Point>& points, int epochs, int 
 
         // Compute the new centroids
         for (int clusterId = 0; clusterId < k; ++clusterId) {
+            // An empty cluster keeps its centroid. A division by zero would give NaN.
+            if (nPoints[clusterId] == 0) continue;
             auto& c = centroids[clusterId];
             c.x = sumX[clusterId] / nPoints[clusterId];
             c.y = sumY[clusterId] / nPoints[clusterId];

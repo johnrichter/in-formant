@@ -142,7 +142,11 @@ double RAPT::computeFrame(const double *data, int length, double Fs)
         double gain;
         frm.ar = lpc.solve(s.data(), (int) s.size(), lpcOrder, &gain);
         frm.ar.insert(frm.ar.begin(), 1.0);
-        frm.S = 0.2 / (expDistItakura(frm.ar, frames.back().ar) - 0.8);
+        // The first frames, and a frame after a change of the LPC order, have no comparable spectrum.
+        // They keep the stationarity of the previous frame.
+        frm.S = (frames.back().ar.size() == frm.ar.size())
+                ? 0.2 / (expDistItakura(frm.ar, frames.back().ar) - 0.8)
+                : frames.back().S;
     }
 
     double pitch = 0.0;
@@ -212,7 +216,7 @@ rpm::vector<double> RAPT::computePath()
             double min = HUGE_VALF;
             int kmin = 0;
             for (int k = 0; k < (int) D[i].size(); ++k) {
-                double val = D[i][k] + i > 0 ? transitionMatrices[i][j][k] : 0.0;
+                double val = D[i][k] + (i > 0 ? transitionMatrices[i][j][k] : 0.0);
                 if (val < min) {
                     min = val;
                     kmin = k;

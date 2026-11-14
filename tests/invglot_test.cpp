@@ -280,3 +280,22 @@ TEST(Invglot, TP_ANA_25_GfmIaifSolversOnTwoThreadsDoNotShareBuffers)
 {
     checkTwoThreads<Invglot::GFM_IAIF>();
 }
+
+TEST(Invglot, TP_ANA_30_AFrameShorterThanTheLpcWindowGivesSilenceAndNoOverflow)
+{
+    // The LPC window is 15 ms, 240 samples at 16 kHz. A frame of 100 samples is shorter.
+    const auto x = voicedFrame(16000, 100);
+    Invglot::IAIF iaif(0.99);
+    Invglot::GFM_IAIF gfm(0.99);
+    for (InvglotSolver *solver : {static_cast<InvglotSolver *>(&iaif), static_cast<InvglotSolver *>(&gfm)}) {
+        const InvglotResult r = solver->solve(x.data(), (int) x.size(), 16000);
+        EXPECT_DOUBLE_EQ(r.sampleRate, 16000);
+        ASSERT_EQ(r.glotSig.size(), x.size());
+        for (double v : r.glotSig)
+            EXPECT_EQ(v, 0.0);
+    }
+    // A normal frame after the short one still works.
+    const auto y = voicedFrame(16000, 1024);
+    expectNormalized(iaif.solve(y.data(), (int) y.size(), 16000), 1024, 16000);
+    expectNormalized(gfm.solve(y.data(), (int) y.size(), 16000), 1024, 16000);
+}

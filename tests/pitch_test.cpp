@@ -200,3 +200,22 @@ TEST(Pitch, TP_ANA_17_RaptSolversOnTwoThreadsDoNotShareTheirPathBuffers)
     EXPECT_EQ(pathA, refA);
     EXPECT_EQ(pathB, refB);
 }
+
+TEST(Pitch, TP_ANA_31_RaptWithAPathOfFiveFramesFollowsASteadyTone)
+{
+    // The program uses one frame. A path of more frames reads the spectrum of the frame before, and the dynamic
+    // programming adds the cost of each transition to the cost of the path so far.
+    Pitch::RAPT rapt;
+    rapt.nbFrames = 5;
+    const auto x = harmonics(150.0, 16000, 1024, 4);
+    std::vector<double> path;
+    for (int round = 0; round < 10; ++round) {
+        rapt.computeFrame(x.data(), (int) x.size(), 16000);
+        path = rapt.computePath();
+    }
+    ASSERT_EQ(path.size(), 5u);
+    for (double p : path) {
+        ASSERT_TRUE(std::isfinite(p));
+        EXPECT_NEAR(p, 150.0, 3.0);
+    }
+}
