@@ -22,7 +22,8 @@
 *.aab
 *.pyc
 
-# Local tool state and operating system files.
-/.claude/
+# Local tool state and operating system files. The rules in .claude/rules are shared, so Git tracks them.
+/.claude/*
+!/.claude/rules/
 .DS_Store
 *.ips
